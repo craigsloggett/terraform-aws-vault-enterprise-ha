@@ -1,0 +1,4 @@
+project_name      = "vault-ha"
+route53_zone_name = "example.com"
+vault_license     = "your-vault-enterprise-license-here"
+ec2_key_pair_name = "my-key-pair"
