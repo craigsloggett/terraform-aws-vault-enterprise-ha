@@ -6,10 +6,6 @@ A Terraform module for deploying HashiCorp Vault Enterprise in a highly availabl
 
 ### main.tf
 ```hcl
-provider "aws" {
-  region = "ca-central-1"
-}
-
 data "aws_ami" "hc_base" {
   most_recent = true
   owners      = ["888995627335"]
@@ -20,8 +16,6 @@ data "aws_ami" "hc_base" {
   }
 }
 
-# tflint-ignore: terraform_required_version
-# tflint-ignore: terraform_module_version
 module "vault" {
   source = "../../"
 
