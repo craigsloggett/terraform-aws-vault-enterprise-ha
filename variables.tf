@@ -23,12 +23,6 @@ variable "ec2_key_pair_name" {
 
 # General
 
-variable "region" {
-  type        = string
-  description = "AWS region."
-  default     = "ca-central-1"
-}
-
 variable "common_tags" {
   type        = map(string)
   description = "Tags to apply to all resources."

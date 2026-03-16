@@ -1,17 +1,21 @@
 resource "aws_lb" "vault" {
-  name               = "${var.project_name}-vault"
+  name_prefix        = "vault-"
   internal           = var.nlb_internal
   load_balancer_type = "network"
   subnets            = var.nlb_internal ? module.vpc.private_subnets : module.vpc.public_subnets
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault" })
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_lb_target_group" "vault" {
-  name     = "${var.project_name}-vault"
-  port     = 8200
-  protocol = "TCP"
-  vpc_id   = module.vpc.vpc_id
+  name_prefix = "vault-"
+  port        = 8200
+  protocol    = "TCP"
+  vpc_id      = module.vpc.vpc_id
 
   health_check {
     enabled             = true
@@ -24,6 +28,10 @@ resource "aws_lb_target_group" "vault" {
   }
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault" })
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_lb_listener" "vault" {

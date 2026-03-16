@@ -6,15 +6,30 @@ A Terraform module for deploying HashiCorp Vault Enterprise in a highly availabl
 
 ### main.tf
 ```hcl
+provider "aws" {
+  region = "ca-central-1"
+}
+
+data "aws_ami" "hc_base" {
+  most_recent = true
+  owners      = ["888995627335"]
+
+  filter {
+    name   = "name"
+    values = ["hc-base-ubuntu-2404-amd64-*"]
+  }
+}
+
 # tflint-ignore: terraform_required_version
 # tflint-ignore: terraform_module_version
 module "vault" {
   source = "../../"
 
-  project_name      = "vault-ha"
-  route53_zone_name = var.route53_zone_name
-  vault_license     = var.vault_license
-  ec2_key_pair_name = var.ec2_key_pair_name
+  project_name        = "vault-ha"
+  route53_zone_name   = var.route53_zone_name
+  vault_license       = var.vault_license
+  ec2_key_pair_name   = var.ec2_key_pair_name
+  ec2_instance_ami_id = data.aws_ami.hc_base.id
 }
 ```
 
@@ -42,11 +57,10 @@ module "vault" {
 | <a name="input_bastion_allowed_cidrs"></a> [bastion\_allowed\_cidrs](#input\_bastion\_allowed\_cidrs) | CIDR blocks allowed to SSH to the bastion host. | `list(string)` | <pre>[<br/>  "0.0.0.0/0"<br/>]</pre> | no |
 | <a name="input_bastion_instance_type"></a> [bastion\_instance\_type](#input\_bastion\_instance\_type) | EC2 instance type for the bastion host. | `string` | `"t3.micro"` | no |
 | <a name="input_common_tags"></a> [common\_tags](#input\_common\_tags) | Tags to apply to all resources. | `map(string)` | `{}` | no |
-| <a name="input_ec2_instance_ami_name"></a> [ec2\_instance\_ami\_name](#input\_ec2\_instance\_ami\_name) | AMI name filter for the Debian base image. | `string` | `"debian-12-amd64-*"` | no |
+| <a name="input_ec2_instance_ami_id"></a> [ec2\_instance\_ami\_id](#input\_ec2\_instance\_ami\_id) | AMI ID to use for EC2 instances. Must be Ubuntu or Debian-based. | `string` | n/a | yes |
 | <a name="input_ec2_key_pair_name"></a> [ec2\_key\_pair\_name](#input\_ec2\_key\_pair\_name) | Name of an existing EC2 key pair for SSH access. | `string` | n/a | yes |
 | <a name="input_nlb_internal"></a> [nlb\_internal](#input\_nlb\_internal) | Whether the NLB is internal. | `bool` | `true` | no |
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name prefix for all resources. | `string` | n/a | yes |
-| <a name="input_region"></a> [region](#input\_region) | AWS region. | `string` | `"ca-central-1"` | no |
 | <a name="input_route53_zone_name"></a> [route53\_zone\_name](#input\_route53\_zone\_name) | Name of the existing Route 53 hosted zone. | `string` | n/a | yes |
 | <a name="input_vault_ebs_volume_size"></a> [vault\_ebs\_volume\_size](#input\_vault\_ebs\_volume\_size) | Size in GiB of the EBS volume for Vault Raft storage. | `number` | `100` | no |
 | <a name="input_vault_instance_type"></a> [vault\_instance\_type](#input\_vault\_instance\_type) | EC2 instance type for Vault nodes. | `string` | `"m5.large"` | no |
@@ -109,7 +123,7 @@ module "vault" {
 | [tls_private_key.ca](https://registry.terraform.io/providers/hashicorp/tls/latest/docs/resources/private_key) | resource |
 | [tls_private_key.server](https://registry.terraform.io/providers/hashicorp/tls/latest/docs/resources/private_key) | resource |
 | [tls_self_signed_cert.ca](https://registry.terraform.io/providers/hashicorp/tls/latest/docs/resources/self_signed_cert) | resource |
-| [aws_ami.debian](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
+| [aws_ami.selected](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
 | [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) | data source |
 | [aws_iam_policy_document.vault_assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.vault_ec2_describe](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
@@ -124,6 +138,7 @@ module "vault" {
 | Name | Description |
 |------|-------------|
 | <a name="output_bastion_public_ip"></a> [bastion\_public\_ip](#output\_bastion\_public\_ip) | Public IP of the bastion host. |
+| <a name="output_vault_ca_cert"></a> [vault\_ca\_cert](#output\_vault\_ca\_cert) | CA certificate for trusting the Vault TLS chain. |
 | <a name="output_vault_kms_key_id"></a> [vault\_kms\_key\_id](#output\_vault\_kms\_key\_id) | KMS key ID used for Vault auto-unseal. |
 | <a name="output_vault_private_ips"></a> [vault\_private\_ips](#output\_vault\_private\_ips) | Private IPs of the Vault nodes. |
 | <a name="output_vault_snapshot_bucket"></a> [vault\_snapshot\_bucket](#output\_vault\_snapshot\_bucket) | S3 bucket for Vault snapshots. |

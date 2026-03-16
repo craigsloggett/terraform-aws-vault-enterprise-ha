@@ -1,3 +1,7 @@
+provider "aws" {
+  region = "ca-central-1"
+}
+
 data "aws_ami" "hc_base" {
   most_recent = true
   owners      = ["888995627335"]

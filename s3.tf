@@ -19,6 +19,7 @@ resource "aws_s3_bucket_versioning" "vault_snapshots" {
 resource "aws_s3_bucket_server_side_encryption_configuration" "vault_snapshots" {
   bucket = aws_s3_bucket.vault_snapshots.id
 
+  # Uses the default AWS-managed aws/s3 KMS key.
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "aws:kms"
