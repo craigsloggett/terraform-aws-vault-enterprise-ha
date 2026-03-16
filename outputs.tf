@@ -22,3 +22,9 @@ output "vault_snapshot_bucket" {
   description = "S3 bucket for Vault snapshots."
   value       = aws_s3_bucket.vault_snapshots.id
 }
+
+output "vault_ca_cert" {
+  description = "CA certificate for trusting the Vault TLS chain."
+  value       = tls_self_signed_cert.ca.cert_pem
+  sensitive   = true
+}

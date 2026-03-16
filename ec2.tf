@@ -1,7 +1,7 @@
 # Bastion Host
 
 resource "aws_instance" "bastion" {
-  ami                         = data.aws_ami.debian.id
+  ami                         = var.ec2_instance_ami_id
   instance_type               = var.bastion_instance_type
   key_name                    = var.ec2_key_pair_name
   subnet_id                   = module.vpc.public_subnets[0]
@@ -15,6 +15,13 @@ resource "aws_instance" "bastion" {
   }
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-bastion" })
+
+  lifecycle {
+    precondition {
+      condition     = can(regex("(ubuntu|debian)", lower(data.aws_ami.selected.name)))
+      error_message = "The provided AMI must be Ubuntu or Debian-based."
+    }
+  }
 }
 
 # Vault Nodes
@@ -22,7 +29,7 @@ resource "aws_instance" "bastion" {
 resource "aws_instance" "vault" {
   count = local.vault_node_count
 
-  ami                    = data.aws_ami.debian.id
+  ami                    = var.ec2_instance_ami_id
   instance_type          = var.vault_instance_type
   key_name               = var.ec2_key_pair_name
   subnet_id              = module.vpc.private_subnets[count.index]
@@ -58,6 +65,13 @@ resource "aws_instance" "vault" {
     aws_iam_role_policy.vault_kms,
     aws_iam_role_policy.vault_secrets_manager,
   ]
+
+  lifecycle {
+    precondition {
+      condition     = can(regex("(ubuntu|debian)", lower(data.aws_ami.selected.name)))
+      error_message = "The provided AMI must be Ubuntu or Debian-based."
+    }
+  }
 }
 
 # EBS Volumes for Raft Storage

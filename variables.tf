@@ -57,10 +57,9 @@ variable "vpc_public_subnets" {
 
 # EC2
 
-variable "ec2_instance_ami_name" {
+variable "ec2_instance_ami_id" {
   type        = string
-  description = "AMI name filter for the Debian base image."
-  default     = "debian-12-amd64-*"
+  description = "AMI ID to use for EC2 instances. Must be Ubuntu or Debian-based."
 }
 
 variable "vault_instance_type" {

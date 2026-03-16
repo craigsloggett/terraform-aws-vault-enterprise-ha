@@ -8,28 +8,10 @@ data "aws_route53_zone" "vault" {
   name = var.route53_zone_name
 }
 
-data "aws_ami" "debian" {
-  most_recent = true
-  owners      = ["136693071363"]
-
+data "aws_ami" "selected" {
   filter {
-    name   = "name"
-    values = [var.ec2_instance_ami_name]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
+    name   = "image-id"
+    values = [var.ec2_instance_ami_id]
   }
 }
 
