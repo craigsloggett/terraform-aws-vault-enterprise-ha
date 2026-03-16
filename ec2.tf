@@ -15,13 +15,6 @@ resource "aws_instance" "bastion" {
   }
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-bastion" })
-
-  lifecycle {
-    precondition {
-      condition     = can(regex("(ubuntu|debian)", lower(data.aws_ami.selected.name)))
-      error_message = "The provided AMI must be Ubuntu or Debian-based."
-    }
-  }
 }
 
 # Vault Nodes
@@ -52,13 +45,13 @@ resource "aws_instance" "vault" {
     vault_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_ca_cert.arn
     vault_server_cert_secret_arn = aws_secretsmanager_secret.vault_server_cert.arn
     vault_server_key_secret_arn  = aws_secretsmanager_secret.vault_server_key.arn
-    cluster_tag_key              = "vault-cluster"
-    cluster_tag_value            = var.project_name
+    cluster_tag_key              = local.cluster_tag_key
+    cluster_tag_value            = local.cluster_tag_value
   })
 
   tags = merge(var.common_tags, {
-    Name          = "${var.project_name}-vault-${count.index}"
-    vault-cluster = var.project_name
+    Name                    = "${var.project_name}-vault-${count.index}"
+    (local.cluster_tag_key) = local.cluster_tag_value
   })
 
   depends_on = [

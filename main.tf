@@ -16,7 +16,9 @@ data "aws_ami" "selected" {
 }
 
 locals {
-  vault_fqdn       = "${var.vault_subdomain}.${data.aws_route53_zone.vault.name}"
-  vault_node_count = 3
-  azs              = slice(data.aws_availability_zones.available.names, 0, 3)
+  vault_fqdn        = "${var.vault_subdomain}.${data.aws_route53_zone.vault.name}"
+  vault_node_count  = 3
+  azs               = slice(data.aws_availability_zones.available.names, 0, 3)
+  cluster_tag_key   = "vault-cluster"
+  cluster_tag_value = var.project_name
 }
