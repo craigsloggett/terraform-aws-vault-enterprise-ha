@@ -42,6 +42,17 @@ resource "aws_vpc_endpoint" "kms" {
   tags = merge(var.common_tags, { Name = "${var.project_name}-kms" })
 }
 
+resource "aws_vpc_endpoint" "ec2" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${data.aws_region.current.name}.ec2"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = module.vpc.private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = merge(var.common_tags, { Name = "${var.project_name}-ec2" })
+}
+
 resource "aws_vpc_endpoint" "s3" {
   vpc_id            = module.vpc.vpc_id
   service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"

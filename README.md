@@ -11,7 +11,7 @@ Terraform module which deploys a 3-node Vault Enterprise HA cluster on AWS with 
 - Route 53 DNS alias to the NLB
 - TLS certificates and license stored in AWS Secrets Manager
 - Bastion host for SSH access to the private Vault nodes
-- VPC endpoints for KMS, Secrets Manager, and S3
+- VPC endpoints for EC2, KMS, Secrets Manager, and S3
 
 ## Prerequisites
 
@@ -40,6 +40,15 @@ export VAULT_ADDR="https://vault.<your-domain>:8200"
 export VAULT_CACERT=vault-ca.crt
 vault status
 ```
+## Security considerations
+
+The Terraform `tls` provider stores private key material (CA and server keys) in
+state as plaintext. Ensure your state backend is encrypted (e.g., S3 with SSE).
+
+All three Vault nodes share a single server certificate. This works because the
+certificate's `dns_names` includes the cluster FQDN, which Raft uses for
+`leader_tls_servername` during auto-join.
+
 <!-- BEGIN_TF_DOCS -->
 ## Usage
 

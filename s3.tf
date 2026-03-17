@@ -16,11 +16,26 @@ resource "aws_s3_bucket_versioning" "vault_snapshots" {
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "vault_snapshots" {
+  bucket = aws_s3_bucket.vault_snapshots.id
+
+  rule {
+    id     = "expire-noncurrent-versions"
+    status = "Enabled"
+    filter {}
+
+    noncurrent_version_expiration {
+      noncurrent_days = 90
+    }
+  }
+}
+
 resource "aws_s3_bucket_server_side_encryption_configuration" "vault_snapshots" {
   bucket = aws_s3_bucket.vault_snapshots.id
 
-  # Uses the default AWS-managed aws/s3 KMS key.
   rule {
+    bucket_key_enabled = true
+
     apply_server_side_encryption_by_default {
       sse_algorithm = "aws:kms"
     }
