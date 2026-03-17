@@ -1,129 +1,177 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Disable false positives caused by shellcheck not understanding Terraform's template syntax.
 # shellcheck disable=SC2034,SC2086,SC2154,SC2157,SC2170,SC2193
-set -euo pipefail
+
+log() {
+  printf '%b%s %b%s%b %s\n' \
+    "$${c1}" "$${3:-->}" "$${c3}$${2:+$c2}" "$1" "$${c3}" "$2" >&2
+}
 
 wait_for_network() {
-  echo "Checking network connectivity."
+  log "Checking network connectivity."
   while ! ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; do
-    echo "  Waiting for the network to be available..."
+    log "  Waiting for the network to be available..."
     sleep 1
   done
 }
 
-# Wait for the network to be available.
-wait_for_network
+install_packages() {
+  log "  Installing the following packages: $*"
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get -yq update >/dev/null
+  apt-get -yq install "$@" >/dev/null
+}
 
-# Install dependencies
-apt-get update -y
-apt-get install -y \
-  awscli \
-  jq \
-  unzip \
-  gnupg \
-  lsb-release \
-  nvme-cli
+find_ebs_device() {
+  log "  Resolving the NVMe device for the /dev/xvdf EBS attachment."
 
-# Format and mount EBS volume for Raft storage
-# Resolve the NVMe device backing the /dev/xvdf EBS attachment.
-# AWS encodes the attachment name (without /dev/) in the NVMe serial field.
-DEVICE=""
-ATTEMPTS=0
-MAX_ATTEMPTS=30
+  device=""
+  attempts=0
+  max_attempts=30
 
-while [ -z "$${DEVICE}" ]; do
-  for dev in /dev/nvme*n1; do
-    [ -b "$${dev}" ] || continue
-    SERIAL=$(nvme id-ctrl -v "$${dev}" 2>/dev/null | grep -oP '(?<=sn\s{8}: ).*' | tr -d ' ')
-    if [ "$${SERIAL}" = "xvdf" ]; then
-      DEVICE="$${dev}"
-      break
+  while [ -z "$${device}" ]; do
+    for dev in /dev/nvme*n1; do
+      [ -b "$${dev}" ] || continue
+      serial=$(nvme id-ctrl -v "$${dev}" 2>/dev/null | sed -n 's/^sn *: *//p' | tr -d ' ')
+      if [ "$${serial}" = "xvdf" ]; then
+        device="$${dev}"
+        break
+      fi
+    done
+
+    if [ -z "$${device}" ]; then
+      attempts=$((attempts + 1))
+      if [ "$${attempts}" -ge "$${max_attempts}" ]; then
+        log "ERROR: EBS volume not found after $${max_attempts} attempts."
+        exit 1
+      fi
+      sleep 2
     fi
   done
 
-  if [ -z "$${DEVICE}" ]; then
-    ATTEMPTS=$((ATTEMPTS + 1))
-    if [ "$${ATTEMPTS}" -ge "$${MAX_ATTEMPTS}" ]; then
-      echo "ERROR: EBS volume not found after $${MAX_ATTEMPTS} attempts" >&2
-      exit 1
-    fi
-    sleep 2
+  printf '%s\n' "$${device}"
+}
+
+format_and_mount_ebs() {
+  log "  Formatting and mounting the EBS volume for Raft storage."
+
+  if ! blkid "$1" >/dev/null 2>&1; then
+    mkfs.ext4 "$1" >/dev/null
   fi
-done
 
-if ! blkid "$${DEVICE}"; then
-  mkfs.ext4 "$${DEVICE}"
-fi
+  mkdir -p /opt/vault/data
+  mount "$1" /opt/vault/data
 
-mkdir -p /opt/vault/data
-mount "$${DEVICE}" /opt/vault/data
+  if ! grep -q '/opt/vault/data' /etc/fstab; then
+    echo "$1 /opt/vault/data ext4 defaults,nofail 0 2" >>/etc/fstab
+  fi
+}
 
-if ! grep -q '/opt/vault/data' /etc/fstab; then
-  echo "$${DEVICE} /opt/vault/data ext4 defaults,nofail 0 2" >>/etc/fstab
-fi
+install_vault() {
+  log "  Installing Vault Enterprise ${vault_version}."
 
-# Install Vault Enterprise
-curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+  curl -fsSL https://apt.releases.hashicorp.com/gpg |
+    gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
 
-echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-  >/etc/apt/sources.list.d/hashicorp.list
+  echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+    >/etc/apt/sources.list.d/hashicorp.list
 
-apt-get update -y
-apt-get install -y vault-enterprise=${vault_version}
-
-# Retrieve secrets from AWS Secrets Manager
-REGION="${region}"
+  export DEBIAN_FRONTEND=noninteractive
+  apt-get -yq update >/dev/null
+  apt-get -yq install vault-enterprise=${vault_version} >/dev/null
+}
 
 get_secret() {
-  local secret_id="$${1}"
-  local attempt=0
-  local max_retries=5
+  log "  Grabbing AWS Secrets Manager secret value for:" "$1"
+
+  attempt=0
+  max_retries=5
 
   while [ "$${attempt}" -lt "$${max_retries}" ]; do
-    if RESULT=$(aws secretsmanager get-secret-value \
-      --region "$${REGION}" \
-      --secret-id "$${secret_id}" \
+    if result=$(aws secretsmanager get-secret-value \
+      --region "${region}" \
+      --secret-id "$1" \
       --query SecretString --output text 2>/dev/null); then
-      printf '%s' "$${RESULT}"
+      printf '%s' "$${result}"
       return 0
     fi
     attempt=$((attempt + 1))
     sleep 5
   done
 
-  echo "ERROR: Failed to retrieve secret $${secret_id} after $${max_retries} attempts" >&2
+  log "ERROR: Failed to retrieve secret after $${max_retries} attempts." "$1"
   return 1
 }
 
-VAULT_LICENSE=$(get_secret "${vault_license_secret_arn}")
-CA_CERT=$(get_secret "${vault_ca_cert_secret_arn}")
-SERVER_CERT=$(get_secret "${vault_server_cert_secret_arn}")
-SERVER_KEY=$(get_secret "${vault_server_key_secret_arn}")
+get_ec2_private_ip_address() {
+  log "  Grabbing the EC2 instance metadata token."
 
-# Write TLS certificates
-mkdir -p /opt/vault/tls
-printf '%s\n' "$${CA_CERT}" >/opt/vault/tls/ca.crt
-printf '%s\n' "$${SERVER_CERT}" >/opt/vault/tls/server.crt
-printf '%s\n' "$${SERVER_KEY}" >/opt/vault/tls/server.key
-chmod 640 /opt/vault/tls/*
-chown vault:vault /opt/vault/tls/*
+  token=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
+    -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 
-# Write Vault license
-printf '%s\n' "$${VAULT_LICENSE}" >/opt/vault/vault.hclic
-chmod 640 /opt/vault/vault.hclic
-chown vault:vault /opt/vault/vault.hclic
+  log "  Grabbing the EC2 instance private IPv4 address."
 
-# Get instance private IP (IMDSv2)
-TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
-  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-PRIVATE_IP=$(curl -s -H "X-aws-ec2-metadata-token: $${TOKEN}" \
-  http://169.254.169.254/latest/meta-data/local-ipv4)
+  curl -s -H "X-aws-ec2-metadata-token: $${token}" \
+    http://169.254.169.254/latest/meta-data/local-ipv4
+}
 
-# Write Vault configuration
-cat >/etc/vault.d/vault.hcl <<EOF
+main() {
+  # Globally disable globbing and enable exit-on-error.
+  set -ef
+
+  # Colors are automatically disabled if output is not a terminal.
+  ! [ -t 2 ] || {
+    c1='\033[1;33m'
+    c2='\033[1;34m'
+    c3='\033[m'
+  }
+
+  # Wait for the network to be available.
+  wait_for_network
+
+  # Install dependencies.
+  log "Setting up system packages."
+  install_packages awscli jq unzip gnupg lsb-release nvme-cli
+
+  # Format and mount the EBS volume for Raft storage.
+  log "Setting up EBS storage."
+  device="$(find_ebs_device)"
+  format_and_mount_ebs "$${device}"
+
+  # Install Vault Enterprise.
+  log "Setting up Vault Enterprise."
+  install_vault
+
+  # Retrieve secrets from AWS Secrets Manager.
+  log "Retrieving secrets from AWS Secrets Manager."
+  vault_license=$(get_secret "${vault_license_secret_arn}")
+  ca_cert=$(get_secret "${vault_ca_cert_secret_arn}")
+  server_cert=$(get_secret "${vault_server_cert_secret_arn}")
+  server_key=$(get_secret "${vault_server_key_secret_arn}")
+
+  # Write TLS certificates.
+  log "Writing TLS certificates."
+  mkdir -p /opt/vault/tls
+  printf '%s\n' "$${ca_cert}" >/opt/vault/tls/ca.crt
+  printf '%s\n' "$${server_cert}" >/opt/vault/tls/server.crt
+  printf '%s\n' "$${server_key}" >/opt/vault/tls/server.key
+  chmod 640 /opt/vault/tls/*
+  chown vault:vault /opt/vault/tls/*
+
+  # Write Vault license.
+  log "Writing the Vault license."
+  printf '%s\n' "$${vault_license}" >/opt/vault/vault.hclic
+  chmod 640 /opt/vault/vault.hclic
+  chown vault:vault /opt/vault/vault.hclic
+
+  # Write Vault configuration.
+  private_ip="$(get_ec2_private_ip_address)"
+
+  log "Generating the /etc/vault.d/vault.hcl configuration file."
+  cat >/etc/vault.d/vault.hcl <<EOF
 ui = true
 
-cluster_addr = "https://$${PRIVATE_IP}:8201"
+cluster_addr = "https://$${private_ip}:8201"
 api_addr     = "https://${vault_fqdn}:8200"
 license_path = "/opt/vault/vault.hclic"
 
@@ -153,11 +201,15 @@ seal "awskms" {
 }
 EOF
 
-chown vault:vault /etc/vault.d/vault.hcl
-chmod 640 /etc/vault.d/vault.hcl
+  chown vault:vault /etc/vault.d/vault.hcl
+  chmod 640 /etc/vault.d/vault.hcl
 
-# Set permissions on data directory
-chown -R vault:vault /opt/vault/data
+  # Set permissions on data directory.
+  chown -R vault:vault /opt/vault/data
 
-# Enable the Vault service (but do not start — initialization is manual)
-systemctl enable vault
+  # Enable the Vault service (but do not start — initialization is manual).
+  log "Enabling the Vault service."
+  systemctl enable vault
+}
+
+main "$@"
