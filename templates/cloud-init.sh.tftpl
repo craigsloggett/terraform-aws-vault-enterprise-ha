@@ -3,6 +3,17 @@
 # shellcheck disable=SC2034,SC2086,SC2154,SC2157,SC2170,SC2193
 set -euo pipefail
 
+wait_for_network() {
+  echo "Checking network connectivity."
+  while ! ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; do
+    echo "  Waiting for the network to be available..."
+    sleep 1
+  done
+}
+
+# Wait for the network to be available.
+wait_for_network
+
 # Install dependencies
 apt-get update -y
 apt-get install -y \
