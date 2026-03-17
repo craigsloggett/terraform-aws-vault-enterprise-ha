@@ -1,6 +1,45 @@
-# terraform-aws-vault-enterprise-ha
-A Terraform module for deploying HashiCorp Vault Enterprise in a highly available configuration on AWS.
+# HashiCorp Vault Enterprise HA Terraform Module
 
+Terraform module which deploys a 3-node Vault Enterprise HA cluster on AWS with Raft integrated storage.
+
+## Architecture
+
+- 3 Vault nodes across separate availability zones, each with a dedicated EBS volume for Raft storage
+- AWS KMS auto-unseal
+- Raft auto-join via EC2 tag discovery
+- Internal NLB with TCP passthrough (TLS terminates on the Vault nodes)
+- Route 53 DNS alias to the NLB
+- TLS certificates and license stored in AWS Secrets Manager
+- Bastion host for SSH access to the private Vault nodes
+- VPC endpoints for KMS, Secrets Manager, and S3
+
+## Prerequisites
+
+- A Route 53 hosted zone
+- A Vault Enterprise license
+- An EC2 key pair
+- An Ubuntu or Debian-based AMI
+
+## Post-deployment
+
+After `terraform apply`, the Vault service starts automatically but the cluster
+is not yet initialized. Run `vault operator init` against any node to initialize
+the cluster. The remaining nodes will auto-join via Raft and auto-unseal via KMS.
+
+See [`examples/basic/`](examples/basic/) for operational scripts that automate
+validation, initialization, and smoke testing.
+
+## Cluster access
+
+The CA certificate for TLS verification is available as a Terraform output:
+
+```bash
+terraform output -raw vault_ca_cert > vault-ca.crt
+
+export VAULT_ADDR="https://vault.<your-domain>:8200"
+export VAULT_CACERT=vault-ca.crt
+vault status
+```
 <!-- BEGIN_TF_DOCS -->
 ## Usage
 
