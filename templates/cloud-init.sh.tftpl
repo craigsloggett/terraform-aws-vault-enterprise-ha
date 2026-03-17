@@ -9,9 +9,16 @@ log() {
 
 wait_for_network() {
   log "Checking network connectivity."
+  attempts=0
+  max_attempts=60
   while ! ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; do
     log "  Waiting for the network to be available..."
-    sleep 1
+    attempts=$((attempts + 1))
+    if [ "$${attempts}" -ge "$${max_attempts}" ]; then
+      log "ERROR: Network not available after $${max_attempts} attempts."
+      exit 1
+    fi
+    sleep 2
   done
 }
 
