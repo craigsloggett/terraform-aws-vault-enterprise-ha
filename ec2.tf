@@ -55,6 +55,7 @@ resource "aws_instance" "vault" {
   })
 
   depends_on = [
+    module.vpc,
     aws_iam_role_policy.vault_kms,
     aws_iam_role_policy.vault_secrets_manager,
   ]
