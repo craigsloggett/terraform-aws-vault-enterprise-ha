@@ -76,8 +76,13 @@ variable "bastion_instance_type" {
 
 variable "bastion_allowed_cidrs" {
   type        = list(string)
-  description = "CIDR blocks allowed to SSH to the bastion host."
+  description = "CIDR blocks allowed to SSH to the bastion host. Defaults to 0.0.0.0/0 for convenience; restrict to known ranges in any production deployment."
   default     = ["0.0.0.0/0"]
+
+  validation {
+    condition     = alltrue([for cidr in var.bastion_allowed_cidrs : can(cidrhost(cidr, 0))])
+    error_message = "All entries must be valid CIDR blocks."
+  }
 }
 
 # Vault
