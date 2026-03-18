@@ -14,9 +14,9 @@ data "aws_ami" "debian" {
 }
 
 module "vault" {
-  source = "../../"
+  source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise?ref=v1.0.0"
 
-  project_name        = "vault-ha"
+  project_name        = "vault-enterprise"
   route53_zone_name   = var.route53_zone_name
   vault_license       = var.vault_license
   ec2_key_pair_name   = var.ec2_key_pair_name
