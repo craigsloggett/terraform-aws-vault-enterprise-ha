@@ -7,7 +7,7 @@ Terraform module which deploys a 3-node Vault Enterprise cluster on AWS with Raf
 - 3 Vault nodes across separate availability zones, each with a dedicated EBS volume for Raft storage
 - AWS KMS auto-unseal
 - Raft auto-join via EC2 tag discovery
-- Internal NLB with TCP passthrough (TLS terminates on the Vault nodes)
+- NLB with TCP passthrough (TLS terminates on the Vault nodes), internal by default
 - Route 53 DNS alias to the NLB
 - TLS certificates and license stored in AWS Secrets Manager
 - Bastion host for SSH access to the private Vault nodes
@@ -40,6 +40,28 @@ export VAULT_ADDR="https://vault.<your-domain>:8200"
 export VAULT_CACERT=vault-ca.crt
 vault status
 ```
+## Network access
+
+By default, the NLB is internal and the Vault API is only reachable from within
+the VPC. Access the cluster through the bastion host or a VPN connection.
+
+To expose the Vault UI and API over the public internet, set `nlb_internal` to
+`false` and provide the CIDR blocks that should be allowed to reach port 8200:
+
+```hcl
+module "vault" {
+  # ...
+
+  nlb_internal            = false
+  vault_api_allowed_cidrs = ["0.0.0.0/0"]
+}
+```
+
+This places the NLB in the public subnets and adds security group rules for the
+specified CIDRs. The Vault nodes remain in private subnets — only the NLB is
+internet-facing. Restrict `vault_api_allowed_cidrs` to known ranges where
+possible.
+
 ## Security considerations
 
 The Terraform `tls` provider stores private key material (CA and server keys) in
@@ -109,6 +131,7 @@ module "vault" {
 | <a name="input_nlb_internal"></a> [nlb\_internal](#input\_nlb\_internal) | Whether the NLB is internal. | `bool` | `true` | no |
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name prefix for all resources. | `string` | n/a | yes |
 | <a name="input_route53_zone_name"></a> [route53\_zone\_name](#input\_route53\_zone\_name) | Name of the existing Route 53 hosted zone. | `string` | n/a | yes |
+| <a name="input_vault_api_allowed_cidrs"></a> [vault\_api\_allowed\_cidrs](#input\_vault\_api\_allowed\_cidrs) | CIDR blocks allowed to reach the Vault API (port 8200) from outside the VPC. Only effective when nlb\_internal is false. | `list(string)` | `[]` | no |
 | <a name="input_vault_ebs_volume_size"></a> [vault\_ebs\_volume\_size](#input\_vault\_ebs\_volume\_size) | Size in GiB of the EBS volume for Vault Raft storage. | `number` | `100` | no |
 | <a name="input_vault_instance_type"></a> [vault\_instance\_type](#input\_vault\_instance\_type) | EC2 instance type for Vault nodes. | `string` | `"m5.large"` | no |
 | <a name="input_vault_license"></a> [vault\_license](#input\_vault\_license) | Vault Enterprise license string. | `string` | n/a | yes |
@@ -163,6 +186,7 @@ module "vault" {
 | [aws_vpc_security_group_egress_rule.vault_all](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_egress_rule) | resource |
 | [aws_vpc_security_group_ingress_rule.bastion_ssh](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
 | [aws_vpc_security_group_ingress_rule.vault_api](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
+| [aws_vpc_security_group_ingress_rule.vault_api_external](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
 | [aws_vpc_security_group_ingress_rule.vault_cluster](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
 | [aws_vpc_security_group_ingress_rule.vault_ssh](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |
 | [aws_vpc_security_group_ingress_rule.vpc_endpoints_https](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_security_group_ingress_rule) | resource |

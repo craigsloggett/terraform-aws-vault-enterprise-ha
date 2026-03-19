@@ -111,3 +111,9 @@ variable "nlb_internal" {
   description = "Whether the NLB is internal."
   default     = true
 }
+
+variable "vault_api_allowed_cidrs" {
+  type        = list(string)
+  description = "CIDR blocks allowed to reach the Vault API (port 8200) from outside the VPC. Only effective when nlb_internal is false."
+  default     = []
+}
