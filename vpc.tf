@@ -115,6 +115,17 @@ resource "aws_vpc_security_group_ingress_rule" "vault_api" {
   cidr_ipv4         = var.vpc_cidr
 }
 
+resource "aws_vpc_security_group_ingress_rule" "vault_api_external" {
+  for_each = toset(var.vault_api_allowed_cidrs)
+
+  security_group_id = aws_security_group.vault.id
+  description       = "Vault API from external CIDR"
+  from_port         = 8200
+  to_port           = 8200
+  ip_protocol       = "tcp"
+  cidr_ipv4         = each.value
+}
+
 resource "aws_vpc_security_group_ingress_rule" "vault_cluster" {
   security_group_id            = aws_security_group.vault.id
   description                  = "Vault cluster traffic"
