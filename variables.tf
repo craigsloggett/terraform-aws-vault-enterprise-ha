@@ -3,6 +3,11 @@
 variable "project_name" {
   type        = string
   description = "Name prefix for all resources."
+
+  validation {
+    condition     = length(var.project_name) <= 16
+    error_message = "Must be 16 characters or fewer to fit within the 63-character S3 bucket name limit."
+  }
 }
 
 variable "route53_zone" {
