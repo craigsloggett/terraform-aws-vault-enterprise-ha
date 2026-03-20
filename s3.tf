@@ -1,5 +1,6 @@
 resource "aws_s3_bucket" "vault_snapshots" {
-  bucket = "${var.project_name}-vault-snapshots-${data.aws_caller_identity.current.account_id}-${data.aws_region.current.region}-an"
+  bucket           = "${var.project_name}-vault-snapshots-${data.aws_caller_identity.current.account_id}-${data.aws_region.current.region}-an"
+  bucket_namespace = "account-regional"
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-snapshots" })
 }
