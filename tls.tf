@@ -39,7 +39,7 @@ resource "tls_cert_request" "server" {
 
   dns_names = [
     local.vault_fqdn,
-    "*.${data.aws_route53_zone.vault.name}",
+    "*.${var.route53_zone.name}",
     "localhost",
   ]
 

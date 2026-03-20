@@ -1,5 +1,5 @@
 resource "aws_route53_record" "vault" {
-  zone_id = data.aws_route53_zone.vault.zone_id
+  zone_id = var.route53_zone.zone_id
   name    = local.vault_fqdn
   type    = "A"
 

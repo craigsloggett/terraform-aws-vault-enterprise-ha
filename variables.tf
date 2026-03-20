@@ -5,9 +5,12 @@ variable "project_name" {
   description = "Name prefix for all resources."
 }
 
-variable "route53_zone_name" {
-  type        = string
-  description = "Name of the existing Route 53 hosted zone."
+variable "route53_zone" {
+  type = object({
+    zone_id = string
+    name    = string
+  })
+  description = "Route 53 hosted zone for the Vault DNS record."
 }
 
 variable "vault_license" {

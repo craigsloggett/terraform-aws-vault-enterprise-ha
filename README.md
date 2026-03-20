@@ -76,6 +76,10 @@ certificate's `dns_names` includes the cluster FQDN, which Raft uses for
 
 ### main.tf
 ```hcl
+data "aws_route53_zone" "selected" {
+  name = var.route53_zone_name
+}
+
 data "aws_ami" "debian" {
   most_recent = true
   owners      = ["136693071363"]
@@ -96,7 +100,7 @@ module "vault" {
   source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise"
 
   project_name      = "vault-enterprise"
-  route53_zone_name = var.route53_zone_name
+  route53_zone      = data.aws_route53_zone.selected
   vault_license     = var.vault_license
   ec2_key_pair_name = var.ec2_key_pair_name
   ec2_ami           = data.aws_ami.debian
@@ -129,7 +133,7 @@ module "vault" {
 | <a name="input_ec2_key_pair_name"></a> [ec2\_key\_pair\_name](#input\_ec2\_key\_pair\_name) | Name of an existing EC2 key pair for SSH access. | `string` | n/a | yes |
 | <a name="input_nlb_internal"></a> [nlb\_internal](#input\_nlb\_internal) | Whether the NLB is internal. | `bool` | `true` | no |
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name prefix for all resources. | `string` | n/a | yes |
-| <a name="input_route53_zone_name"></a> [route53\_zone\_name](#input\_route53\_zone\_name) | Name of the existing Route 53 hosted zone. | `string` | n/a | yes |
+| <a name="input_route53_zone"></a> [route53\_zone](#input\_route53\_zone) | Route 53 hosted zone for the Vault DNS record. | <pre>object({<br/>    zone_id = string<br/>    name    = string<br/>  })</pre> | n/a | yes |
 | <a name="input_vault_api_allowed_cidrs"></a> [vault\_api\_allowed\_cidrs](#input\_vault\_api\_allowed\_cidrs) | CIDR blocks allowed to reach the Vault API (port 8200) from outside the VPC. Only effective when nlb\_internal is false. | `list(string)` | `[]` | no |
 | <a name="input_vault_ebs_volume_size"></a> [vault\_ebs\_volume\_size](#input\_vault\_ebs\_volume\_size) | Size in GiB of the EBS volume for Vault Raft storage. | `number` | `100` | no |
 | <a name="input_vault_instance_type"></a> [vault\_instance\_type](#input\_vault\_instance\_type) | EC2 instance type for Vault nodes. | `string` | `"m5.large"` | no |
@@ -202,7 +206,6 @@ module "vault" {
 | [aws_iam_policy_document.vault_s3](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.vault_secrets_manager](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
-| [aws_route53_zone.vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/route53_zone) | data source |
 
 ## Outputs
 
