@@ -14,7 +14,8 @@ data "aws_ami" "debian" {
 }
 
 module "vault" {
-  source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise?ref=v1.0.0"
+  # tflint-ignore: terraform_module_pinned_source
+  source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise"
 
   project_name        = "vault-enterprise"
   route53_zone_name   = var.route53_zone_name
