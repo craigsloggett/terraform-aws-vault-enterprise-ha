@@ -51,9 +51,12 @@ variable "vpc_public_subnets" {
 
 # EC2
 
-variable "ec2_instance_ami_id" {
-  type        = string
-  description = "AMI ID to use for EC2 instances. Must be Ubuntu or Debian-based."
+variable "ec2_ami" {
+  type = object({
+    id   = string
+    name = string
+  })
+  description = "AMI to use for EC2 instances. Must be Ubuntu or Debian-based."
 }
 
 variable "vault_instance_type" {
