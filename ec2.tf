@@ -14,7 +14,7 @@ resource "aws_instance" "bastion" {
     http_put_response_hop_limit = 1
   }
 
-  tags = merge(var.common_tags, { Name = "${var.project_name}-bastion" })
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bastion" })
 }
 
 # Vault Nodes
@@ -48,6 +48,13 @@ resource "aws_instance" "vault" {
     cluster_tag_key              = local.cluster_tag_key
     cluster_tag_value            = local.cluster_tag_value
     ebs_device_name              = local.ebs_device_name
+
+    snapshot_config = templatefile("${path.module}/templates/snapshot.json.tftpl", {
+      aws_s3_bucket = aws_s3_bucket.vault_snapshots.id
+      aws_s3_region = data.aws_region.current.region
+      interval      = var.vault_snapshot_interval
+      retain        = var.vault_snapshot_retain
+    })
   })
 
   tags = merge(var.common_tags, {

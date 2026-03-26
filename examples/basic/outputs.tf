@@ -18,6 +18,16 @@ output "vault_target_group_arn" {
   value       = module.vault.vault_target_group_arn
 }
 
+output "ec2_ami_name" {
+  description = "Name of the AMI used for EC2 instances."
+  value       = module.vault.ec2_ami_name
+}
+
+output "vault_snapshot_bucket" {
+  description = "S3 bucket for Vault snapshots."
+  value       = module.vault.vault_snapshot_bucket
+}
+
 output "vault_ca_cert" {
   description = "CA certificate for trusting the Vault TLS chain."
   value       = module.vault.vault_ca_cert

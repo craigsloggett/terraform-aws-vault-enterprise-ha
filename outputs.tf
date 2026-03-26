@@ -28,6 +28,11 @@ output "vault_target_group_arn" {
   value       = aws_lb_target_group.vault.arn
 }
 
+output "ec2_ami_name" {
+  description = "Name of the AMI used for EC2 instances."
+  value       = var.ec2_ami.name
+}
+
 output "vault_ca_cert" {
   description = "CA certificate for trusting the Vault TLS chain."
   value       = tls_self_signed_cert.ca.cert_pem

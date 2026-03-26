@@ -12,9 +12,20 @@ read_terraform_outputs() {
   bastion_ip=$(terraform output -raw bastion_public_ip)
   vault_ip=$(terraform output -json vault_private_ips | jq -r '.[0]')
   vault_ca_cert=$(terraform output -raw vault_ca_cert)
+  ami_name=$(terraform output -raw ec2_ami_name)
+
+  case "${ami_name}" in
+    *ubuntu*) ssh_user="ubuntu" ;;
+    *debian*) ssh_user="admin" ;;
+    *)
+      log "ERROR: Unsupported AMI:" "${ami_name}"
+      exit 1
+      ;;
+  esac
 
   log "  Bastion IP:" "${bastion_ip}"
   log "  Vault node:" "${vault_ip}"
+  log "  SSH user:" "${ssh_user}"
 }
 
 setup_tunnel() {
@@ -26,7 +37,7 @@ setup_tunnel() {
 
   # shellcheck disable=SC2086
   ssh ${ssh_opts} -f -N -M -S "${ssh_socket}" \
-    -L 8200:"${vault_ip}":8200 "ubuntu@${bastion_ip}"
+    -L 8200:"${vault_ip}":8200 "${ssh_user}@${bastion_ip}"
 
   export VAULT_ADDR="https://127.0.0.1:8200"
   export VAULT_CACERT="${ca_cert_file}"
@@ -60,7 +71,7 @@ initialize_vault() {
   if vault status -format=json 2>/dev/null | jq -e '.initialized == true' >/dev/null 2>&1; then
     log "Vault is already initialized."
     vault status
-    exit 0
+    return
   fi
 
   log "Initializing Vault cluster."
@@ -72,6 +83,26 @@ initialize_vault() {
   log "Initialization complete."
   log "IMPORTANT: The root token and recovery keys have been saved to ${init_file}." "" "!!"
   log "           Store this file securely and delete it from disk." "" "  "
+}
+
+configure_snapshots() {
+  log "Configuring automated Raft snapshots."
+
+  export VAULT_TOKEN
+  VAULT_TOKEN=$(jq -r '.root_token' vault-init.json)
+
+  # Fetch the snapshot config from the Vault node and apply it via the tunnel.
+  # Accept the bastion host key if not already known.
+  if ! ssh-keygen -F "${bastion_ip}" >/dev/null 2>&1; then
+    ssh-keyscan -H "${bastion_ip}" >>~/.ssh/known_hosts 2>/dev/null
+  fi
+
+  # shellcheck disable=SC2086
+  ssh ${ssh_opts} -J "${ssh_user}@${bastion_ip}" "${ssh_user}@${vault_ip}" \
+    "sudo cat /etc/vault.d/snapshot.json" |
+    vault write sys/storage/raft/snapshot-auto/config/hourly -
+
+  log "  Automated snapshots configured."
 }
 
 wait_for_unseal() {
@@ -112,6 +143,7 @@ main() {
   wait_for_vault
   initialize_vault
   wait_for_unseal
+  configure_snapshots
 }
 
 main "$@"

@@ -218,6 +218,12 @@ EOF
   # Set permissions on data directory.
   chown -R vault:vault /opt/vault/data
 
+  # Write the snapshot configuration for the operator to apply post-init.
+  log "Writing the snapshot configuration."
+  printf '%s\n' '${snapshot_config}' >/etc/vault.d/snapshot.json
+  chown vault:vault /etc/vault.d/snapshot.json
+  chmod 640 /etc/vault.d/snapshot.json
+
   # Enable and start the Vault service.
   log "Enabling the Vault service."
   systemctl enable --now vault

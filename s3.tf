@@ -40,6 +40,34 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "vault_snapshots" 
   }
 }
 
+data "aws_iam_policy_document" "vault_snapshots" {
+  statement {
+    sid     = "DenyInsecureTransport"
+    effect  = "Deny"
+    actions = ["s3:*"]
+    resources = [
+      aws_s3_bucket.vault_snapshots.arn,
+      "${aws_s3_bucket.vault_snapshots.arn}/*",
+    ]
+
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "vault_snapshots" {
+  bucket = aws_s3_bucket.vault_snapshots.id
+  policy = data.aws_iam_policy_document.vault_snapshots.json
+}
+
 resource "aws_s3_bucket_public_access_block" "vault_snapshots" {
   bucket = aws_s3_bucket.vault_snapshots.id
 

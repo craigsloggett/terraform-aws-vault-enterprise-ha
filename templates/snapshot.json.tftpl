@@ -1,0 +1,10 @@
+{
+  "storage_type":      "aws-s3",
+  "aws_s3_bucket":     "${aws_s3_bucket}",
+  "aws_s3_region":     "${aws_s3_region}",
+  "aws_s3_enable_kms": true,
+  "path_prefix":       "snapshots/",
+  "interval":          ${interval},
+  "retain":            ${retain},
+  "file_prefix":       "vault-snap"
+}
