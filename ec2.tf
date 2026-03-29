@@ -4,7 +4,7 @@ resource "aws_instance" "bastion" {
   ami                         = var.ec2_ami.id
   instance_type               = var.bastion_instance_type
   key_name                    = var.ec2_key_pair_name
-  subnet_id                   = module.vpc.public_subnets[0]
+  subnet_id                   = local.vpc.public_subnet_ids[0]
   vpc_security_group_ids      = [aws_security_group.bastion.id]
   associate_public_ip_address = true
 
@@ -25,7 +25,7 @@ resource "aws_instance" "vault" {
   ami                    = var.ec2_ami.id
   instance_type          = var.vault_instance_type
   key_name               = var.ec2_key_pair_name
-  subnet_id              = module.vpc.private_subnets[count.index]
+  subnet_id              = local.vpc.private_subnet_ids[count.index]
   vpc_security_group_ids = [aws_security_group.vault.id]
   iam_instance_profile   = aws_iam_instance_profile.vault.name
 

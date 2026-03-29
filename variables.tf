@@ -57,6 +57,25 @@ variable "vpc_public_subnets" {
   default     = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
 }
 
+variable "existing_vpc" {
+  type = object({
+    vpc_id             = string
+    private_subnet_ids = list(string)
+    public_subnet_ids  = list(string)
+  })
+  default     = null
+  description = <<-EOT
+    Existing VPC to deploy into. When null (default), a new VPC is created.
+    The existing VPC must already have the required VPC endpoints:
+    Secrets Manager, KMS, and EC2 (Interface), S3 (Gateway).
+  EOT
+
+  validation {
+    condition     = var.existing_vpc == null || (length(var.existing_vpc.private_subnet_ids) > 0 && length(var.existing_vpc.public_subnet_ids) > 0)
+    error_message = "existing_vpc subnet ID lists must be non-empty."
+  }
+}
+
 # EC2
 
 variable "ec2_ami" {

@@ -1,4 +1,6 @@
 module "vpc" {
+  count = var.existing_vpc == null ? 1 : 0
+
   source  = "terraform-aws-modules/vpc/aws"
   version = "6.6.0"
 
@@ -21,43 +23,51 @@ module "vpc" {
 # VPC Endpoints
 
 resource "aws_vpc_endpoint" "secretsmanager" {
-  vpc_id              = module.vpc.vpc_id
+  count = var.existing_vpc == null ? 1 : 0
+
+  vpc_id              = module.vpc[0].vpc_id
   service_name        = "com.amazonaws.${data.aws_region.current.region}.secretsmanager"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = module.vpc.private_subnets
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  subnet_ids          = module.vpc[0].private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
   private_dns_enabled = true
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-secretsmanager" })
 }
 
 resource "aws_vpc_endpoint" "kms" {
-  vpc_id              = module.vpc.vpc_id
+  count = var.existing_vpc == null ? 1 : 0
+
+  vpc_id              = module.vpc[0].vpc_id
   service_name        = "com.amazonaws.${data.aws_region.current.region}.kms"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = module.vpc.private_subnets
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  subnet_ids          = module.vpc[0].private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
   private_dns_enabled = true
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-kms" })
 }
 
 resource "aws_vpc_endpoint" "ec2" {
-  vpc_id              = module.vpc.vpc_id
+  count = var.existing_vpc == null ? 1 : 0
+
+  vpc_id              = module.vpc[0].vpc_id
   service_name        = "com.amazonaws.${data.aws_region.current.region}.ec2"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = module.vpc.private_subnets
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  subnet_ids          = module.vpc[0].private_subnets
+  security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
   private_dns_enabled = true
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-ec2" })
 }
 
 resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = module.vpc.vpc_id
+  count = var.existing_vpc == null ? 1 : 0
+
+  vpc_id            = module.vpc[0].vpc_id
   service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
   vpc_endpoint_type = "Gateway"
-  route_table_ids   = module.vpc.private_route_table_ids
+  route_table_ids   = module.vpc[0].private_route_table_ids
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-s3" })
 }
@@ -67,7 +77,7 @@ resource "aws_vpc_endpoint" "s3" {
 resource "aws_security_group" "bastion" {
   name_prefix = "${var.project_name}-vault-bastion-"
   description = "Security group for the bastion host"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc.id
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bastion" })
 
@@ -97,7 +107,7 @@ resource "aws_vpc_security_group_egress_rule" "bastion_all" {
 resource "aws_security_group" "vault" {
   name_prefix = "${var.project_name}-vault-"
   description = "Security group for Vault nodes"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc.id
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault" })
 
@@ -112,7 +122,7 @@ resource "aws_vpc_security_group_ingress_rule" "vault_api" {
   from_port         = 8200
   to_port           = 8200
   ip_protocol       = "tcp"
-  cidr_ipv4         = var.vpc_cidr
+  cidr_ipv4         = local.vpc.cidr
 }
 
 resource "aws_vpc_security_group_ingress_rule" "vault_api_external" {
@@ -152,9 +162,11 @@ resource "aws_vpc_security_group_egress_rule" "vault_all" {
 }
 
 resource "aws_security_group" "vpc_endpoints" {
+  count = var.existing_vpc == null ? 1 : 0
+
   name_prefix = "${var.project_name}-vault-vpc-endpoints-"
   description = "Security group for VPC endpoints"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = module.vpc[0].vpc_id
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-vpc-endpoints" })
 
@@ -164,10 +176,12 @@ resource "aws_security_group" "vpc_endpoints" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_https" {
-  security_group_id = aws_security_group.vpc_endpoints.id
+  count = var.existing_vpc == null ? 1 : 0
+
+  security_group_id = aws_security_group.vpc_endpoints[0].id
   description       = "HTTPS from VPC"
   from_port         = 443
   to_port           = 443
   ip_protocol       = "tcp"
-  cidr_ipv4         = var.vpc_cidr
+  cidr_ipv4         = local.vpc.cidr
 }

@@ -2,7 +2,7 @@ resource "aws_lb" "vault" {
   name_prefix        = "vault-"
   internal           = var.nlb_internal
   load_balancer_type = "network"
-  subnets            = var.nlb_internal ? module.vpc.private_subnets : module.vpc.public_subnets
+  subnets            = var.nlb_internal ? local.vpc.private_subnet_ids : local.vpc.public_subnet_ids
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault" })
 
@@ -15,7 +15,7 @@ resource "aws_lb_target_group" "vault" {
   name_prefix = "vault-"
   port        = 8200
   protocol    = "TCP"
-  vpc_id      = module.vpc.vpc_id
+  vpc_id      = local.vpc.id
 
   health_check {
     enabled             = true
