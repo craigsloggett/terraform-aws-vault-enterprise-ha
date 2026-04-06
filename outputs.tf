@@ -8,7 +8,7 @@ output "bastion_public_ip" {
   value       = aws_instance.bastion.public_ip
 }
 
-output "vault_private_ips" {
+output "vault_server_private_ips" {
   description = "Private IPs of the Vault nodes."
   value       = aws_instance.vault[*].private_ip
 }
@@ -18,7 +18,7 @@ output "vault_kms_key_id" {
   value       = aws_kms_key.vault.key_id
 }
 
-output "vault_snapshot_bucket" {
+output "vault_snapshots_bucket" {
   description = "S3 bucket for Vault snapshots."
   value       = aws_s3_bucket.vault_snapshots.id
 }
