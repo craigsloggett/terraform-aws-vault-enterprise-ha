@@ -5,6 +5,9 @@
 *.tfstate
 *.tfstate.*
 
+# .terraform.lock.hcl files should be ignored in reusable modules
+*.terraform.lock.hcl
+
 # Crash log files
 crash.log
 crash.*.log
