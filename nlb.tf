@@ -14,7 +14,7 @@ resource "aws_lb" "vault" {
 resource "aws_lb_target_group" "vault" {
   name_prefix = "vault-"
   port        = 8200
-  protocol    = "TCP"
+  protocol    = "TLS"
   vpc_id      = local.vpc.id
 
   health_check {
@@ -37,7 +37,8 @@ resource "aws_lb_target_group" "vault" {
 resource "aws_lb_listener" "vault" {
   load_balancer_arn = aws_lb.vault.arn
   port              = 8200
-  protocol          = "TCP"
+  protocol          = "TLS"
+  certificate_arn   = aws_acm_certificate_validation.vault.certificate_arn
 
   default_action {
     type             = "forward"

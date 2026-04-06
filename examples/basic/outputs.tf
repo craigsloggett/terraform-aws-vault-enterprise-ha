@@ -8,9 +8,9 @@ output "bastion_public_ip" {
   value       = module.vault.bastion_public_ip
 }
 
-output "vault_private_ips" {
+output "vault_server_private_ips" {
   description = "Private IPs of the Vault nodes."
-  value       = module.vault.vault_private_ips
+  value       = module.vault.vault_server_private_ips
 }
 
 output "vault_target_group_arn" {
@@ -23,9 +23,9 @@ output "ec2_ami_name" {
   value       = module.vault.ec2_ami_name
 }
 
-output "vault_snapshot_bucket" {
+output "vault_snapshots_bucket" {
   description = "S3 bucket for Vault snapshots."
-  value       = module.vault.vault_snapshot_bucket
+  value       = module.vault.vault_snapshots_bucket
 }
 
 output "vault_ca_cert" {
