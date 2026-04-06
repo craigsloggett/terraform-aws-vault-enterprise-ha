@@ -86,9 +86,9 @@ variable "ec2_ami" {
   description = "AMI to use for EC2 instances. Must be Ubuntu or Debian-based."
 }
 
-variable "vault_instance_type" {
+variable "vault_server_instance_type" {
   type        = string
-  description = "EC2 instance type for Vault nodes."
+  description = "EC2 instance type for Vault server nodes."
   default     = "m5.large"
 }
 
