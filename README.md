@@ -135,9 +135,9 @@ module "vault" {
 | <a name="input_route53_zone"></a> [route53\_zone](#input\_route53\_zone) | Route 53 hosted zone for the Vault DNS record. | <pre>object({<br/>    zone_id = string<br/>    name    = string<br/>  })</pre> | n/a | yes |
 | <a name="input_vault_api_allowed_cidrs"></a> [vault\_api\_allowed\_cidrs](#input\_vault\_api\_allowed\_cidrs) | CIDR blocks allowed to reach the Vault API (port 8200) from outside the VPC. Only effective when nlb\_internal is false. | `list(string)` | `[]` | no |
 | <a name="input_vault_ebs_volume_size"></a> [vault\_ebs\_volume\_size](#input\_vault\_ebs\_volume\_size) | Size in GiB of the EBS volume for Vault Raft storage. | `number` | `100` | no |
-| <a name="input_vault_instance_type"></a> [vault\_instance\_type](#input\_vault\_instance\_type) | EC2 instance type for Vault nodes. | `string` | `"m5.large"` | no |
 | <a name="input_vault_license"></a> [vault\_license](#input\_vault\_license) | Vault Enterprise license string. | `string` | n/a | yes |
 | <a name="input_vault_package_version"></a> [vault\_package\_version](#input\_vault\_package\_version) | Vault Enterprise apt package version to install (e.g., 1.21.4+ent-1). | `string` | `"1.21.4+ent-1"` | no |
+| <a name="input_vault_server_instance_type"></a> [vault\_server\_instance\_type](#input\_vault\_server\_instance\_type) | EC2 instance type for Vault server nodes. | `string` | `"m5.large"` | no |
 | <a name="input_vault_snapshot_interval"></a> [vault\_snapshot\_interval](#input\_vault\_snapshot\_interval) | Seconds between automated Raft snapshots. | `number` | `3600` | no |
 | <a name="input_vault_snapshot_retain"></a> [vault\_snapshot\_retain](#input\_vault\_snapshot\_retain) | Number of automated Raft snapshots to retain in S3. | `number` | `72` | no |
 | <a name="input_vault_subdomain"></a> [vault\_subdomain](#input\_vault\_subdomain) | Subdomain for the Vault DNS record. | `string` | `"vault"` | no |

@@ -23,7 +23,7 @@ resource "aws_instance" "vault" {
   count = local.vault_node_count
 
   ami                    = var.ec2_ami.id
-  instance_type          = var.vault_instance_type
+  instance_type          = var.vault_server_instance_type
   key_name               = var.ec2_key_pair_name
   subnet_id              = local.vpc.private_subnet_ids[count.index]
   vpc_security_group_ids = [aws_security_group.vault.id]
