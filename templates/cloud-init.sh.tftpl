@@ -10,12 +10,18 @@
 #   - Secrets stored in AWS Secrets Manager
 #   - An EBS data volume attached for Raft storage
 
-# shellcheck disable=SC2034,SC2154,SC2170,SC2269
+# shellcheck disable=SC2034,SC2086,SC2154,SC2170,SC2193,SC2269
 # SC2034/SC2154:
 # Variables are set via Terraform templatefile() interpolation and referenced
 # with escaped dollar signs — shellcheck cannot parse either.
+# SC2086:
+# vault_version is a Terraform-templated version string with no whitespace
+# or globs — quoting is unnecessary.
 # SC2170:
 # $${var} comparisons resolve to valid integers at runtime.
+# SC2193:
+# curl -w '%%{http_code}' returns runtime HTTP status codes; shellcheck
+# reads the literal format string and cannot see the comparison is valid.
 # SC2269:
 # vault_version="${vault_version}" is not self-assignment — the RHS is a
 # Terraform interpolation replaced at plan time.
@@ -135,21 +141,28 @@ fetch_secret() {
 }
 
 # ---------------------------------------------------------------------------
-# Network readiness
+# Wait for the network to be available before starting
 # ---------------------------------------------------------------------------
 
 wait_for_network() {
-  log_info "Checking network connectivity"
+  log_info "Waiting for network to become available"
 
   attempts=0
   max_attempts=60
-  while ! ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; do
-    log_info "Waiting for the network to be available..."
+
+  while true; do
+    if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
+      log_info "Network is available"
+      return 0
+    fi
+
     attempts=$((attempts + 1))
     if [ "$${attempts}" -ge "$${max_attempts}" ]; then
-      log_error "Network not available after $${max_attempts} attempts"
-      exit 1
+      log_error "Network did not become available after $${max_attempts} attempts"
+      return 1
     fi
+
+    log_info "Network not yet available, retrying ($${attempts}/$${max_attempts})"
     sleep 2
   done
 }
@@ -362,8 +375,8 @@ wait_for_vault_api() {
   while true; do
     # curl returns 0 for any completed HTTP exchange regardless of status code.
     # We capture the HTTP status and treat anything other than 000 (no connection)
-    # as success — 501 means uninitialized, 503 means sealed, 200/429 means
-    # active/standby. All indicate the API is up and TLS is working.
+    # as success (501 means uninitialized, 503 means sealed, 200/429 means
+    # active/standby). All indicate the API is up and TLS is working.
     # -k is intentional: the bootstrap cert is self-signed and we are connecting
     # to 127.0.0.1, so hostname validation provides no security here.
     status="$(curl -sk -o /dev/null -w '%%{http_code}' \
