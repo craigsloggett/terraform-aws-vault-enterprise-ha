@@ -45,6 +45,7 @@ resource "aws_instance" "vault" {
     vault_server_key_secret_arn  = aws_secretsmanager_secret.vault_server_key.arn
 
     config_vault_hcl = templatefile("${path.module}/templates/vault.hcl.tftpl", {
+      cluster_name      = var.project_name
       vault_fqdn        = trimsuffix(aws_route53_record.vault.fqdn, ".")
       node_id           = "vault-${count.index}"
       region            = data.aws_region.current.region

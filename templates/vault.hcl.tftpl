@@ -1,5 +1,9 @@
 ui            = true
 disable_mlock = true
+cluster_name  = "${cluster_name}"
+
+log_level  = "info"
+log_format = "json"
 
 cluster_addr = "https://$${private_ip}:8201"
 api_addr     = "https://${vault_fqdn}:8200"
@@ -28,4 +32,9 @@ storage "raft" {
 seal "awskms" {
   region     = "${region}"
   kms_key_id = "${kms_key_alias}"
+}
+
+telemetry {
+  prometheus_retention_time = "24h"
+  disable_hostname          = true
 }
