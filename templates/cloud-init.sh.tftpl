@@ -10,7 +10,11 @@
 #   - Secrets stored in AWS Secrets Manager
 #   - An EBS data volume attached for Raft storage
 
-# shellcheck disable=SC2034,SC2086,SC2154,SC2170,SC2193,SC2269
+# shellcheck disable=SC1083,SC2034,SC2086,SC2154,SC2170,SC2193,SC2269,SC2288
+# SC1083/SC2288:
+# Terraform's $${var} escape sequence is read by shellcheck as a literal
+# `$${...}` in command position — the sequence is replaced with `$${var}`
+# at render time and is a normal shell parameter expansion at runtime.
 # SC2034/SC2154:
 # Variables are set via Terraform templatefile() interpolation and referenced
 # with escaped dollar signs — shellcheck cannot parse either.
@@ -61,6 +65,13 @@ secret_vault_license="${vault_license_secret_arn}"
 secret_vault_ca_cert="${vault_ca_cert_secret_arn}"
 secret_vault_server_cert="${vault_server_cert_secret_arn}"
 secret_vault_server_key="${vault_server_key_secret_arn}"
+
+# Cluster initialization coordination
+cluster_tag_key="${cluster_tag_key}"
+cluster_tag_value="${cluster_tag_value}"
+ssm_cluster_state_name="${ssm_cluster_state_name}"
+secret_vault_root_token="${vault_root_token_secret_arn}"
+secret_vault_recovery_keys="${vault_recovery_keys_secret_arn}"
 
 # EC2 metadata service (IMDSv2)
 imds_endpoint="http://169.254.169.254"
@@ -399,12 +410,128 @@ wait_for_vault_api() {
 }
 
 # ---------------------------------------------------------------------------
+# Bootstrap node election (lowest running instance ID in the cluster wins)
+# ---------------------------------------------------------------------------
+
+is_bootstrap_node() {
+  log_info "Performing bootstrap node election"
+
+  own_id="$(get_instance_id)"
+
+  # Fetch all running instance IDs in this cluster by tag.
+  all_ids="$(aws ec2 describe-instances \
+    --region "$${aws_region}" \
+    --filters \
+    "Name=tag:$${cluster_tag_key},Values=$${cluster_tag_value}" \
+    "Name=instance-state-name,Values=running" \
+    --query "Reservations[].Instances[].InstanceId" \
+    --output text)"
+
+  # The --output text format returns tab-separated values on one line.
+  # tr converts tabs to newlines before sort.
+  lowest_id="$(printf '%s' "$${all_ids}" | tr '\t' '\n' | sort | head -1)"
+
+  log_info "Own instance ID: $${own_id} — lowest in cluster: $${lowest_id}"
+
+  if [ "$${own_id}" = "$${lowest_id}" ]; then
+    log_info "This node is the bootstrap node"
+    return 0
+  fi
+
+  log_info "This node is a follower"
+  return 1
+}
+
+# ---------------------------------------------------------------------------
+# Initialize the Vault cluster (bootstrap node only)
+# ---------------------------------------------------------------------------
+
+init_cluster() {
+  log_info "Initializing Vault cluster"
+
+  export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_CACERT="$${tls_ca_file}"
+
+  # Idempotency guard: if the cluster is already initialized (e.g. this is a
+  # replacement node that happens to have the lowest instance ID), skip init.
+  initialized="$(vault status -format=json 2>/dev/null |
+    jq -r '.initialized' 2>/dev/null)" || true
+  if [ "$${initialized}" = "true" ]; then
+    log_info "Cluster is already initialized — skipping operator init"
+    return 0
+  fi
+
+  log_info "Running vault operator init"
+  # KMS auto-unseal is configured, so recovery shares/threshold are used
+  # in place of unseal shares/threshold.
+  init_output="$(vault operator init \
+    -format=json \
+    -recovery-shares=5 \
+    -recovery-threshold=3)"
+
+  root_token="$(printf '%s' "$${init_output}" | jq -r '.root_token')"
+  recovery_keys="$(printf '%s' "$${init_output}" | jq -c '.recovery_keys_b64')"
+
+  log_info "Storing root token in Secrets Manager"
+  aws secretsmanager put-secret-value \
+    --region "$${aws_region}" \
+    --secret-id "$${secret_vault_root_token}" \
+    --secret-string "$${root_token}"
+
+  log_info "Storing recovery keys in Secrets Manager"
+  aws secretsmanager put-secret-value \
+    --region "$${aws_region}" \
+    --secret-id "$${secret_vault_recovery_keys}" \
+    --secret-string "$${recovery_keys}"
+
+  log_info "Writing cluster state: ready"
+  aws ssm put-parameter \
+    --region "$${aws_region}" \
+    --name "$${ssm_cluster_state_name}" \
+    --value "ready" \
+    --overwrite
+
+  log_info "Cluster initialization complete"
+}
+
+# ---------------------------------------------------------------------------
+# Wait for the cluster to be initialized (follower nodes only)
+# ---------------------------------------------------------------------------
+
+join_cluster() {
+  log_info "Waiting for cluster initialization to complete"
+
+  attempts=0
+  max_attempts=60
+
+  while true; do
+    state="$(aws ssm get-parameter \
+      --region "$${aws_region}" \
+      --name "$${ssm_cluster_state_name}" \
+      --query "Parameter.Value" \
+      --output text 2>/dev/null)" || true
+
+    if [ "$${state}" = "ready" ] || [ "$${state}" = "managed" ]; then
+      log_info "Cluster state is $${state} — proceeding"
+      return 0
+    fi
+
+    attempts=$((attempts + 1))
+    if [ "$${attempts}" -ge "$${max_attempts}" ]; then
+      log_error "Cluster did not reach ready state after $${max_attempts} attempts"
+      return 1
+    fi
+
+    log_info "Cluster state is '$${state}', retrying ($${attempts}/$${max_attempts})"
+    sleep 5
+  done
+}
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
 main() {
-  log_info "=== Vault Enterprise server bootstrap ==="
-
   wait_for_network
 
   private_ip="$(get_private_ip)"
@@ -423,6 +550,12 @@ main() {
 
   start_services
   wait_for_vault_api
+
+  if is_bootstrap_node; then
+    init_cluster
+  else
+    join_cluster
+  fi
 
   log_info "=== Bootstrap complete ==="
 }

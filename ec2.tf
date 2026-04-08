@@ -35,7 +35,7 @@ resource "aws_instance" "vault" {
     http_put_response_hop_limit = 1
   }
 
-  user_data = templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
+  user_data_base64 = base64gzip(templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
     vault_version                = var.vault_package_version
     region                       = data.aws_region.current.region
     ebs_device_name              = local.ebs_device_name
@@ -43,6 +43,12 @@ resource "aws_instance" "vault" {
     vault_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_ca_cert.arn
     vault_server_cert_secret_arn = aws_secretsmanager_secret.vault_server_cert.arn
     vault_server_key_secret_arn  = aws_secretsmanager_secret.vault_server_key.arn
+
+    cluster_tag_key                = local.cluster_tag_key
+    cluster_tag_value              = local.cluster_tag_value
+    ssm_cluster_state_name         = aws_ssm_parameter.vault_cluster_state.name
+    vault_root_token_secret_arn    = aws_secretsmanager_secret.vault_root_token.arn
+    vault_recovery_keys_secret_arn = aws_secretsmanager_secret.vault_recovery_keys.arn
 
     config_vault_hcl = templatefile("${path.module}/templates/vault.hcl.tftpl", {
       cluster_name      = var.project_name
@@ -55,7 +61,7 @@ resource "aws_instance" "vault" {
     })
 
     config_snapshot_json = local.config_snapshot_json
-  })
+  }))
 
   tags = merge(var.common_tags, {
     Name                    = "${var.project_name}-vault-${count.index}"
