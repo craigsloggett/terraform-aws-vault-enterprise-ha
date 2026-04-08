@@ -4,6 +4,8 @@ resource "aws_lb" "vault" {
   load_balancer_type = "network"
   subnets            = var.nlb_internal ? local.vpc.private_subnet_ids : local.vpc.public_subnet_ids
 
+  enable_cross_zone_load_balancing = true
+
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault" })
 
   lifecycle {
