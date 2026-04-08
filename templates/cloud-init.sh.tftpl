@@ -10,7 +10,7 @@
 #   - Secrets stored in AWS Secrets Manager
 #   - An EBS data volume attached for Raft storage
 
-# shellcheck disable=SC1083,SC2034,SC2086,SC2154,SC2170,SC2193,SC2269,SC2288
+# shellcheck disable=SC1083,SC2034,SC2086,SC2154,SC2157,SC2170,SC2193,SC2269,SC2288
 # SC1083/SC2288:
 # Terraform's $${var} escape sequence is read by shellcheck as a literal
 # `$${...}` in command position — the sequence is replaced with `$${var}`
@@ -562,8 +562,7 @@ configure_pki_engine() {
   vault secrets tune -max-lease-ttl=87600h pki
 
   # Generate root CA with ECDSA P-384 keys, consistent with the bootstrap
-  # CA and server certs in tls.tf. OCSP is not configured (CRL distribution
-  # is used instead).
+  # CA and server certs in tls.tf.
   vault write -format=json pki/root/generate/internal \
     common_name="${cluster_tag_value} CA" \
     ttl=87600h \
