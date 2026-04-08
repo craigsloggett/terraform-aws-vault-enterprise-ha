@@ -1,13 +1,13 @@
 resource "aws_secretsmanager_secret" "vault_root_token" {
   name_prefix = "${var.project_name}-vault-root-token-"
-  description = "Vault root token — written at cluster init, revoked after Terraform handoff"
+  description = "Vault bootstrap root token (revoked after initialization)"
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-root-token" })
 }
 
 resource "aws_secretsmanager_secret" "vault_recovery_keys" {
   name_prefix = "${var.project_name}-vault-recovery-keys-"
-  description = "Vault recovery keys — written at cluster init"
+  description = "Vault recovery keys"
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-recovery-keys" })
 }
