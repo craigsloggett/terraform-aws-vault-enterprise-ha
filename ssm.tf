@@ -11,6 +11,32 @@ resource "aws_ssm_parameter" "vault_cluster_state" {
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-cluster-state" })
 }
 
+resource "aws_ssm_parameter" "vault_pki_state" {
+  name        = "/${var.project_name}/vault/pki/state"
+  type        = "String"
+  value       = "uninitialized"
+  description = "Vault PKI bootstrap state flag (uninitialized | ready)"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-pki-state" })
+}
+
+resource "aws_ssm_parameter" "vault_pki_ca_cert" {
+  name        = "/${var.project_name}/vault/pki/ca-cert"
+  type        = "String"
+  value       = "uninitialized"
+  description = "Vault PKI CA certificate PEM (public)"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-pki-ca-cert" })
+}
+
 data "aws_iam_policy_document" "vault_ssm" {
   statement {
     sid    = "ClusterStateReadWrite"
@@ -19,7 +45,11 @@ data "aws_iam_policy_document" "vault_ssm" {
       "ssm:GetParameter",
       "ssm:PutParameter",
     ]
-    resources = [aws_ssm_parameter.vault_cluster_state.arn]
+    resources = [
+      aws_ssm_parameter.vault_cluster_state.arn,
+      aws_ssm_parameter.vault_pki_state.arn,
+      aws_ssm_parameter.vault_pki_ca_cert.arn,
+    ]
   }
 }
 

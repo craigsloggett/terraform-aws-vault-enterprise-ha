@@ -47,6 +47,8 @@ resource "aws_instance" "vault" {
     cluster_tag_key                = local.cluster_tag_key
     cluster_tag_value              = local.cluster_tag_value
     ssm_cluster_state_name         = aws_ssm_parameter.vault_cluster_state.name
+    ssm_pki_state_name             = aws_ssm_parameter.vault_pki_state.name
+    ssm_pki_ca_cert_name           = aws_ssm_parameter.vault_pki_ca_cert.name
     vault_root_token_secret_arn    = aws_secretsmanager_secret.vault_root_token.arn
     vault_recovery_keys_secret_arn = aws_secretsmanager_secret.vault_recovery_keys.arn
 
