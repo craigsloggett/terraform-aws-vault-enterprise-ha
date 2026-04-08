@@ -690,13 +690,18 @@ issue_node_cert() {
       --query "Parameter.Value" \
       --output text)"
 
+    # Write the new PKI CA cert to disk for use by clients connecting
+    # to this node after the TLS swap in replace_node_tls(). It is not
+    # used for Vault API calls here — this node's listener is still
+    # presenting the bootstrap cert until the SIGHUP, so VAULT_CACERT
+    # must continue to point at the bootstrap CA.
     new_ca_cert_file="/opt/vault/tls/pki-ca.crt"
     printf '%s\n' "$${new_ca_cert}" >"$${new_ca_cert_file}"
     chown vault:vault "$${new_ca_cert_file}"
     chmod 0640 "$${new_ca_cert_file}"
 
-    export VAULT_CACERT="$${new_ca_cert_file}"
     export VAULT_ADDR="https://127.0.0.1:8200"
+    export VAULT_CACERT="$${tls_ca_file}"
 
     log_info "Authenticating via AWS IAM auth method"
     vault_token="$(vault login \
