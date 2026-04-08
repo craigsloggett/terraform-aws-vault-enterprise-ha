@@ -515,7 +515,7 @@ join_cluster() {
       --query "Parameter.Value" \
       --output text 2>/dev/null)" || true
 
-    if [ "$${state}" = "ready" ] || [ "$${state}" = "managed" ]; then
+    if [ "$${state}" = "ready" ]; then
       log_info "Cluster state is $${state} — proceeding"
       return 0
     fi

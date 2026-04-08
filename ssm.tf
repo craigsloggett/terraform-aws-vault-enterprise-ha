@@ -2,7 +2,7 @@ resource "aws_ssm_parameter" "vault_cluster_state" {
   name        = "/${var.project_name}/vault/cluster/state"
   type        = "String"
   value       = "uninitialized"
-  description = "Vault cluster initialization state flag (uninitialized | ready | managed)"
+  description = "Vault cluster initialization state flag (uninitialized | ready)"
 
   lifecycle {
     ignore_changes = [value]
