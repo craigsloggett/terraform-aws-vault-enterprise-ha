@@ -1,8 +1,7 @@
 # CA
 
 resource "tls_private_key" "ca" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
+  algorithm = "ED25519"
 }
 
 resource "tls_self_signed_cert" "ca" {
@@ -25,8 +24,7 @@ resource "tls_self_signed_cert" "ca" {
 # Server
 
 resource "tls_private_key" "server" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
+  algorithm = "ED25519"
 }
 
 resource "tls_cert_request" "server" {
