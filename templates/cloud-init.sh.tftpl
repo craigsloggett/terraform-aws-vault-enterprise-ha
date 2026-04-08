@@ -571,10 +571,12 @@ configure_pki_engine() {
     key_bits=384 |
     jq -r '.data.certificate' >/dev/null
 
-  # Configure CRL and issuing certificate URLs. OCSP is not configured.
+  # Configure issuing certificate, CRL, and OCSP URLs.
+  # Vault's built-in OCSP responder handles /v1/pki/ocsp natively.
   vault write pki/config/urls \
     issuing_certificates="https://$${vault_fqdn}:8200/v1/pki/ca" \
-    crl_distribution_points="https://$${vault_fqdn}:8200/v1/pki/crl"
+    crl_distribution_points="https://$${vault_fqdn}:8200/v1/pki/crl" \
+    ocsp_servers="https://$${vault_fqdn}:8200/v1/pki/ocsp"
 
   # Create the vault-server role used by nodes to issue their own TLS certs.
   vault write pki/roles/vault-server \
