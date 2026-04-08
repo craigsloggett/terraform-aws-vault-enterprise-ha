@@ -350,6 +350,42 @@ start_services() {
 }
 
 # ---------------------------------------------------------------------------
+# Wait for the Vault API to respond on the local listener
+# ---------------------------------------------------------------------------
+
+wait_for_vault_api() {
+  log_info "Waiting for Vault API to become available"
+
+  attempts=0
+  max_attempts=60
+
+  while true; do
+    # curl returns 0 for any completed HTTP exchange regardless of status code.
+    # We capture the HTTP status and treat anything other than 000 (no connection)
+    # as success — 501 means uninitialized, 503 means sealed, 200/429 means
+    # active/standby. All indicate the API is up and TLS is working.
+    # -k is intentional: the bootstrap cert is self-signed and we are connecting
+    # to 127.0.0.1, so hostname validation provides no security here.
+    status="$(curl -sk -o /dev/null -w '%%{http_code}' \
+      "https://127.0.0.1:8200/v1/sys/health" 2>/dev/null)" || true
+
+    if [ "$${status}" != "000" ]; then
+      log_info "Vault API responding (HTTP $${status})"
+      return 0
+    fi
+
+    attempts=$((attempts + 1))
+    if [ "$${attempts}" -ge "$${max_attempts}" ]; then
+      log_error "Vault API did not respond after $${max_attempts} attempts"
+      return 1
+    fi
+
+    log_info "Vault API not yet available, retrying ($${attempts}/$${max_attempts})"
+    sleep 5
+  done
+}
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
@@ -373,6 +409,7 @@ main() {
   write_snapshot_config
 
   start_services
+  wait_for_vault_api
 
   log_info "=== Bootstrap complete ==="
 }
