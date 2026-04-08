@@ -35,7 +35,7 @@ resource "aws_instance" "vault" {
     http_put_response_hop_limit = 1
   }
 
-  user_data = templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
+  user_data_base64 = base64gzip(templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
     vault_version                = var.vault_package_version
     region                       = data.aws_region.current.region
     ebs_device_name              = local.ebs_device_name
@@ -61,7 +61,7 @@ resource "aws_instance" "vault" {
     })
 
     config_snapshot_json = local.config_snapshot_json
-  })
+  }))
 
   tags = merge(var.common_tags, {
     Name                    = "${var.project_name}-vault-${count.index}"
