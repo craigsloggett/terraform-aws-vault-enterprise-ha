@@ -1,7 +1,8 @@
 # CA
 
 resource "tls_private_key" "ca" {
-  algorithm = "ED25519"
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P384"
 }
 
 resource "tls_self_signed_cert" "ca" {
@@ -24,7 +25,8 @@ resource "tls_self_signed_cert" "ca" {
 # Server
 
 resource "tls_private_key" "server" {
-  algorithm = "ED25519"
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P384"
 }
 
 resource "tls_cert_request" "server" {
@@ -54,8 +56,7 @@ resource "tls_locally_signed_cert" "server" {
   allowed_uses = [
     "digital_signature",
     "key_encipherment",
-    "server_auth",
-    "client_auth",
+    "server_auth"
   ]
 }
 
