@@ -703,8 +703,8 @@ issue_node_cert() {
     vault_token="$(vault login \
       -format=json \
       -method=aws \
-      role=vault-server \
-      | jq -r '.auth.client_token')"
+      role=vault-server |
+      jq -r '.auth.client_token')"
     export VAULT_TOKEN="$${vault_token}"
   fi
 
