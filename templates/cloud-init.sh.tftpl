@@ -748,6 +748,39 @@ replace_node_tls() {
 }
 
 # ---------------------------------------------------------------------------
+# Replace bootstrap CA cert on disk with the PKI CA cert
+# ---------------------------------------------------------------------------
+
+cleanup_bootstrap_tls() {
+  log_info "Replacing bootstrap CA cert with PKI CA cert on disk"
+
+  # Fetch the PKI CA cert from SSM. This was written by configure_pki_engine()
+  # on the bootstrap node and is available to all nodes without a Vault token.
+  pki_ca_cert="$(aws ssm get-parameter \
+    --region "$${aws_region}" \
+    --name "$${ssm_pki_ca_cert_name}" \
+    --query "Parameter.Value" \
+    --output text)"
+
+  # Overwrite the bootstrap CA cert at tls_ca_file. vault.hcl references this
+  # path for leader_ca_cert_file in the retry_join block — it must now trust
+  # the PKI CA, not the bootstrap CA.
+  printf '%s\n' "$${pki_ca_cert}" >"$${tls_ca_file}"
+  chown vault:vault "$${tls_ca_file}"
+  chmod 0640 "$${tls_ca_file}"
+
+  log_info "Bootstrap CA cert replaced with PKI CA cert at $${tls_ca_file}"
+
+  # Remove the temporary PKI CA cert file written by the follower path in
+  # issue_node_cert(), if present.
+  pki_ca_tmp="/opt/vault/tls/pki-ca.crt"
+  if [ -f "$${pki_ca_tmp}" ]; then
+    rm -f "$${pki_ca_tmp}"
+    log_info "Removed temporary PKI CA cert file $${pki_ca_tmp}"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
@@ -784,6 +817,7 @@ main() {
   fi
 
   replace_node_tls
+  cleanup_bootstrap_tls
 
   log_info "=== Bootstrap complete ==="
 }
