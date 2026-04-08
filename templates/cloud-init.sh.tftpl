@@ -10,7 +10,11 @@
 #   - Secrets stored in AWS Secrets Manager
 #   - An EBS data volume attached for Raft storage
 
-# shellcheck disable=SC2034,SC2086,SC2154,SC2170,SC2193,SC2269
+# shellcheck disable=SC1083,SC2034,SC2086,SC2154,SC2170,SC2193,SC2269,SC2288
+# SC1083/SC2288:
+# Terraform's $${var} escape sequence is read by shellcheck as a literal
+# `${...}` in command position — the sequence is replaced with `${var}`
+# at render time and is a normal shell parameter expansion at runtime.
 # SC2034/SC2154:
 # Variables are set via Terraform templatefile() interpolation and referenced
 # with escaped dollar signs — shellcheck cannot parse either.
@@ -406,7 +410,7 @@ wait_for_vault_api() {
 }
 
 # ---------------------------------------------------------------------------
-# Bootstrap node election — lowest running instance ID in the cluster wins
+# Bootstrap node election (lowest running instance ID in the cluster wins)
 # ---------------------------------------------------------------------------
 
 is_bootstrap_node() {
@@ -418,8 +422,8 @@ is_bootstrap_node() {
   all_ids="$(aws ec2 describe-instances \
     --region "$${aws_region}" \
     --filters \
-      "Name=tag:$${cluster_tag_key},Values=$${cluster_tag_value}" \
-      "Name=instance-state-name,Values=running" \
+    "Name=tag:$${cluster_tag_key},Values=$${cluster_tag_value}" \
+    "Name=instance-state-name,Values=running" \
     --query "Reservations[].Instances[].InstanceId" \
     --output text)"
 
@@ -439,7 +443,7 @@ is_bootstrap_node() {
 }
 
 # ---------------------------------------------------------------------------
-# Initialize the Vault cluster — bootstrap node only
+# Initialize the Vault cluster (bootstrap node only)
 # ---------------------------------------------------------------------------
 
 init_cluster() {
@@ -450,8 +454,8 @@ init_cluster() {
 
   # Idempotency guard: if the cluster is already initialized (e.g. this is a
   # replacement node that happens to have the lowest instance ID), skip init.
-  initialized="$(vault status -format=json 2>/dev/null \
-    | jq -r '.initialized' 2>/dev/null)" || true
+  initialized="$(vault status -format=json 2>/dev/null |
+    jq -r '.initialized' 2>/dev/null)" || true
   if [ "$${initialized}" = "true" ]; then
     log_info "Cluster is already initialized — skipping operator init"
     return 0
@@ -491,7 +495,7 @@ init_cluster() {
 }
 
 # ---------------------------------------------------------------------------
-# Wait for the cluster to be initialized — follower nodes only
+# Wait for the cluster to be initialized (follower nodes only)
 # ---------------------------------------------------------------------------
 
 join_cluster() {
@@ -528,8 +532,6 @@ join_cluster() {
 # ---------------------------------------------------------------------------
 
 main() {
-  log_info "=== Vault Enterprise server bootstrap ==="
-
   wait_for_network
 
   private_ip="$(get_private_ip)"
