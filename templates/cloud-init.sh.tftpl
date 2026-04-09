@@ -358,55 +358,21 @@ install_vault() {
 }
 
 # ---------------------------------------------------------------------------
-# Generate the systemd unit file for Vault
+# Write the Vault systemd unit file and drop-in override
 # ---------------------------------------------------------------------------
 
-write_systemd_unit() {
-  log_info "Writing Vault systemd unit file"
+write_vault_systemd_unit() {
+  log_info "Writing Vault systemd unit"
 
-  cat >/etc/systemd/system/vault.service <<'UNIT'
-[Unit]
-Description=HashiCorp Vault - A Secret Management Tool
-Documentation=https://developer.hashicorp.com/vault/docs
-Requires=network-online.target
-After=network-online.target
-ConditionFileNotEmpty=/etc/vault.d/vault.hcl
-StartLimitIntervalSec=60
-StartLimitBurst=3
+  cat >/etc/systemd/system/vault.service <<'EOF'
+${config_vault_service}
+EOF
 
-[Service]
-User=vault
-Group=vault
-ProtectSystem=full
-ProtectHome=read-only
-PrivateTmp=yes
-PrivateDevices=yes
-SecureBits=keep-caps
-AmbientCapabilities=CAP_IPC_LOCK
-CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
-NoNewPrivileges=yes
-ExecStart=/usr/bin/vault server -config=/etc/vault.d/vault.hcl
-ExecReload=/bin/kill --signal HUP $MAINPID
-KillMode=process
-KillSignal=SIGINT
-Restart=on-failure
-RestartSec=5
-TimeoutStopSec=30
-LimitNOFILE=65536
-LimitMEMLOCK=infinity
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-  # Drop-in override for file permissions check
   mkdir -p /etc/systemd/system/vault.service.d
-  cat >/etc/systemd/system/vault.service.d/override.conf <<'OVERRIDE'
-[Service]
-Environment="VAULT_ENABLE_FILE_PERMISSIONS_CHECK=true"
-OVERRIDE
-
-  log_info "Vault systemd unit file written"
+  cat >/etc/systemd/system/vault.service.d/override.conf <<'EOF'
+${config_vault_service_override}
+EOF
+  chmod 0600 /etc/systemd/system/vault.service.d/override.conf
 }
 
 # ---------------------------------------------------------------------------
@@ -910,7 +876,7 @@ main() {
   create_vault_user
   mount_data_volume
   install_vault
-  write_systemd_unit
+  write_vault_systemd_unit
 
   write_secrets
   write_vault_config "$${private_ip}"

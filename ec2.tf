@@ -64,7 +64,9 @@ resource "aws_instance" "vault" {
       cluster_tag_value = local.cluster_tag_value
     })
 
-    config_snapshot_json = local.config_snapshot_json
+    config_vault_service          = local.config_vault_service
+    config_vault_service_override = local.config_vault_service_override
+    config_snapshot_json          = local.config_snapshot_json
   }))
 
   tags = merge(var.common_tags, {
