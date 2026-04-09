@@ -10,7 +10,7 @@
 #   - Secrets stored in AWS Secrets Manager
 #   - An EBS data volume attached for Raft storage
 
-# shellcheck disable=SC1083,SC2034,SC2086,SC2154,SC2157,SC2170,SC2193,SC2269,SC2288
+# shellcheck disable=SC1083,SC2034,SC2086,SC2154,SC2157,SC2170,SC2193,SC2195,SC2269,SC2288
 # SC1083/SC2288:
 # Terraform's $${var} escape sequence is read by shellcheck as a literal
 # `$${...}` in command position — the sequence is replaced with `$${var}`
@@ -26,6 +26,9 @@
 # SC2193:
 # curl -w '%%{http_code}' returns runtime HTTP status codes; shellcheck
 # reads the literal format string and cannot see the comparison is valid.
+# SC2195:
+# case "$${machine}" patterns are valid at runtime — shellcheck sees the
+# Terraform escape as a literal and incorrectly flags the case arms.
 # SC2269:
 # vault_version="${vault_version}" is not self-assignment — the RHS is a
 # Terraform interpolation replaced at plan time.
@@ -193,9 +196,7 @@ prepare_system() {
 
   apt-get -yq update >/dev/null
   apt-get -yq install \
-    awscli jq unzip gnupg lsb-release nvme-cli amazon-ec2-utils chrony >/dev/null
-
-  # The vault-enterprise package creates the vault user, so no useradd here.
+    awscli jq unzip nvme-cli amazon-ec2-utils chrony >/dev/null
 }
 
 # ---------------------------------------------------------------------------
@@ -283,20 +284,102 @@ mount_data_volume() {
 }
 
 # ---------------------------------------------------------------------------
-# Install Vault Enterprise
+# Create the vault system user and group
+# ---------------------------------------------------------------------------
+
+create_vault_user() {
+  log_info "Creating vault system user"
+
+  groupadd --system vault
+  useradd --system -g vault -d /etc/vault.d -s /bin/false vault
+
+  mkdir -p /etc/vault.d/tls
+  mkdir -p /opt/vault/tls
+  mkdir -p /opt/vault/data
+
+  chown -R vault:vault /etc/vault.d /opt/vault
+  chmod 750 /etc/vault.d /opt/vault
+}
+
+# ---------------------------------------------------------------------------
+# Install Vault Enterprise — binary download with GPG + SHA256 verification
 # ---------------------------------------------------------------------------
 
 install_vault() {
   log_info "Installing Vault Enterprise $${vault_version}"
 
-  curl -fsSL https://apt.releases.hashicorp.com/gpg |
-    gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+  apt-get -yq install gnupg >/dev/null
 
-  echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-    >/etc/apt/sources.list.d/hashicorp.list
+  # Detect architecture
+  machine="$(uname -m)"
+  case "$${machine}" in
+    x86_64) arch="amd64" ;;
+    aarch64) arch="arm64" ;;
+    *)
+      log_error "Unsupported architecture: $${machine}"
+      return 1
+      ;;
+  esac
+  log_info "Detected architecture: $${arch}" >&2
 
-  apt-get -yq update >/dev/null
-  apt-get -yq install vault-enterprise=$${vault_version} >/dev/null
+  base_url="https://releases.hashicorp.com/vault/${vault_version}"
+  zip_file="vault_${vault_version}_linux_$${arch}.zip"
+  sums_file="vault_${vault_version}_SHA256SUMS"
+  sig_file="vault_${vault_version}_SHA256SUMS.sig"
+
+  # Download release artifacts into an isolated temp directory
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "$${tmp_dir}"' EXIT
+
+  curl -fsSL -o "$${tmp_dir}/$${zip_file}" "$${base_url}/$${zip_file}"
+  curl -fsSL -o "$${tmp_dir}/$${sums_file}" "$${base_url}/$${sums_file}"
+  curl -fsSL -o "$${tmp_dir}/$${sig_file}" "$${base_url}/$${sig_file}"
+
+  # GPG signature verification — isolated keyring to avoid polluting the system
+  export GNUPGHOME="$${tmp_dir}/.gnupg"
+  mkdir -p "$${GNUPGHOME}"
+  chmod 0700 "$${GNUPGHOME}"
+
+  curl -fsSL -o "$${tmp_dir}/hashicorp.asc" \
+    https://www.hashicorp.com/.well-known/pgp-key.txt
+  gpg --quiet --import "$${tmp_dir}/hashicorp.asc"
+  printf '%s\n' "C874011F0AB405110D02105534365D9472D7468F:6:" | gpg --quiet --import-ownertrust
+
+  log_info "Verifying GPG signature"
+  gpg --quiet --verify "$${tmp_dir}/$${sig_file}" "$${tmp_dir}/$${sums_file}"
+
+  # SHA256 checksum verification
+  log_info "Verifying SHA256 checksum"
+  cd "$${tmp_dir}"
+  sha256sum -c --ignore-missing "$${sums_file}"
+  cd /
+
+  # Install the binary
+  unzip -o "$${tmp_dir}/$${zip_file}" -d "$${tmp_dir}"
+  mv "$${tmp_dir}/vault" /usr/bin/vault
+  chown root:root /usr/bin/vault
+  chmod 0755 /usr/bin/vault
+  ln -sf /usr/bin/vault /usr/local/bin/vault
+
+  log_info "Vault Enterprise $${vault_version} installed"
+}
+
+# ---------------------------------------------------------------------------
+# Write the Vault systemd unit file and drop-in override
+# ---------------------------------------------------------------------------
+
+write_vault_systemd_unit() {
+  log_info "Writing Vault systemd unit"
+
+  cat >/etc/systemd/system/vault.service <<'EOF'
+${config_vault_service}
+EOF
+
+  mkdir -p /etc/systemd/system/vault.service.d
+  cat >/etc/systemd/system/vault.service.d/override.conf <<'EOF'
+${config_vault_service_override}
+EOF
+  chmod 0600 /etc/systemd/system/vault.service.d/override.conf
 }
 
 # ---------------------------------------------------------------------------
@@ -369,6 +452,8 @@ EOF
 
 start_services() {
   log_info "Enabling the Vault service"
+
+  systemctl daemon-reload
 
   # Vault starts sealed; no health-check loop here because /v1/sys/health
   # returns non-2xx until init/unseal is performed by an operator.
@@ -795,8 +880,10 @@ main() {
 
   prepare_system
   configure_time
+  create_vault_user
   mount_data_volume
   install_vault
+  write_vault_systemd_unit
 
   write_secrets
   write_vault_config "$${private_ip}"

@@ -6,6 +6,9 @@ locals {
   cluster_tag_value = var.project_name
   ebs_device_name   = "/dev/xvdf" # AWS convention for the first additional EBS volume
 
+  config_vault_service          = file("${path.module}/files/vault.service")
+  config_vault_service_override = file("${path.module}/files/vault.service.d-override.conf")
+
   config_snapshot_json = templatefile("${path.module}/templates/snapshot.json.tftpl", {
     aws_s3_bucket = aws_s3_bucket.vault_snapshots.id
     aws_s3_region = data.aws_region.current.region

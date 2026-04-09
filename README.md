@@ -136,11 +136,11 @@ module "vault" {
 | <a name="input_vault_api_allowed_cidrs"></a> [vault\_api\_allowed\_cidrs](#input\_vault\_api\_allowed\_cidrs) | CIDR blocks allowed to reach the Vault API (port 8200) from outside the VPC. Only effective when nlb\_internal is false. | `list(string)` | `[]` | no |
 | <a name="input_vault_ebs_volume_size"></a> [vault\_ebs\_volume\_size](#input\_vault\_ebs\_volume\_size) | Size in GiB of the EBS volume for Vault Raft storage. | `number` | `100` | no |
 | <a name="input_vault_license"></a> [vault\_license](#input\_vault\_license) | Vault Enterprise license string. | `string` | n/a | yes |
-| <a name="input_vault_package_version"></a> [vault\_package\_version](#input\_vault\_package\_version) | Vault Enterprise apt package version to install (e.g., 1.21.4+ent-1). | `string` | `"1.21.4+ent-1"` | no |
 | <a name="input_vault_server_instance_type"></a> [vault\_server\_instance\_type](#input\_vault\_server\_instance\_type) | EC2 instance type for Vault server nodes. | `string` | `"m5.large"` | no |
 | <a name="input_vault_snapshot_interval"></a> [vault\_snapshot\_interval](#input\_vault\_snapshot\_interval) | Seconds between automated Raft snapshots. | `number` | `3600` | no |
 | <a name="input_vault_snapshot_retain"></a> [vault\_snapshot\_retain](#input\_vault\_snapshot\_retain) | Number of automated Raft snapshots to retain in S3. | `number` | `72` | no |
 | <a name="input_vault_subdomain"></a> [vault\_subdomain](#input\_vault\_subdomain) | Subdomain for the Vault DNS record. | `string` | `"vault"` | no |
+| <a name="input_vault_version"></a> [vault\_version](#input\_vault\_version) | Vault Enterprise release version (e.g., 1.21.4+ent). | `string` | `"1.21.4+ent"` | no |
 | <a name="input_vpc_cidr"></a> [vpc\_cidr](#input\_vpc\_cidr) | CIDR block for the VPC. | `string` | `"10.0.0.0/16"` | no |
 | <a name="input_vpc_private_subnets"></a> [vpc\_private\_subnets](#input\_vpc\_private\_subnets) | Private subnet CIDR blocks. | `list(string)` | <pre>[<br/>  "10.0.1.0/24",<br/>  "10.0.2.0/24",<br/>  "10.0.3.0/24"<br/>]</pre> | no |
 | <a name="input_vpc_public_subnets"></a> [vpc\_public\_subnets](#input\_vpc\_public\_subnets) | Public subnet CIDR blocks. | `list(string)` | <pre>[<br/>  "10.0.101.0/24",<br/>  "10.0.102.0/24",<br/>  "10.0.103.0/24"<br/>]</pre> | no |

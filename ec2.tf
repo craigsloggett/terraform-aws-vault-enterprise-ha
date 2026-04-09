@@ -36,7 +36,7 @@ resource "aws_instance" "vault" {
   }
 
   user_data_base64 = base64gzip(templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
-    vault_version                = var.vault_package_version
+    vault_version                = var.vault_version
     region                       = data.aws_region.current.region
     ebs_device_name              = local.ebs_device_name
     vault_license_secret_arn     = aws_secretsmanager_secret.vault_license.arn
@@ -64,7 +64,9 @@ resource "aws_instance" "vault" {
       cluster_tag_value = local.cluster_tag_value
     })
 
-    config_snapshot_json = local.config_snapshot_json
+    config_vault_service          = local.config_vault_service
+    config_vault_service_override = local.config_vault_service_override
+    config_snapshot_json          = local.config_snapshot_json
   }))
 
   tags = merge(var.common_tags, {
