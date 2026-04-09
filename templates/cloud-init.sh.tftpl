@@ -584,7 +584,8 @@ configure_pki_engine() {
     allow_subdomains=false \
     max_ttl=720h \
     key_type=ec \
-    key_bits=384
+    key_bits=384 \
+    ext_key_usage=serverAuth
 
   # Publish the new CA cert PEM to SSM so follower nodes can fetch it and
   # trust the new CA before attempting AWS auth. The CA cert is public
