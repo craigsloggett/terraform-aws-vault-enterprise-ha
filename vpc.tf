@@ -2,7 +2,7 @@ module "vpc" {
   count = var.existing_vpc == null ? 1 : 0
 
   source  = "terraform-aws-modules/vpc/aws"
-  version = "6.6.0"
+  version = "6.6.1"
 
   name = "${var.project_name}-vault"
   cidr = var.vpc_cidr
