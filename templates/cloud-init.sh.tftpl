@@ -346,7 +346,7 @@ install_vault() {
   gpg --import "$${tmp_dir}/hashicorp.asc"
 
   log_info "Verifying GPG signature"
-  gpg --verify "$${tmp_dir}/$${sig_file}" "$${tmp_dir}/$${sums_file}"
+  gpg --trust-model=always --verify "$${tmp_dir}/$${sig_file}" "$${tmp_dir}/$${sums_file}"
 
   # SHA256 checksum verification
   log_info "Verifying SHA256 checksum"
