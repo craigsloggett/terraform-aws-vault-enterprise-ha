@@ -615,9 +615,19 @@ configure_aws_auth() {
 
   # Write a policy granting nodes the ability to issue certs from the
   # vault-server PKI role. No broader permissions are needed.
-  vault policy write vault-server - <<EOF
+  vault policy write vault-pki-server - <<EOF
 path "pki/issue/vault-server" {
   capabilities = ["create", "update"]
+}
+EOF
+
+  vault policy write vault-snapshot-agent - <<EOF
+path "sys/storage/raft/snapshot" {
+  capabilities = ["read"]
+}
+
+path "sys/license/status" {
+  capabilities = ["read"]
 }
 EOF
 
@@ -627,7 +637,7 @@ EOF
   vault write auth/aws/role/vault-server \
     auth_type=iam \
     bound_iam_principal_arn="$${vault_iam_role_arn}" \
-    policies=vault-server \
+    policies=vault-pki-server,vault-snapshot-agent \
     ttl=1h
 
   log_info "Writing PKI state: ready"
