@@ -331,9 +331,9 @@ install_vault() {
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "$${tmp_dir}"' EXIT
 
-  curl -fsSL -o "$${tmp_dir}" "$${base_url}/$${zip_file}"
-  curl -fsSL -o "$${tmp_dir}" "$${base_url}/$${sums_file}"
-  curl -fsSL -o "$${tmp_dir}" "$${base_url}/$${sig_file}"
+  curl -fsSL -o "$${tmp_dir}/$${zip_file}" "$${base_url}/$${zip_file}"
+  curl -fsSL -o "$${tmp_dir}/$${sums_file}" "$${base_url}/$${sums_file}"
+  curl -fsSL -o "$${tmp_dir}/$${sig_file}" "$${base_url}/$${sig_file}"
 
   # GPG signature verification — isolated keyring to avoid polluting the system
   export GNUPGHOME="$${tmp_dir}/.gnupg"
