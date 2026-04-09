@@ -344,10 +344,9 @@ install_vault() {
   wget -q -O "$${tmp_dir}/hashicorp.asc" \
     https://www.hashicorp.com/.well-known/pgp-key.txt
   gpg --import "$${tmp_dir}/hashicorp.asc"
-  printf '%s\n' "C874011F0AB405110D02105534365D9472D7468F:5:" | gpg --import-ownertrust
 
   log_info "Verifying GPG signature"
-  gpg --verify "$${tmp_dir}/$${sig_file}" "$${tmp_dir}/$${sums_file}"
+  gpg --trust-model direct --verify "$${tmp_dir}/$${sig_file}" "$${tmp_dir}/$${sums_file}"
 
   # SHA256 checksum verification
   log_info "Verifying SHA256 checksum"
