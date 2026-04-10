@@ -118,6 +118,8 @@ variable "vault_data_disk" {
   type = object({
     volume_type = string
     volume_size = number
+    iops        = optional(number, 3000)
+    throughput  = optional(number, 125)
     encrypted   = bool
   })
   description = "EBS configuration for the Vault Raft data volume (/dev/xvdf)."

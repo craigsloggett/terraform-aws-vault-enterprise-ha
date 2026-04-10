@@ -94,6 +94,8 @@ resource "aws_launch_template" "vault" {
     ebs {
       volume_type           = var.vault_data_disk.volume_type
       volume_size           = var.vault_data_disk.volume_size
+      iops                  = var.vault_data_disk.iops
+      throughput            = var.vault_data_disk.throughput
       encrypted             = var.vault_data_disk.encrypted
       delete_on_termination = true
     }

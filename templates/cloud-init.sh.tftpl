@@ -280,6 +280,7 @@ prepare_disk() {
       return 1
     fi
 
+    log_info "Device not yet visible, retrying ($${attempts}/$${max_attempts})"
     sleep 5
   done
 
