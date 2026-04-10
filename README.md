@@ -139,8 +139,8 @@ module "vault" {
 | <a name="input_vault_data_disk"></a> [vault\_data\_disk](#input\_vault\_data\_disk) | EBS configuration for the Vault Raft data volume (/dev/xvdf). | <pre>object({<br/>    volume_type = string<br/>    volume_size = number<br/>    iops        = optional(number, 3000)<br/>    throughput  = optional(number, 125)<br/>    encrypted   = bool<br/>  })</pre> | <pre>{<br/>  "encrypted": true,<br/>  "volume_size": 100,<br/>  "volume_type": "gp3"<br/>}</pre> | no |
 | <a name="input_vault_license"></a> [vault\_license](#input\_vault\_license) | Vault Enterprise license string. | `string` | n/a | yes |
 | <a name="input_vault_node_count"></a> [vault\_node\_count](#input\_vault\_node\_count) | Number of Vault nodes in the cluster. Must be 3 or 5 for Raft quorum. | `number` | `3` | no |
-| <a name="input_vault_pki_country"></a> [vault\_pki\_country](#input\_vault\_pki\_country) | Country code for the Vault PKI root CA certificate. | `string` | `"US"` | no |
-| <a name="input_vault_pki_organization"></a> [vault\_pki\_organization](#input\_vault\_pki\_organization) | Organization name for the Vault PKI root CA certificate. | `string` | `"HashiCorp"` | no |
+| <a name="input_vault_pki_country"></a> [vault\_pki\_country](#input\_vault\_pki\_country) | Country code for the PKI root CA. | `string` | `"US"` | no |
+| <a name="input_vault_pki_organization"></a> [vault\_pki\_organization](#input\_vault\_pki\_organization) | Organization name for the PKI root CA. | `string` | `"HashiCorp"` | no |
 | <a name="input_vault_server_instance_type"></a> [vault\_server\_instance\_type](#input\_vault\_server\_instance\_type) | EC2 instance type for Vault server nodes. | `string` | `"m5.large"` | no |
 | <a name="input_vault_snapshot_interval"></a> [vault\_snapshot\_interval](#input\_vault\_snapshot\_interval) | Seconds between automated Raft snapshots. | `number` | `3600` | no |
 | <a name="input_vault_snapshot_retain"></a> [vault\_snapshot\_retain](#input\_vault\_snapshot\_retain) | Number of automated Raft snapshots to retain in S3. | `number` | `72` | no |

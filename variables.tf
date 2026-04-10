@@ -171,13 +171,13 @@ variable "vault_subdomain" {
 
 variable "vault_pki_organization" {
   type        = string
-  description = "Organization name for the Vault PKI root CA certificate."
+  description = "Organization name for the PKI root CA."
   default     = "HashiCorp"
 }
 
 variable "vault_pki_country" {
   type        = string
-  description = "Country code for the Vault PKI root CA certificate."
+  description = "Country code for the PKI root CA."
   default     = "US"
 }
 
