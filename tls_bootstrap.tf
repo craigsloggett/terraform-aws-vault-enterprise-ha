@@ -5,13 +5,6 @@
 # Once PKI is set up, the Vault listener cert is rotated to one issued by
 # Vault itself via Vault Agent, and this file's resources become the
 # trust anchor only, the CA stays, the server cert becomes irrelevant.
-#
-# Algorithm choice: ECDSA P-384 throughout. This is required because the
-# AWS NLB HTTPS health checker rejects Ed25519 in its supported signature
-# algorithms list, and the bootstrap cert has to satisfy every TLS client
-# that handshakes against the listener, including the NLB. Vault PKI
-# leaf certs (issued downstream) can use Ed25519 because they only need
-# to satisfy clients we control.
 
 # CA
 
@@ -28,7 +21,7 @@ resource "tls_self_signed_cert" "ca" {
     organization = var.project_name
   }
 
-  validity_period_hours = 8760 # 1 year. Rotated by Terraform apply until Vault PKI takes over.
+  validity_period_hours = 24
   is_ca_certificate     = true
 
   allowed_uses = [
@@ -54,8 +47,7 @@ resource "tls_cert_request" "server" {
 
   dns_names = [
     local.vault_fqdn,
-    "*.${var.route53_zone.name}",
-    "localhost",
+    "localhost"
   ]
 
   ip_addresses = ["127.0.0.1"]
@@ -66,7 +58,7 @@ resource "tls_locally_signed_cert" "server" {
   ca_private_key_pem = tls_private_key.ca.private_key_pem
   ca_cert_pem        = tls_self_signed_cert.ca.cert_pem
 
-  validity_period_hours = 8760 # 1 year. Rotated by Terraform apply until Vault PKI takes over.
+  validity_period_hours = 24
 
   allowed_uses = [
     "digital_signature",

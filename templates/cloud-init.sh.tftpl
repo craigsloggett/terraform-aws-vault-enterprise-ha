@@ -680,11 +680,11 @@ configure_pki_engine() {
 
   # Create the vault-server role used by nodes to issue their own TLS certs.
   vault write pki/roles/vault-server \
-    allowed_domains="$${vault_fqdn},localhost" \
+    allowed_domains="$${vault_fqdn}" \
     allow_bare_domains=true \
     allow_subdomains=false \
-    allow_localhost=true \
-    allow_ip_sans=true \
+    allow_localhost=false \
+    allow_ip_sans=false \
     max_ttl=720h \
     key_type=ec \
     key_bits=384 \
@@ -822,8 +822,6 @@ issue_node_cert() {
   log_info "Requesting certificate from PKI engine"
   cert_json="$(vault write -format=json pki/issue/vault-server \
     common_name="$${vault_fqdn}" \
-    alt_names="localhost" \
-    ip_sans="127.0.0.1" \
     ttl=720h)"
 
   tmp_cert="$${vault_tls_dir}/server.crt.tmp"
