@@ -435,7 +435,7 @@ write_vault_config() {
 ${config_vault_hcl}
 EOF
 
-  chown root:vault "$${vault_config_file}"
+  chown vault:vault "$${vault_config_file}"
   chmod 0640 "$${vault_config_file}"
 }
 
