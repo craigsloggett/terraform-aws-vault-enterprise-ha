@@ -517,6 +517,9 @@ start_services() {
 start_vault_agent() {
   log_info "Enabling the Vault Agent service"
 
+  touch /opt/vault/agent/.pre-start
+  chown vault:vault /opt/vault/agent/.pre-start
+
   systemctl daemon-reload
   systemctl enable --now vault-agent
 
@@ -551,6 +554,30 @@ wait_for_vault_api() {
     fi
 
     log_info "Vault API not yet available, retrying ($${attempts}/$${max_attempts})"
+    sleep 5
+  done
+}
+
+wait_for_pki_cert() {
+  log_info "Waiting for Vault Agent to render the first TLS certificate"
+
+  marker="/opt/vault/agent/.pre-start"
+  attempts=0
+  max_attempts=60
+
+  while true; do
+    if [ -f "$${vault_tls_cert_file}" ] && [ "$${vault_tls_cert_file}" -nt "$${marker}" ]; then
+      log_info "Vault Agent has rendered a new certificate at $${vault_tls_cert_file}"
+      return 0
+    fi
+
+    attempts=$((attempts + 1))
+    if [ "$${attempts}" -ge "$${max_attempts}" ]; then
+      log_error "Vault Agent did not render a certificate after $${max_attempts} attempts"
+      return 1
+    fi
+
+    log_info "Certificate not yet rendered by agent, retrying ($${attempts}/$${max_attempts})"
     sleep 5
   done
 }
@@ -947,6 +974,12 @@ cleanup_bootstrap_tls() {
     rm -f "$${pki_ca_tmp}"
     log_info "Removed temporary PKI CA cert file $${pki_ca_tmp}"
   fi
+
+  if [ "$${enable_vault_agent}" = "true" ]; then
+    log_info "Restarting Vault Agent to force re-read of rotated CA file"
+    systemctl restart vault-agent
+    log_info "Vault Agent restarted with updated CA file"
+  fi
 }
 
 write_vault_cli_config() {
@@ -997,20 +1030,28 @@ main() {
     configure_snapshots
     configure_pki_engine
     configure_aws_auth
-    issue_node_cert
+    if [ "$${enable_vault_agent}" = "true" ]; then
+      start_vault_agent
+      wait_for_pki_cert
+    else
+      issue_node_cert
+    fi
   else
     join_cluster
     wait_for_pki_ready
-    issue_node_cert
+    if [ "$${enable_vault_agent}" = "true" ]; then
+      start_vault_agent
+      wait_for_pki_cert
+    else
+      issue_node_cert
+    fi
   fi
 
-  replace_node_tls
+  if [ "$${enable_vault_agent}" != "true" ]; then
+    replace_node_tls
+  fi
   cleanup_bootstrap_tls
   write_vault_cli_config
-
-  if [ "$${enable_vault_agent}" = "true" ]; then
-    start_vault_agent
-  fi
 
   log_info "=== Bootstrap complete ==="
 }
