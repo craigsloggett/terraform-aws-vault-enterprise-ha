@@ -14,7 +14,7 @@ resource "aws_instance" "bastion" {
     http_put_response_hop_limit = 1
   }
 
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bastion" })
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-enterprise-bastion" })
 }
 
 # Vault Nodes
@@ -119,7 +119,7 @@ resource "aws_launch_template" "vault" {
     resource_type = "instance"
 
     tags = merge(var.common_tags, {
-      Name                    = "${var.project_name}-vault"
+      Name                    = "${var.project_name}-vault-enterprise"
       (local.cluster_tag_key) = local.cluster_tag_value
     })
   }
