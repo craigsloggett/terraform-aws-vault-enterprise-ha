@@ -58,7 +58,7 @@ module "vault" {
 ```
 
 This places the NLB in the public subnets and adds security group rules for the
-specified CIDRs. The Vault nodes remain in private subnets — only the NLB is
+specified CIDRs. The Vault nodes remain in private subnets, only the NLB is
 internet-facing. Restrict `vault_api_allowed_cidrs` to known ranges where
 possible.
 

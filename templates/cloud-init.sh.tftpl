@@ -1,5 +1,5 @@
 #!/bin/sh
-# setup-vault-server.sh — Bootstrap a Vault Enterprise server node on EC2.
+# setup-vault-server.sh (Bootstrap a Vault Enterprise server node on EC2).
 #
 # This script is rendered by Terraform using templatefile() and placed in
 # EC2 instance user data.
@@ -13,30 +13,30 @@
 # shellcheck disable=SC1083,SC2034,SC2086,SC2154,SC2157,SC2170,SC2193,SC2195,SC2269,SC2288
 # SC1083/SC2288:
 # Terraform's $${var} escape sequence is read by shellcheck as a literal
-# `$${...}` in command position — the sequence is replaced with `$${var}`
+# `$${...}` in command position, the sequence is replaced with `$${var}`
 # at render time and is a normal shell parameter expansion at runtime.
 # SC2034/SC2154:
 # Variables are set via Terraform templatefile() interpolation and referenced
-# with escaped dollar signs — shellcheck cannot parse either.
+# with escaped dollar signs, shellcheck cannot parse either.
 # SC2086:
 # vault_version is a Terraform-templated version string with no whitespace
-# or globs — quoting is unnecessary.
+# or globs, quoting is unnecessary.
 # SC2170:
 # $${var} comparisons resolve to valid integers at runtime.
 # SC2193:
 # curl -w '%%{http_code}' returns runtime HTTP status codes; shellcheck
 # reads the literal format string and cannot see the comparison is valid.
 # SC2195:
-# case "$${machine}" patterns are valid at runtime — shellcheck sees the
+# case "$${machine}" patterns are valid at runtime, shellcheck sees the
 # Terraform escape as a literal and incorrectly flags the case arms.
 # SC2269:
-# vault_version="${vault_version}" is not self-assignment — the RHS is a
+# vault_version="${vault_version}" is not self-assignment, the RHS is a
 # Terraform interpolation replaced at plan time.
 
 set -ef
 
 # ---------------------------------------------------------------------------
-# Configuration — values templated by Terraform at deploy time
+# Configuration (values templated by Terraform at deploy time)
 # ---------------------------------------------------------------------------
 
 # Vault
@@ -141,7 +141,7 @@ get_availability_zone() {
 # AWS Secrets Manager helper
 # ---------------------------------------------------------------------------
 
-# Vault's variant retries — early-boot Secrets Manager calls have been
+# Vault's variant retries, early-boot Secrets Manager calls have been
 # observed to fail intermittently before the instance profile is fully
 # usable. Consul/Nomad's fetch_secret has no retry; this divergence is
 # intentional.
@@ -210,7 +210,7 @@ prepare_system() {
 }
 
 # ---------------------------------------------------------------------------
-# Time synchronization — required before any AWS Secrets Manager calls
+# Time synchronization (required before any AWS Secrets Manager calls)
 # ---------------------------------------------------------------------------
 
 configure_time() {
@@ -225,13 +225,13 @@ configure_time() {
 }
 
 # ---------------------------------------------------------------------------
-# EBS volumes — discover, format, and mount
+# EBS volumes (discover, format, and mount)
 # ---------------------------------------------------------------------------
 
 resolve_ebs_nvme_device() {
   target_name="$${1}"
 
-  # Strip leading /dev/ from target for comparison — ebsnvme-id returns
+  # Strip leading /dev/ from target for comparison, ebsnvme-id returns
   # the short form (e.g. "sdf") on some versions and the full path on others.
   target_short="$${target_name#/dev/}"
 
@@ -263,7 +263,7 @@ prepare_disk() {
   log_info "Resolving EBS volume attached as $${device_attachment_name}"
 
   if ! command -v ebsnvme-id >/dev/null 2>&1; then
-    log_error "ebsnvme-id not found — ensure amazon-ec2-utils is installed in the AMI"
+    log_error "ebsnvme-id not found, ensure amazon-ec2-utils is installed in the AMI"
     return 1
   fi
 
@@ -288,10 +288,10 @@ prepare_disk() {
 
   # Format only if the device has no existing filesystem
   if ! blkid -p "$${device}" >/dev/null 2>&1; then
-    log_info "No filesystem on $${device} — formatting as xfs (label=$${fs_label})"
+    log_info "No filesystem on $${device}, formatting as xfs (label=$${fs_label})"
     mkfs.xfs -L "$${fs_label}" "$${device}"
   else
-    log_info "Filesystem already present on $${device} — skipping format"
+    log_info "Filesystem already present on $${device}, skipping format"
   fi
 
   # Mount
@@ -340,7 +340,7 @@ create_directory_tree() {
 }
 
 # ---------------------------------------------------------------------------
-# Install Vault Enterprise — binary download with GPG + SHA256 verification
+# Install Vault Enterprise (binary download with GPG + SHA256 verification)
 # ---------------------------------------------------------------------------
 
 install_vault() {
@@ -373,7 +373,7 @@ install_vault() {
   curl -fsSL -o "$${tmp_dir}/$${sums_file}" "$${base_url}/$${sums_file}"
   curl -fsSL -o "$${tmp_dir}/$${sig_file}" "$${base_url}/$${sig_file}"
 
-  # GPG signature verification — isolated keyring to avoid polluting the system
+  # GPG signature verification (isolated keyring to avoid polluting the system)
   export GNUPGHOME="$${tmp_dir}/.gnupg"
   mkdir -p "$${GNUPGHOME}"
   chmod 0700 "$${GNUPGHOME}"
@@ -460,7 +460,7 @@ write_vault_config() {
 
   log_info "Writing Vault configuration (bind=$${private_ip})"
 
-  # vault.hcl — contains $${private_ip} shell variable, needs unquoted heredoc.
+  # vault.hcl (contains $${private_ip} shell variable, needs unquoted heredoc).
   cat >"$${vault_config_dir}/vault.hcl" <<EOF
 ${config_vault_hcl}
 EOF
@@ -543,7 +543,7 @@ is_bootstrap_node() {
   # tr converts tabs to newlines before sort.
   lowest_id="$(printf '%s' "$${all_ids}" | tr '\t' '\n' | sort | head -1)"
 
-  log_info "Own instance ID: $${own_id} — lowest in cluster: $${lowest_id}"
+  log_info "Own instance ID: $${own_id} (lowest in cluster: $${lowest_id})"
 
   if [ "$${own_id}" = "$${lowest_id}" ]; then
     log_info "This node is the bootstrap node"
@@ -569,7 +569,7 @@ init_cluster() {
   initialized="$(vault status -format=json 2>/dev/null |
     jq -r '.initialized' 2>/dev/null)" || true
   if [ "$${initialized}" = "true" ]; then
-    log_info "Cluster is already initialized — skipping operator init"
+    log_info "Cluster is already initialized, skipping operator init"
     return 0
   fi
 
@@ -624,7 +624,7 @@ join_cluster() {
       --output text 2>/dev/null)" || true
 
     if [ "$${state}" = "ready" ]; then
-      log_info "Cluster state is $${state} — proceeding"
+      log_info "Cluster state is $${state}, proceeding"
       return 0
     fi
 
@@ -732,7 +732,7 @@ configure_pki_engine() {
 
   # Publish the new CA cert PEM to SSM so follower nodes can fetch it and
   # trust the new CA before attempting AWS auth. The CA cert is public
-  # material — it is the trust anchor, not the signing key.
+  # material, it is the trust anchor, not the signing key.
   log_info "Publishing PKI CA cert to SSM"
   ca_cert_pem="$(vault read -field=certificate pki/cert/ca)"
   aws ssm put-parameter \
@@ -766,7 +766,7 @@ EOF
 
   # Bind the Vault instance IAM role to the vault-server policy.
   # Nodes authenticate by signing a GetCallerIdentity request with their
-  # instance profile credentials — no shared secrets.
+  # instance profile credentials, no shared secrets.
   vault write auth/aws/role/vault-server \
     auth_type=iam \
     bound_iam_principal_arn="$${vault_iam_role_arn}" \
@@ -808,7 +808,7 @@ wait_for_pki_ready() {
       --output text 2>/dev/null)" || true
 
     if [ "$${state}" = "ready" ]; then
-      log_info "PKI bootstrap is ready — proceeding"
+      log_info "PKI bootstrap is ready, proceeding"
       return 0
     fi
 
@@ -843,7 +843,7 @@ issue_node_cert() {
 
     # Write the new PKI CA cert to disk for use by clients connecting
     # to this node after the TLS swap in replace_node_tls(). It is not
-    # used for Vault API calls here — this node's listener is still
+    # used for Vault API calls here, this node's listener is still
     # presenting the bootstrap cert until the SIGHUP, so VAULT_CACERT
     # must continue to point at the bootstrap CA.
     new_ca_cert_file="/opt/vault/tls/pki-ca.crt"
@@ -879,7 +879,7 @@ issue_node_cert() {
   chown vault:vault "$${tmp_cert}" "$${tmp_key}"
   chmod 0640 "$${tmp_cert}" "$${tmp_key}"
 
-  # Atomic move to final paths — vault.hcl already references these.
+  # Atomic move to final paths (vault.hcl already references these).
   mv "$${tmp_cert}" "$${tls_cert_file}"
   mv "$${tmp_key}" "$${tls_key_file}"
 
@@ -914,7 +914,7 @@ cleanup_bootstrap_tls() {
     --output text)"
 
   # Overwrite the bootstrap CA cert at tls_ca_file. vault.hcl references this
-  # path for leader_ca_cert_file in the retry_join block — it must now trust
+  # path for leader_ca_cert_file in the retry_join block, it must now trust
   # the PKI CA, not the bootstrap CA.
   printf '%s\n' "$${pki_ca_cert}" >"$${tls_ca_file}"
   chown vault:vault "$${tls_ca_file}"

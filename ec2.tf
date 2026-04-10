@@ -103,7 +103,7 @@ resource "aws_launch_template" "vault" {
 
   # vault-audit: isolated from root and data to prevent audit log growth
   # from impacting Vault availability. Audit logs are shipped off-node
-  # in real-time — the local volume is a buffer only.
+  # in real-time, the local volume is a buffer only.
   block_device_mappings {
     device_name = "/dev/xvdg"
 

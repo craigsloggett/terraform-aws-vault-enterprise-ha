@@ -4,12 +4,12 @@
 # during initial bootstrap, before the Vault PKI secrets engine is mounted.
 # Once PKI is set up, the Vault listener cert is rotated to one issued by
 # Vault itself via Vault Agent, and this file's resources become the
-# trust anchor only — the CA stays, the server cert becomes irrelevant.
+# trust anchor only, the CA stays, the server cert becomes irrelevant.
 #
 # Algorithm choice: ECDSA P-384 throughout. This is required because the
 # AWS NLB HTTPS health checker rejects Ed25519 in its supported signature
 # algorithms list, and the bootstrap cert has to satisfy every TLS client
-# that handshakes against the listener — including the NLB. Vault PKI
+# that handshakes against the listener, including the NLB. Vault PKI
 # leaf certs (issued downstream) can use Ed25519 because they only need
 # to satisfy clients we control.
 
