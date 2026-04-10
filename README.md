@@ -136,6 +136,7 @@ module "vault" {
 | <a name="input_route53_zone"></a> [route53\_zone](#input\_route53\_zone) | Route 53 hosted zone for the Vault DNS record. | <pre>object({<br/>    zone_id = string<br/>    name    = string<br/>  })</pre> | n/a | yes |
 | <a name="input_vault_api_allowed_cidrs"></a> [vault\_api\_allowed\_cidrs](#input\_vault\_api\_allowed\_cidrs) | CIDR blocks allowed to reach the Vault API (port 8200) from outside the VPC. Only effective when nlb\_internal is false. | `list(string)` | `[]` | no |
 | <a name="input_vault_license"></a> [vault\_license](#input\_vault\_license) | Vault Enterprise license string. | `string` | n/a | yes |
+| <a name="input_vault_node_count"></a> [vault\_node\_count](#input\_vault\_node\_count) | Number of Vault nodes in the cluster. Must be 3 or 5 for Raft quorum. | `number` | `3` | no |
 | <a name="input_vault_server_instance_type"></a> [vault\_server\_instance\_type](#input\_vault\_server\_instance\_type) | EC2 instance type for Vault server nodes. | `string` | `"m5.large"` | no |
 | <a name="input_vault_snapshot_interval"></a> [vault\_snapshot\_interval](#input\_vault\_snapshot\_interval) | Seconds between automated Raft snapshots. | `number` | `3600` | no |
 | <a name="input_vault_snapshot_retain"></a> [vault\_snapshot\_retain](#input\_vault\_snapshot\_retain) | Number of automated Raft snapshots to retain in S3. | `number` | `72` | no |

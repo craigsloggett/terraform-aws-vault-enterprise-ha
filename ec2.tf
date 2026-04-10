@@ -146,7 +146,7 @@ resource "aws_autoscaling_group" "vault" {
     strategy = "Rolling"
 
     preferences {
-      min_healthy_percentage = 90
+      min_healthy_percentage = local.instance_refresh_min_healthy_pct
     }
   }
 

@@ -86,6 +86,17 @@ variable "ec2_ami" {
   description = "AMI to use for EC2 instances. Must be Ubuntu or Debian-based."
 }
 
+variable "vault_node_count" {
+  type        = number
+  description = "Number of Vault nodes in the cluster. Must be 3 or 5 for Raft quorum."
+  default     = 3
+
+  validation {
+    condition     = contains([3, 5], var.vault_node_count)
+    error_message = "Must be 3 or 5."
+  }
+}
+
 variable "vault_server_instance_type" {
   type        = string
   description = "EC2 instance type for Vault server nodes."
