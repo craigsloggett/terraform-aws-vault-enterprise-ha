@@ -1,5 +1,5 @@
 #!/bin/sh
-# setup-vault-server.sh (Bootstrap a Vault Enterprise server node on EC2).
+# setup-vault-server.sh
 #
 # This script is rendered by Terraform using templatefile() and placed in
 # EC2 instance user data.
@@ -7,36 +7,15 @@
 # Assumes:
 #   - Ubuntu or Debian
 #   - IAM instance profile with permissions for Secrets Manager and KMS
-#   - Secrets stored in AWS Secrets Manager
-#   - An EBS data volume attached for Raft storage
+#   - EBS data volumes attached for the root filesystem, Raft storage,
+#     and Vault audit logs.
 
 # shellcheck disable=SC1083,SC2034,SC2086,SC2154,SC2157,SC2170,SC2193,SC2195,SC2269,SC2288
-# SC1083/SC2288:
-# Terraform's $${var} escape sequence is read by shellcheck as a literal
-# `$${...}` in command position, the sequence is replaced with `$${var}`
-# at render time and is a normal shell parameter expansion at runtime.
-# SC2034/SC2154:
-# Variables are set via Terraform templatefile() interpolation and referenced
-# with escaped dollar signs, shellcheck cannot parse either.
-# SC2086:
-# vault_version is a Terraform-templated version string with no whitespace
-# or globs, quoting is unnecessary.
-# SC2170:
-# $${var} comparisons resolve to valid integers at runtime.
-# SC2193:
-# curl -w '%%{http_code}' returns runtime HTTP status codes; shellcheck
-# reads the literal format string and cannot see the comparison is valid.
-# SC2195:
-# case "$${machine}" patterns are valid at runtime, shellcheck sees the
-# Terraform escape as a literal and incorrectly flags the case arms.
-# SC2269:
-# vault_version="${vault_version}" is not self-assignment, the RHS is a
-# Terraform interpolation replaced at plan time.
 
 set -ef
 
 # ---------------------------------------------------------------------------
-# Configuration (values templated by Terraform at deploy time)
+# Input Parameters
 # ---------------------------------------------------------------------------
 
 # Vault Directories
@@ -104,7 +83,7 @@ log_error() {
 }
 
 # ---------------------------------------------------------------------------
-# EC2 metadata helpers (IMDSv2)
+# EC2 Metadata Helpers (IMDSv2)
 # ---------------------------------------------------------------------------
 
 imds_token() {
@@ -136,13 +115,9 @@ get_availability_zone() {
 }
 
 # ---------------------------------------------------------------------------
-# AWS Secrets Manager helper
+# AWS Secrets Manager Helper
 # ---------------------------------------------------------------------------
 
-# Vault's variant retries, early-boot Secrets Manager calls have been
-# observed to fail intermittently before the instance profile is fully
-# usable. Consul/Nomad's fetch_secret has no retry; this divergence is
-# intentional.
 fetch_secret() {
   secret_arn="$${1}"
 
@@ -167,7 +142,7 @@ fetch_secret() {
 }
 
 # ---------------------------------------------------------------------------
-# Wait for the network to be available before starting
+# Pre-checks
 # ---------------------------------------------------------------------------
 
 wait_for_network() {
@@ -194,7 +169,7 @@ wait_for_network() {
 }
 
 # ---------------------------------------------------------------------------
-# System preparation
+# System Configuration
 # ---------------------------------------------------------------------------
 
 prepare_system() {
@@ -206,10 +181,6 @@ prepare_system() {
   apt-get -yq install \
     awscli jq unzip nvme-cli amazon-ec2-utils chrony >/dev/null
 }
-
-# ---------------------------------------------------------------------------
-# Time synchronization (required before any AWS Secrets Manager calls)
-# ---------------------------------------------------------------------------
 
 configure_time() {
   log_info "Configuring system time"
@@ -223,7 +194,7 @@ configure_time() {
 }
 
 # ---------------------------------------------------------------------------
-# EBS volumes (discover, format, and mount)
+# EBS Volume Helpers
 # ---------------------------------------------------------------------------
 
 resolve_ebs_nvme_device() {
@@ -308,7 +279,7 @@ prepare_disk() {
 }
 
 # ---------------------------------------------------------------------------
-# Create the vault system user and group
+# Vault Enterprise System Configuration
 # ---------------------------------------------------------------------------
 
 create_vault_user() {
@@ -317,13 +288,6 @@ create_vault_user() {
   groupadd --system vault
   useradd --system -g vault -d "$${vault_home_dir}" -s /bin/false vault
 }
-
-# ---------------------------------------------------------------------------
-# Configure the Vault directory tree and set ownership
-#
-# Called after EBS volumes are mounted so that ownership is applied to the
-# mount roots, not the underlying directories that are hidden by the mount.
-# ---------------------------------------------------------------------------
 
 configure_vault_directories() {
   log_info "Configuring Vault directory tree"
@@ -354,7 +318,7 @@ configure_vault_directories() {
 }
 
 # ---------------------------------------------------------------------------
-# Install Vault Enterprise (binary download with GPG + SHA256 verification)
+# Vault Enterprise Installation
 # ---------------------------------------------------------------------------
 
 install_vault() {
@@ -416,10 +380,6 @@ install_vault() {
   log_info "Vault Enterprise $${vault_version} installed"
 }
 
-# ---------------------------------------------------------------------------
-# Write the Vault systemd unit file and drop-in override
-# ---------------------------------------------------------------------------
-
 write_vault_systemd_unit() {
   log_info "Writing Vault systemd unit"
 
@@ -435,7 +395,7 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# Fetch secrets and write sensitive material to disk
+# Vault Enterprise Bootstrap Configuration
 # ---------------------------------------------------------------------------
 
 write_secrets() {
@@ -463,10 +423,6 @@ write_secrets() {
   chmod 0644 "$${vault_tls_ca_file}"
 }
 
-# ---------------------------------------------------------------------------
-# Generate Vault server configuration
-# ---------------------------------------------------------------------------
-
 write_vault_config() {
   private_ip="$${1}"
   instance_id="$${2}"
@@ -484,7 +440,7 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# Enable and start services
+# Vault Enterprise Service Configuration
 # ---------------------------------------------------------------------------
 
 start_services() {
@@ -498,10 +454,6 @@ start_services() {
 
   log_info "All services started"
 }
-
-# ---------------------------------------------------------------------------
-# Wait for the Vault API to respond on the local listener
-# ---------------------------------------------------------------------------
 
 wait_for_vault_api() {
   log_info "Waiting for Vault API to become available"
@@ -536,7 +488,7 @@ wait_for_vault_api() {
 }
 
 # ---------------------------------------------------------------------------
-# Bootstrap node election (lowest running instance ID in the cluster wins)
+# Vault Enterprise Cluster Initialization
 # ---------------------------------------------------------------------------
 
 is_bootstrap_node() {
@@ -567,10 +519,6 @@ is_bootstrap_node() {
   log_info "This node is a follower"
   return 1
 }
-
-# ---------------------------------------------------------------------------
-# Initialize the Vault cluster (bootstrap node only)
-# ---------------------------------------------------------------------------
 
 init_cluster() {
   log_info "Initializing Vault cluster"
@@ -621,7 +569,7 @@ init_cluster() {
 }
 
 # ---------------------------------------------------------------------------
-# Wait for the cluster to be initialized (follower nodes only)
+# Vault Enterprise Raft Initialization
 # ---------------------------------------------------------------------------
 
 join_cluster() {
@@ -654,7 +602,7 @@ join_cluster() {
 }
 
 # ---------------------------------------------------------------------------
-# Authenticate with Vault using the root token (bootstrap node only)
+# Vault Enterprise Configuration
 # ---------------------------------------------------------------------------
 
 authenticate_vault() {
@@ -670,7 +618,7 @@ authenticate_vault() {
 }
 
 # ---------------------------------------------------------------------------
-# Configure Raft Autopilot (bootstrap node only)
+# Vault Enterprise Raft Configuration
 # ---------------------------------------------------------------------------
 
 configure_autopilot() {
@@ -683,10 +631,6 @@ configure_autopilot() {
 
   log_info "Raft Autopilot configured"
 }
-
-# ---------------------------------------------------------------------------
-# Configure automated Raft snapshots (bootstrap node only)
-# ---------------------------------------------------------------------------
 
 configure_snapshots() {
   log_info "Configuring automated Raft snapshots"
@@ -705,7 +649,7 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# Configure the Vault PKI secrets engine (bootstrap node only)
+# Vault Enterprise PKI Secrets Engine Configuration
 # ---------------------------------------------------------------------------
 
 configure_pki_engine() {
@@ -761,7 +705,7 @@ configure_pki_engine() {
 }
 
 # ---------------------------------------------------------------------------
-# Configure the Vault AWS auth method (bootstrap node only)
+# Vault Enterprise AWS Auth Method Configuration
 # ---------------------------------------------------------------------------
 
 configure_aws_auth() {
@@ -807,7 +751,7 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# Wait for PKI bootstrap to complete (follower nodes only)
+# Vault Enterprise Self-issued Certificate Configuration
 # ---------------------------------------------------------------------------
 
 wait_for_pki_ready() {
@@ -838,10 +782,6 @@ wait_for_pki_ready() {
     sleep 5
   done
 }
-
-# ---------------------------------------------------------------------------
-# Issue a PKI-signed TLS certificate for this node
-# ---------------------------------------------------------------------------
 
 issue_node_cert() {
   log_info "Issuing PKI-signed TLS certificate for this node"
@@ -904,10 +844,6 @@ issue_node_cert() {
   log_info "PKI-signed certificate written to $${vault_tls_cert_file}"
 }
 
-# ---------------------------------------------------------------------------
-# Reload the Vault TLS listener with the newly issued certificate
-# ---------------------------------------------------------------------------
-
 replace_node_tls() {
   log_info "Reloading Vault TLS listener with PKI-signed certificate"
 
@@ -915,10 +851,6 @@ replace_node_tls() {
 
   log_info "Vault TLS listener reloaded"
 }
-
-# ---------------------------------------------------------------------------
-# Replace bootstrap CA cert on disk with the PKI CA cert
-# ---------------------------------------------------------------------------
 
 cleanup_bootstrap_tls() {
   log_info "Replacing bootstrap CA cert with PKI CA cert on disk"
