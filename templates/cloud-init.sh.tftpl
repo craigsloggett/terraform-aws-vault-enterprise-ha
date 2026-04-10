@@ -259,8 +259,8 @@ mount_data_volume() {
   fi
 
   device="$(resolve_ebs_nvme_device "$${ebs_data_device_name}")" || {
-    log_warn "No NVMe device found matching EBS attachment $${ebs_data_device_name} — using root volume for Raft data"
-    return 0
+    log_error "No NVMe device found matching EBS attachment $${ebs_data_device_name} — using root volume for Raft data"
+    return 1
   }
 
   log_info "Matched $${ebs_data_device_name} -> $${device}"
