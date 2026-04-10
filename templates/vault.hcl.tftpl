@@ -20,7 +20,7 @@ listener "tcp" {
 }
 
 storage "raft" {
-  path                      = "/opt/vault/data"
+  path                      = "/var/opt/vault/data"
   node_id                   = "$${instance_id}"
   autopilot_redundancy_zone = "$${availability_zone}"
 

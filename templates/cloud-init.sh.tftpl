@@ -41,21 +41,23 @@ set -ef
 
 # Vault
 vault_version="${vault_version}"
-vault_data_dir="/opt/vault/data"
+vault_data_dir="/var/opt/vault/data"
 vault_config_dir="/etc/vault.d"
 vault_license_path="/opt/vault/vault.hclic"
+vault_tls_dir="/opt/vault/tls"
 
 # An EBS data volume backs Raft state.
 # ebs_data_device_name is the attachment name from Terraform (e.g. /dev/xvdf).
 # On Nitro instances this appears as /dev/nvme*n1 and ebsnvme-id resolves it.
 ebs_data_device_name="${ebs_device_name}"
-ebs_data_mount="/opt/vault/data"
+ebs_data_mount="/var/opt/vault/data"
 
 # An EBS audit volume provides IO isolation for audit logs.
 # ebs_audit_device_name is the attachment name from Terraform (e.g. /dev/xvdg).
 # On Nitro instances this appears as /dev/nvme*n1 and ebsnvme-id resolves it.
 ebs_audit_device_name="${ebs_audit_device_name}"
 ebs_audit_mount="/var/log/vault"
+vault_audit_log_file="/var/log/vault/vault-audit.log"
 
 # TLS
 tls_ca_file="/opt/vault/tls/ca.crt"
@@ -321,22 +323,38 @@ create_vault_user() {
 }
 
 # ---------------------------------------------------------------------------
-# Create the Vault directory tree and set ownership
+# Configure the Vault directory tree and set ownership
 #
 # Called after EBS volumes are mounted so that ownership is applied to the
 # mount roots, not the underlying directories that are hidden by the mount.
 # ---------------------------------------------------------------------------
 
-create_directory_tree() {
-  log_info "Creating Vault directory tree"
+configure_vault_directories() {
+  log_info "Configuring Vault directory tree"
 
-  mkdir -p /etc/vault.d/tls
-  mkdir -p /opt/vault/tls
-  mkdir -p /opt/vault/data
-  mkdir -p /var/log/vault
+  mkdir -p /opt/vault
+  chown vault:vault /opt/vault
+  chmod 755 /opt/vault
 
-  chown -R vault:vault /etc/vault.d /opt/vault /var/log/vault
-  chmod 750 /etc/vault.d /opt/vault /var/log/vault
+  mkdir -p "$${vault_tls_dir}"
+  chown vault:vault "$${vault_tls_dir}"
+  chmod 750 "$${vault_tls_dir}"
+
+  mkdir -p /var/opt/vault
+  chown vault:vault /var/opt/vault
+  chmod 755 /var/opt/vault
+
+  mkdir -p "$${vault_data_dir}"
+  chown vault:vault "$${vault_data_dir}"
+  chmod 700 "$${vault_data_dir}"
+
+  mkdir -p "$${vault_config_dir}"
+  chown root:vault "$${vault_config_dir}"
+  chmod 750 "$${vault_config_dir}"
+
+  mkdir -p "$${ebs_audit_mount}"
+  chown vault:vault "$${ebs_audit_mount}"
+  chmod 750 "$${ebs_audit_mount}"
 }
 
 # ---------------------------------------------------------------------------
@@ -446,7 +464,8 @@ write_secrets() {
   printf '%s\n' "$${server_key}" >"$${tls_key_file}"
 
   chown vault:vault "$${tls_ca_file}" "$${tls_cert_file}" "$${tls_key_file}"
-  chmod 0640 "$${tls_ca_file}" "$${tls_cert_file}" "$${tls_key_file}"
+  chmod 0640 "$${tls_cert_file}" "$${tls_key_file}"
+  chmod 0644 "$${tls_ca_file}"
 }
 
 # ---------------------------------------------------------------------------
@@ -465,7 +484,7 @@ write_vault_config() {
 ${config_vault_hcl}
 EOF
 
-  chown vault:vault "$${vault_config_dir}/vault.hcl"
+  chown root:vault "$${vault_config_dir}/vault.hcl"
   chmod 0640 "$${vault_config_dir}/vault.hcl"
 }
 
@@ -681,7 +700,7 @@ configure_snapshots() {
 ${config_snapshot_json}
 EOF
 
-  chown vault:vault "$${snapshot_config_file}"
+  chown root:vault "$${snapshot_config_file}"
   chmod 0640 "$${snapshot_config_file}"
 
   vault write sys/storage/raft/snapshot-auto/config/hourly \
@@ -779,7 +798,7 @@ EOF
   # (see prepare_disk in main) to isolate audit log IO and growth from the
   # root filesystem.
   if ! vault audit list -format=json | jq -e '."file/"' >/dev/null 2>&1; then
-    vault audit enable file file_path=/var/log/vault/vault-audit.log
+    vault audit enable file file_path="$${vault_audit_log_file}"
   fi
 
   log_info "Writing PKI state: ready"
@@ -848,10 +867,10 @@ issue_node_cert() {
     # used for Vault API calls here, this node's listener is still
     # presenting the bootstrap cert until the SIGHUP, so VAULT_CACERT
     # must continue to point at the bootstrap CA.
-    new_ca_cert_file="/opt/vault/tls/pki-ca.crt"
+    new_ca_cert_file="$${vault_tls_dir}/pki-ca.crt"
     printf '%s\n' "$${new_ca_cert}" >"$${new_ca_cert_file}"
     chown vault:vault "$${new_ca_cert_file}"
-    chmod 0640 "$${new_ca_cert_file}"
+    chmod 0644 "$${new_ca_cert_file}"
 
     export VAULT_ADDR="https://127.0.0.1:8200"
     export VAULT_CACERT="$${tls_ca_file}"
@@ -872,8 +891,8 @@ issue_node_cert() {
     ip_sans="127.0.0.1" \
     ttl=720h)"
 
-  tmp_cert="/opt/vault/tls/server.crt.tmp"
-  tmp_key="/opt/vault/tls/server.key.tmp"
+  tmp_cert="$${vault_tls_dir}/server.crt.tmp"
+  tmp_key="$${vault_tls_dir}/server.key.tmp"
 
   printf '%s\n' "$(printf '%s' "$${cert_json}" | jq -r '.data.certificate')" \
     >"$${tmp_cert}"
@@ -922,13 +941,13 @@ cleanup_bootstrap_tls() {
   # the PKI CA, not the bootstrap CA.
   printf '%s\n' "$${pki_ca_cert}" >"$${tls_ca_file}"
   chown vault:vault "$${tls_ca_file}"
-  chmod 0640 "$${tls_ca_file}"
+  chmod 0644 "$${tls_ca_file}"
 
   log_info "Bootstrap CA cert replaced with PKI CA cert at $${tls_ca_file}"
 
   # Remove the temporary PKI CA cert file written by the follower path in
   # issue_node_cert(), if present.
-  pki_ca_tmp="/opt/vault/tls/pki-ca.crt"
+  pki_ca_tmp="$${vault_tls_dir}/pki-ca.crt"
   if [ -f "$${pki_ca_tmp}" ]; then
     rm -f "$${pki_ca_tmp}"
     log_info "Removed temporary PKI CA cert file $${pki_ca_tmp}"
@@ -953,7 +972,7 @@ main() {
   create_vault_user
   prepare_disk "$${ebs_data_device_name}" "$${ebs_data_mount}" "vault-data"
   prepare_disk "$${ebs_audit_device_name}" "$${ebs_audit_mount}" "vault-audit"
-  create_directory_tree
+  configure_vault_directories
   install_vault
   write_vault_systemd_unit
 
