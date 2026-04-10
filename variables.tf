@@ -181,12 +181,6 @@ variable "vault_pki_country" {
   default     = "US"
 }
 
-variable "enable_vault_agent" {
-  type        = bool
-  description = "Enable the Vault Agent service. When true (default), the agent handles initial TLS certificate issuance and ongoing rotation. When false, the legacy manual cert flow is used instead (preserved for rollback, scheduled for removal in a future release)."
-  default     = true
-}
-
 variable "vault_version" {
   type        = string
   description = "Vault Enterprise release version (e.g., 1.21.4+ent)."
