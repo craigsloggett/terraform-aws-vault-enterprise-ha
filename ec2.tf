@@ -91,7 +91,7 @@ resource "aws_launch_template" "vault" {
   # from impacting Vault availability. Audit logs are shipped off-node
   # in real-time — the local volume is a buffer only.
   block_device_mappings {
-    device_name = "/dev/sdg"
+    device_name = "/dev/xvdg"
 
     ebs {
       volume_type           = var.vault_audit_disk.volume_type
@@ -128,7 +128,7 @@ resource "aws_launch_template" "vault" {
   }
 }
 
-# EBS volumes for Raft data (/dev/sdf) and audit logs (/dev/sdg) are defined
+# EBS volumes for Raft data (/dev/xvdf) and audit logs (/dev/xvdg) are defined
 # in the launch template's block_device_mappings. The cloud-init script's
 # prepare_disk function discovers, formats, and mounts each volume at boot.
 

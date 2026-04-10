@@ -120,7 +120,7 @@ variable "vault_audit_disk" {
     volume_size = number
     encrypted   = bool
   })
-  description = "EBS configuration for the Vault audit log volume (/dev/sdg)."
+  description = "EBS configuration for the Vault audit log volume (/dev/xvdg)."
   default = {
     volume_type = "gp3"
     volume_size = 50

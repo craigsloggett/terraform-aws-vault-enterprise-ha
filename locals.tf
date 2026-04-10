@@ -13,7 +13,7 @@ locals {
   cluster_tag_key       = "vault-cluster"
   cluster_tag_value     = var.project_name
   ebs_device_name       = "/dev/xvdf" # AWS convention for the first additional EBS volume
-  ebs_audit_device_name = "/dev/sdg"
+  ebs_audit_device_name = "/dev/xvdg"
 
   config_vault_service          = file("${path.module}/files/vault.service")
   config_vault_service_override = file("${path.module}/files/vault.service.d-override.conf")

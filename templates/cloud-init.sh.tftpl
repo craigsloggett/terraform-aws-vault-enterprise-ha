@@ -52,7 +52,7 @@ ebs_data_device_name="${ebs_device_name}"
 ebs_data_mount="/opt/vault/data"
 
 # An EBS audit volume provides IO isolation for audit logs.
-# ebs_audit_device_name is the attachment name from Terraform (e.g. /dev/sdg).
+# ebs_audit_device_name is the attachment name from Terraform (e.g. /dev/xvdg).
 # On Nitro instances this appears as /dev/nvme*n1 and ebsnvme-id resolves it.
 ebs_audit_device_name="${ebs_audit_device_name}"
 ebs_audit_mount="/var/log/vault"
