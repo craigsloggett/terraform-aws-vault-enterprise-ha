@@ -305,7 +305,7 @@ configure_vault_directories() {
   chmod 750 "$${vault_config_dir}"
 
   mkdir -p "$${vault_log_dir}"
-  chown root:vault "$${vault_log_dir}"
+  chown vault:vault "$${vault_log_dir}"
   chmod 750 "$${vault_log_dir}"
 
   mkdir -p "$${vault_tls_dir}"
@@ -639,7 +639,7 @@ configure_snapshots() {
 ${config_snapshot_json}
 EOF
 
-  chown root:vault "$${vault_snapshot_config_file}"
+  chown vault:vault "$${vault_snapshot_config_file}"
   chmod 0640 "$${vault_snapshot_config_file}"
 
   vault write sys/storage/raft/snapshot-auto/config/hourly \
