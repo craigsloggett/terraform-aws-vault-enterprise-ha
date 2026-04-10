@@ -114,6 +114,20 @@ variable "root_volume_size" {
   }
 }
 
+variable "vault_audit_disk" {
+  type = object({
+    volume_type = string
+    volume_size = number
+    encrypted   = bool
+  })
+  description = "EBS configuration for the Vault audit log volume (/dev/sdg)."
+  default = {
+    volume_type = "gp3"
+    volume_size = 50
+    encrypted   = true
+  }
+}
+
 variable "bastion_instance_type" {
   type        = string
   description = "EC2 instance type for the bastion host."

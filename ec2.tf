@@ -45,6 +45,7 @@ resource "aws_launch_template" "vault" {
     vault_version                = var.vault_version
     region                       = data.aws_region.current.region
     ebs_device_name              = local.ebs_device_name
+    ebs_audit_device_name        = local.ebs_audit_device_name
     vault_license_secret_arn     = aws_secretsmanager_secret.vault_license.arn
     vault_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_ca_cert.arn
     vault_server_cert_secret_arn = aws_secretsmanager_secret.vault_server_cert.arn
@@ -86,6 +87,20 @@ resource "aws_launch_template" "vault" {
     }
   }
 
+  # vault-audit: isolated from root and data to prevent audit log growth
+  # from impacting Vault availability. Audit logs are shipped off-node
+  # in real-time — the local volume is a buffer only.
+  block_device_mappings {
+    device_name = "/dev/sdg"
+
+    ebs {
+      volume_type           = var.vault_audit_disk.volume_type
+      volume_size           = var.vault_audit_disk.volume_size
+      encrypted             = var.vault_audit_disk.encrypted
+      delete_on_termination = true
+    }
+  }
+
   tag_specifications {
     resource_type = "instance"
 
@@ -113,16 +128,9 @@ resource "aws_launch_template" "vault" {
   }
 }
 
-# EBS Raft storage: with an ASG, pre-provisioned EBS volumes cannot be reliably
-# attached to replacement instances without additional automation (e.g. a lifecycle
-# hook + Lambda). For this lab deployment, Raft data is stored on the instance root
-# volume. In a production deployment, consider one of:
-#   a. A lifecycle hook that attaches a tagged EBS volume on instance launch.
-#   b. NFS-backed Raft (not recommended for performance).
-#   c. Reverting to fixed aws_instance resources with automated replacement.
-# The cloud-init script's mount_data_volume function is retained for forward
-# compatibility but will not find an additional EBS device and will exit cleanly
-# if none is attached (see mount_data_volume in cloud-init.sh.tftpl).
+# EBS volumes for Raft data (/dev/sdf) and audit logs (/dev/sdg) are defined
+# in the launch template's block_device_mappings. The cloud-init script's
+# prepare_disk function discovers, formats, and mounts each volume at boot.
 
 resource "aws_autoscaling_group" "vault" {
   name_prefix = "${var.project_name}-vault-"
