@@ -1,8 +1,8 @@
-resource "aws_secretsmanager_secret" "vault_root_token" {
-  name_prefix = "${var.project_name}-vault-root-token-"
-  description = "Vault bootstrap root token (revoked after initialization)"
+resource "aws_secretsmanager_secret" "vault_bootstrap_root_token" {
+  name_prefix = "${var.project_name}-vault-bootstrap-root-token-"
+  description = "Bootstrap root token for Vault (revoked after initialization)"
 
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-root-token" })
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-root-token" })
 }
 
 resource "aws_secretsmanager_secret" "vault_recovery_keys" {
@@ -21,7 +21,7 @@ data "aws_iam_policy_document" "vault_cluster_init" {
       "secretsmanager:PutSecretValue",
     ]
     resources = [
-      aws_secretsmanager_secret.vault_root_token.arn,
+      aws_secretsmanager_secret.vault_bootstrap_root_token.arn,
       aws_secretsmanager_secret.vault_recovery_keys.arn,
     ]
   }

@@ -51,16 +51,16 @@ resource "aws_launch_template" "vault" {
     bootstrap_tls_server_cert_secret_arn = aws_secretsmanager_secret.vault_bootstrap_server_cert.arn
     bootstrap_tls_server_key_secret_arn  = aws_secretsmanager_secret.vault_bootstrap_server_key.arn
 
-    cluster_tag_key                = local.cluster_tag_key
-    cluster_tag_value              = local.cluster_tag_value
-    ssm_cluster_state_name         = aws_ssm_parameter.vault_cluster_state.name
-    ssm_pki_state_name             = aws_ssm_parameter.vault_pki_state.name
-    ssm_pki_ca_cert_name           = aws_ssm_parameter.vault_pki_ca_cert.name
-    vault_fqdn                     = local.vault_fqdn
-    vault_iam_role_arn             = aws_iam_role.vault.arn
-    vault_root_token_secret_arn    = aws_secretsmanager_secret.vault_root_token.arn
-    vault_recovery_keys_secret_arn = aws_secretsmanager_secret.vault_recovery_keys.arn
-    vault_minimum_quorum_size      = var.vault_node_count
+    cluster_tag_key                       = local.cluster_tag_key
+    cluster_tag_value                     = local.cluster_tag_value
+    ssm_cluster_state_name                = aws_ssm_parameter.vault_cluster_state.name
+    ssm_pki_state_name                    = aws_ssm_parameter.vault_pki_state.name
+    ssm_pki_ca_cert_name                  = aws_ssm_parameter.vault_pki_ca_cert.name
+    vault_fqdn                            = local.vault_fqdn
+    vault_iam_role_arn                    = aws_iam_role.vault.arn
+    vault_bootstrap_root_token_secret_arn = aws_secretsmanager_secret.vault_bootstrap_root_token.arn
+    vault_recovery_keys_secret_arn        = aws_secretsmanager_secret.vault_recovery_keys.arn
+    vault_minimum_quorum_size             = var.vault_node_count
 
     config_vault_hcl = templatefile("${path.module}/templates/vault.hcl.tftpl", {
       cluster_name      = var.project_name

@@ -59,7 +59,7 @@ ssm_pki_state_name="${ssm_pki_state_name}"
 ssm_pki_ca_cert_name="${ssm_pki_ca_cert_name}"
 vault_fqdn="${vault_fqdn}"
 vault_iam_role_arn="${vault_iam_role_arn}"
-vault_root_token_secret_arn="${vault_root_token_secret_arn}"
+vault_bootstrap_root_token_secret_arn="${vault_bootstrap_root_token_secret_arn}"
 vault_recovery_keys_secret_arn="${vault_recovery_keys_secret_arn}"
 
 # EC2 metadata service (IMDSv2)
@@ -413,7 +413,7 @@ write_secrets() {
   chmod 0640 "$${vault_license_file}"
 
   # Write TLS certificates
-  log_info "Writing TLS certificates"
+  log_info "Writing bootstrap TLS certificates"
   printf '%s\n' "$${ca_cert}" >"$${vault_tls_ca_file}"
   printf '%s\n' "$${server_cert}" >"$${vault_tls_cert_file}"
   printf '%s\n' "$${server_key}" >"$${vault_tls_key_file}"
@@ -546,10 +546,10 @@ init_cluster() {
   root_token="$(printf '%s' "$${init_output}" | jq -r '.root_token')"
   recovery_keys="$(printf '%s' "$${init_output}" | jq -c '.recovery_keys_b64')"
 
-  log_info "Storing root token in Secrets Manager"
+  log_info "Storing bootstrap root token in Secrets Manager"
   aws secretsmanager put-secret-value \
     --region "$${region}" \
-    --secret-id "$${vault_root_token_secret_arn}" \
+    --secret-id "$${vault_bootstrap_root_token_secret_arn}" \
     --secret-string "$${root_token}"
 
   log_info "Storing recovery keys in Secrets Manager"
@@ -606,9 +606,9 @@ join_cluster() {
 # ---------------------------------------------------------------------------
 
 authenticate_vault() {
-  log_info "Authenticating with Vault using root token"
+  log_info "Authenticating with Vault using bootstrap root token"
 
-  root_token="$(fetch_secret "$${vault_root_token_secret_arn}")"
+  root_token="$(fetch_secret "$${vault_bootstrap_root_token_secret_arn}")"
 
   export VAULT_ADDR="https://127.0.0.1:8200"
   export VAULT_TOKEN="$${root_token}"
