@@ -68,8 +68,9 @@ resource "aws_launch_template" "vault" {
       kms_key_alias     = aws_kms_alias.vault.name
       cluster_tag_key   = local.cluster_tag_key
       cluster_tag_value = local.cluster_tag_value
-      min_quorum        = local.vault_node_count
     })
+
+    min_quorum = local.vault_node_count
 
     config_vault_service          = local.config_vault_service
     config_vault_service_override = local.config_vault_service_override
