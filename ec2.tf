@@ -51,6 +51,7 @@ resource "aws_launch_template" "vault" {
     bootstrap_tls_server_cert_secret_arn = aws_secretsmanager_secret.vault_bootstrap_server_cert.arn
     bootstrap_tls_server_key_secret_arn  = aws_secretsmanager_secret.vault_bootstrap_server_key.arn
 
+    cluster_name                          = title(var.project_name)
     cluster_tag_key                       = local.cluster_tag_key
     cluster_tag_value                     = local.cluster_tag_value
     ssm_cluster_state_name                = aws_ssm_parameter.vault_cluster_state.name
