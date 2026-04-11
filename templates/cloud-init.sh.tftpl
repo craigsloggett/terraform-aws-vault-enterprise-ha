@@ -690,7 +690,7 @@ configure_pki_engine() {
     allow_subdomains=false \
     allow_localhost=false \
     allow_ip_sans=false \
-    max_ttl=720h \
+    max_ttl=1h \
     key_type=ec \
     key_bits=384 \
     ext_key_usage=serverAuth
@@ -827,7 +827,7 @@ issue_node_cert() {
   log_info "Requesting certificate from PKI engine"
   cert_json="$(vault write -format=json pki/issue/vault-server \
     common_name="$${vault_fqdn}" \
-    ttl=720h)"
+    ttl=5m)"
 
   tmp_cert="$${vault_tls_dir}/server.crt.tmp"
   tmp_key="$${vault_tls_dir}/server.key.tmp"

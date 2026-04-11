@@ -1,4 +1,4 @@
-{{- with pkiCert "pki/issue/vault-server" "common_name=${vault_fqdn}" "organization=${vault_pki_organization}" "country=${vault_pki_country}" "ttl=168h" -}}
+{{- with pkiCert "pki/issue/vault-server" "common_name=${vault_fqdn}" "ttl=5m" -}}
 {{ .Key | writeToFile "/opt/vault/tls/server.key" "vault" "vault" "0640" }}
 {{ .Cert }}{{ .CA }}
 {{- end -}}
