@@ -821,6 +821,24 @@ CTMPL_KEY
   chown vault:vault /etc/vault-agent/templates/server.key.ctmpl
   chmod 0640 /etc/vault-agent/templates/server.key.ctmpl
 
+  # Write a reload helper that only sends SIGHUP once both the cert and key
+  # are on disk and belong to the same key pair. Vault Agent fires the command
+  # per-template, so without this guard the SIGHUP can arrive before the second
+  # file is written, causing a cert/key mismatch reload failure.
+  cat >/opt/vault/agent/reload-vault-tls.sh <<'RELOAD_SCRIPT'
+#!/bin/sh
+set -e
+cert_file="/opt/vault/tls/server.crt"
+key_file="/opt/vault/tls/server.key"
+[ -f "$cert_file" ] && [ -f "$key_file" ] || exit 0
+cert_pub=$(openssl x509 -noout -pubkey -in "$cert_file" 2>/dev/null)
+key_pub=$(openssl pkey -pubout -in "$key_file" 2>/dev/null)
+[ "$cert_pub" = "$key_pub" ] || exit 0
+kill -HUP $(systemctl show --property MainPID --value vault.service)
+RELOAD_SCRIPT
+  chown vault:vault /opt/vault/agent/reload-vault-tls.sh
+  chmod 0750 /opt/vault/agent/reload-vault-tls.sh
+
   # Write systemd unit.
   cat >/etc/systemd/system/vault-agent.service <<'AGENT_UNIT'
 ${config_vault_agent_service}
