@@ -1,0 +1,21 @@
+[Unit]
+Description=HashiCorp Vault Agent
+Documentation=https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent
+Requires=vault.service
+After=vault.service
+ConditionFileNotEmpty=/etc/vault-agent/agent.hcl
+
+[Service]
+Type=notify
+User=vault
+Group=vault
+ExecStart=/usr/bin/vault agent -config=/etc/vault-agent/agent.hcl
+KillMode=process
+KillSignal=SIGINT
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
