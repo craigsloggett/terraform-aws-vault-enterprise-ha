@@ -1,0 +1,24 @@
+pid_file = "/opt/vault/agent/agent.pid"
+
+vault {
+  address         = "https://127.0.0.1:8200"
+  ca_cert         = "/opt/vault/tls/ca.crt"
+  tls_server_name = "${vault_fqdn}"
+}
+
+auto_auth {
+  method "aws" {
+    mount_path = "auth/aws"
+    config = {
+      type = "iam"
+      role = "vault-server"
+    }
+  }
+}
+
+template {
+  source      = "/etc/vault-agent/templates/server.ctmpl"
+  destination = "/opt/vault/tls/server.crt"
+  perms       = "0640"
+  command     = "systemctl kill -s HUP vault.service"
+}
