@@ -884,6 +884,39 @@ cleanup_bootstrap_tls() {
   fi
 }
 
+setup_vault_agent() {
+  log_info "Setting up Vault Agent for PKI certificate rotation"
+
+  mkdir -p /opt/vault/agent
+  chown vault:vault /opt/vault/agent
+  chmod 0750 /opt/vault/agent
+
+  mkdir -p /etc/vault-agent/templates
+  chown -R vault:vault /etc/vault-agent
+  chmod 0750 /etc/vault-agent /etc/vault-agent/templates
+
+  cat >/etc/vault-agent/agent.hcl <<'AGENT_HCL'
+${config_vault_agent_hcl}
+AGENT_HCL
+  chown vault:vault /etc/vault-agent/agent.hcl
+  chmod 0640 /etc/vault-agent/agent.hcl
+
+  cat >/etc/vault-agent/templates/server.ctmpl <<'AGENT_CTMPL'
+${config_server_ctmpl}
+AGENT_CTMPL
+  chown vault:vault /etc/vault-agent/templates/server.ctmpl
+  chmod 0640 /etc/vault-agent/templates/server.ctmpl
+
+  cat >/etc/systemd/system/vault-agent.service <<'AGENT_UNIT'
+${config_vault_agent_service}
+AGENT_UNIT
+
+  systemctl daemon-reload
+  systemctl enable --now vault-agent
+
+  log_info "Vault Agent started"
+}
+
 write_vault_cli_config() {
   log_info "Writing Vault CLI environment to /etc/profile.d/99-vault-cli-config.sh"
 
@@ -939,6 +972,7 @@ main() {
   replace_node_tls
   cleanup_bootstrap_tls
   write_vault_cli_config
+  setup_vault_agent
 
   log_info "=== Bootstrap complete ==="
 }

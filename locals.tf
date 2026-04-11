@@ -16,6 +16,17 @@ locals {
 
   config_vault_service          = file("${path.module}/files/vault.service")
   config_vault_service_override = file("${path.module}/files/vault.service.d-override.conf")
+  config_vault_agent_service    = file("${path.module}/files/vault-agent.service")
+
+  config_vault_agent_hcl = templatefile("${path.module}/templates/vault-agent.hcl.tftpl", {
+    vault_fqdn = local.vault_fqdn
+  })
+
+  config_server_ctmpl = templatefile("${path.module}/templates/server.ctmpl.tftpl", {
+    vault_fqdn             = local.vault_fqdn
+    vault_pki_organization = var.vault_pki_organization
+    vault_pki_country      = var.vault_pki_country
+  })
 
   config_snapshot_json = templatefile("${path.module}/templates/snapshot.json.tftpl", {
     aws_s3_bucket = aws_s3_bucket.vault_snapshots.id
