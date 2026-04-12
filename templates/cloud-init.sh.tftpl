@@ -919,11 +919,11 @@ EOF
 write_vault_cli_config() {
   log_info "Writing Vault CLI environment to /etc/profile.d/99-vault-cli-config.sh"
 
-  cat >/etc/profile.d/99-vault-cli-config.sh <<PROFILE
+  cat >/etc/profile.d/99-vault-cli-config.sh <<EOF
 export VAULT_ADDR="https://127.0.0.1:8200"
 export VAULT_TLS_SERVER_NAME="$${vault_fqdn}"
 export VAULT_CACERT="$${vault_tls_ca_file}"
-PROFILE
+EOF
 }
 
 # ---------------------------------------------------------------------------
