@@ -19,7 +19,7 @@ AmbientCapabilities=CAP_IPC_LOCK
 CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
 NoNewPrivileges=yes
 ExecStart=/usr/bin/vault server -config="${vault_config_file}"
-ExecReload=/bin/kill --signal HUP $MAINPID
+ExecReload=/bin/kill --signal HUP \$MAINPID
 KillMode=process
 KillSignal=SIGINT
 Restart=on-failure
