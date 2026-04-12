@@ -78,8 +78,8 @@ resource "aws_launch_template" "vault" {
     config_vault_service_override = local.config_vault_service_override
     config_snapshot_json          = local.config_snapshot_json
     config_vault_agent_service    = local.config_vault_agent_service
-    config_vault_agent_hcl        = local.config_vault_agent_hcl
-    config_server_ctmpl           = local.config_server_ctmpl
+    config_agent_hcl              = local.config_agent_hcl
+    config_vault_server_tls_ctmpl = local.config_vault_server_tls_ctmpl
   }))
 
   block_device_mappings {

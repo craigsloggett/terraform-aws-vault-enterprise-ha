@@ -37,7 +37,7 @@ vault_tls_ca_file="$${vault_tls_dir}/ca.crt"
 vault_tls_cert_file="$${vault_tls_dir}/server.crt"
 vault_tls_key_file="$${vault_tls_dir}/server.key"
 vault_agent_config_file="$${vault_config_dir}/agent.hcl"
-vault_agent_server_tls_template_file="$${vault_agent_template_dir}/vault-server-tls.hcl"
+vault_agent_server_tls_template_file="$${vault_agent_template_dir}/vault-server-tls.ctmpl"
 
 # EBS Volume Paths
 ebs_raft_device_name="${ebs_raft_device_name}"
@@ -894,14 +894,14 @@ setup_vault_agent() {
   log_info "Setting up Vault Agent for PKI certificate rotation"
 
   cat >"$${vault_agent_config_file}" <<EOF
-${config_vault_agent_hcl}
+${config_agent_hcl}
 EOF
 
   chown vault:vault "$${vault_agent_config_file}"
   chmod 0644 "$${vault_agent_config_file}"
 
   cat >"$${vault_agent_server_tls_template_file}" <<EOF
-${config_server_ctmpl}
+${config_vault_server_tls_ctmpl}
 EOF
   chown vault:vault "$${vault_agent_server_tls_template_file}"
   chmod 0644 "$${vault_agent_server_tls_template_file}"
