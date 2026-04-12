@@ -1,0 +1,11 @@
+// Allow the vault user to send SIGHUP to vault.service via `systemctl kill`, so
+// the vault-agent.service can trigger a TLS listener reload after rotating the
+// server cert.
+polkit.addRule(function(action, subject) {
+    if (action.id === "org.freedesktop.systemd1.manage-units" &&
+        action.lookup("unit") === "vault.service" &&
+        action.lookup("verb") === "kill" &&
+        subject.user === "vault") {
+        return polkit.Result.YES;
+    }
+});

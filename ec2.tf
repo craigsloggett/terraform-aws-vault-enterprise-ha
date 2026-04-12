@@ -74,9 +74,14 @@ resource "aws_launch_template" "vault" {
       cluster_tag_value = local.cluster_tag_value
     })
 
-    config_vault_service          = local.config_vault_service
-    config_vault_service_override = local.config_vault_service_override
-    config_snapshot_json          = local.config_snapshot_json
+    config_vault_service            = local.config_vault_service
+    config_vault_service_override   = local.config_vault_service_override
+    config_vault_agent_service      = local.config_vault_agent_service
+    config_agent_hcl                = local.config_agent_hcl
+    config_vault_agent_reload_rules = local.config_vault_agent_reload_rules
+    config_reload_vault_server_tls  = local.config_reload_vault_server_tls
+    config_vault_server_tls_ctmpl   = local.config_vault_server_tls_ctmpl
+    config_snapshot_json            = local.config_snapshot_json
   }))
 
   block_device_mappings {
@@ -90,7 +95,7 @@ resource "aws_launch_template" "vault" {
     }
   }
 
-  # vault-data: dedicated Raft storage volume, isolated from root IO.
+  # Raft Data Storage Volume
   block_device_mappings {
     device_name = "/dev/xvdf"
 
@@ -99,21 +104,19 @@ resource "aws_launch_template" "vault" {
       volume_size           = var.vault_data_disk.volume_size
       iops                  = var.vault_data_disk.iops
       throughput            = var.vault_data_disk.throughput
-      encrypted             = var.vault_data_disk.encrypted
+      encrypted             = true
       delete_on_termination = true
     }
   }
 
-  # vault-audit: isolated from root and data to prevent audit log growth
-  # from impacting Vault availability. Audit logs are shipped off-node
-  # in real-time, the local volume is a buffer only.
+  # Audit Log Storage Volume
   block_device_mappings {
     device_name = "/dev/xvdg"
 
     ebs {
       volume_type           = var.vault_audit_disk.volume_type
       volume_size           = var.vault_audit_disk.volume_size
-      encrypted             = var.vault_audit_disk.encrypted
+      encrypted             = true
       delete_on_termination = true
     }
   }
@@ -144,10 +147,6 @@ resource "aws_launch_template" "vault" {
     }
   }
 }
-
-# EBS volumes for Raft data (/dev/xvdf) and audit logs (/dev/xvdg) are defined
-# in the launch template's block_device_mappings. The cloud-init script's
-# prepare_disk function discovers, formats, and mounts each volume at boot.
 
 resource "aws_autoscaling_group" "vault" {
   name_prefix = "${var.project_name}-vault-"

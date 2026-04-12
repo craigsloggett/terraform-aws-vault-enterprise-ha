@@ -24,8 +24,10 @@ vault_home_dir="/opt/vault"
 vault_data_dir="/var/opt/vault"
 vault_config_dir="/etc/vault.d"
 vault_log_dir="/var/log/vault"
+vault_libexec_dir="/usr/local/libexec/vault"
 vault_tls_dir="$${vault_home_dir}/tls"
 vault_raft_dir="$${vault_data_dir}/data"
+vault_agent_template_dir="$${vault_config_dir}/templates"
 
 # Vault File Paths
 vault_license_file="$${vault_home_dir}/vault.hclic"
@@ -35,6 +37,9 @@ vault_audit_log_file="$${vault_log_dir}/vault_audit.log"
 vault_tls_ca_file="$${vault_tls_dir}/ca.crt"
 vault_tls_cert_file="$${vault_tls_dir}/server.crt"
 vault_tls_key_file="$${vault_tls_dir}/server.key"
+vault_agent_config_file="$${vault_config_dir}/agent.hcl"
+vault_agent_server_tls_template_file="$${vault_agent_template_dir}/vault-server-tls.ctmpl"
+vault_agent_server_tls_template_command_file="$${vault_libexec_dir}/reload-vault-server-tls"
 
 # EBS Volume Paths
 ebs_raft_device_name="${ebs_raft_device_name}"
@@ -64,6 +69,14 @@ vault_bootstrap_root_token_secret_arn="${vault_bootstrap_root_token_secret_arn}"
 vault_recovery_keys_secret_arn="${vault_recovery_keys_secret_arn}"
 vault_pki_organization="${vault_pki_organization}"
 vault_pki_country="${vault_pki_country}"
+
+# Vault PKI TTL Configuration
+vault_pki_mount_max_ttl="87600h"
+vault_pki_root_ca_ttl="87600h"
+vault_pki_vault_server_role_max_ttl="24h"
+vault_pki_server_cert_ttl="24h"
+vault_aws_auth_role_max_ttl="24h"
+vault_aws_auth_role_ttl="4h"
 
 # EC2 metadata service (IMDSv2)
 imds_endpoint="http://169.254.169.254"
@@ -151,24 +164,18 @@ fetch_secret() {
 wait_for_network() {
   log_info "Waiting for network to become available"
 
-  attempts=0
-  max_attempts=60
-
-  while true; do
+  for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
     if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
       log_info "Network is available"
       return 0
     fi
 
-    attempts=$((attempts + 1))
-    if [ "$${attempts}" -ge "$${max_attempts}" ]; then
-      log_error "Network did not become available after $${max_attempts} attempts"
-      return 1
-    fi
-
-    log_info "Network not yet available, retrying ($${attempts}/$${max_attempts})"
-    sleep 2
+    log_info "Network not yet available, retrying ($${attempt}/12)"
+    sleep 10
   done
+
+  log_error "Network did not become available after 2 minutes"
+  return 1
 }
 
 # ---------------------------------------------------------------------------
@@ -305,11 +312,15 @@ configure_vault_directories() {
 
   mkdir -p "$${vault_config_dir}"
   chown root:vault "$${vault_config_dir}"
-  chmod 750 "$${vault_config_dir}"
+  chmod 755 "$${vault_config_dir}"
 
   mkdir -p "$${vault_log_dir}"
   chown vault:vault "$${vault_log_dir}"
-  chmod 750 "$${vault_log_dir}"
+  chmod 755 "$${vault_log_dir}"
+
+  mkdir -p "$${vault_libexec_dir}"
+  chown root:root "$${vault_libexec_dir}"
+  chmod 755 "$${vault_libexec_dir}"
 
   mkdir -p "$${vault_tls_dir}"
   chown vault:vault "$${vault_tls_dir}"
@@ -318,6 +329,10 @@ configure_vault_directories() {
   mkdir -p "$${vault_raft_dir}"
   chown vault:vault "$${vault_raft_dir}"
   chmod 700 "$${vault_raft_dir}"
+
+  mkdir -p "$${vault_agent_template_dir}"
+  chown vault:vault "$${vault_agent_template_dir}"
+  chmod 755 "$${vault_agent_template_dir}"
 }
 
 # ---------------------------------------------------------------------------
@@ -386,7 +401,7 @@ install_vault() {
 write_vault_systemd_unit() {
   log_info "Writing Vault systemd unit"
 
-  cat >/etc/systemd/system/vault.service <<'EOF'
+  cat >/etc/systemd/system/vault.service <<EOF
 ${config_vault_service}
 EOF
 
@@ -433,7 +448,6 @@ write_vault_config() {
 
   log_info "Writing Vault configuration (bind=$${private_ip})"
 
-  # vault.hcl (contains $${private_ip} shell variable, needs unquoted heredoc).
   cat >"$${vault_config_file}" <<EOF
 ${config_vault_hcl}
 EOF
@@ -663,7 +677,7 @@ configure_pki_engine() {
     vault secrets enable pki
   fi
 
-  vault secrets tune -max-lease-ttl=87600h pki
+  vault secrets tune -max-lease-ttl="$${vault_pki_mount_max_ttl}" pki
 
   # Generate root CA with ECDSA P-384 keys, consistent with the bootstrap
   # CA and server certs in tls.tf.
@@ -671,7 +685,7 @@ configure_pki_engine() {
     common_name="$${cluster_name} Vault Root CA" \
     organization="$${vault_pki_organization}" \
     country="$${vault_pki_country}" \
-    ttl=87600h \
+    ttl="$${vault_pki_root_ca_ttl}" \
     key_type=ec \
     key_bits=384 |
     jq -r '.data.certificate' >/dev/null
@@ -690,7 +704,7 @@ configure_pki_engine() {
     allow_subdomains=false \
     allow_localhost=false \
     allow_ip_sans=false \
-    max_ttl=720h \
+    max_ttl="$${vault_pki_vault_server_role_max_ttl}" \
     key_type=ec \
     key_bits=384 \
     ext_key_usage=serverAuth
@@ -736,7 +750,8 @@ EOF
     auth_type=iam \
     bound_iam_principal_arn="$${vault_iam_role_arn}" \
     policies=vault-server \
-    ttl=1h
+    max_ttl="$${vault_aws_auth_role_max_ttl}" \
+    ttl="$${vault_aws_auth_role_ttl}"
 
   # Enable the file audit device. /var/log/vault is on a dedicated EBS volume
   # (see prepare_disk in main) to isolate audit log IO and growth from the
@@ -827,7 +842,7 @@ issue_node_cert() {
   log_info "Requesting certificate from PKI engine"
   cert_json="$(vault write -format=json pki/issue/vault-server \
     common_name="$${vault_fqdn}" \
-    ttl=720h)"
+    ttl="$${vault_pki_server_cert_ttl}")"
 
   tmp_cert="$${vault_tls_dir}/server.crt.tmp"
   tmp_key="$${vault_tls_dir}/server.key.tmp"
@@ -884,14 +899,50 @@ cleanup_bootstrap_tls() {
   fi
 }
 
+setup_vault_agent() {
+  log_info "Setting up Vault Agent for PKI certificate rotation"
+
+  cat >"$${vault_agent_config_file}" <<EOF
+${config_agent_hcl}
+EOF
+
+  chown vault:vault "$${vault_agent_config_file}"
+  chmod 0644 "$${vault_agent_config_file}"
+
+  cat >"$${vault_agent_server_tls_template_file}" <<EOF
+${config_vault_server_tls_ctmpl}
+EOF
+  chown vault:vault "$${vault_agent_server_tls_template_file}"
+  chmod 0644 "$${vault_agent_server_tls_template_file}"
+
+  cat >"$${vault_agent_server_tls_template_command_file}" <<EOF
+${config_reload_vault_server_tls}
+EOF
+  chown root:root "$${vault_agent_server_tls_template_command_file}"
+  chmod 0755 "$${vault_agent_server_tls_template_command_file}"
+
+  cat >/etc/polkit-1/rules.d/10-vault-agent-reload.rules <<'EOF'
+${config_vault_agent_reload_rules}
+EOF
+
+  cat >/etc/systemd/system/vault-agent.service <<EOF
+${config_vault_agent_service}
+EOF
+
+  systemctl daemon-reload
+  systemctl enable --now vault-agent
+
+  log_info "Vault Agent started"
+}
+
 write_vault_cli_config() {
   log_info "Writing Vault CLI environment to /etc/profile.d/99-vault-cli-config.sh"
 
-  cat >/etc/profile.d/99-vault-cli-config.sh <<PROFILE
+  cat >/etc/profile.d/99-vault-cli-config.sh <<EOF
 export VAULT_ADDR="https://127.0.0.1:8200"
 export VAULT_TLS_SERVER_NAME="$${vault_fqdn}"
 export VAULT_CACERT="$${vault_tls_ca_file}"
-PROFILE
+EOF
 }
 
 # ---------------------------------------------------------------------------
@@ -939,6 +990,7 @@ main() {
   replace_node_tls
   cleanup_bootstrap_tls
   write_vault_cli_config
+  setup_vault_agent
 
   log_info "=== Bootstrap complete ==="
 }

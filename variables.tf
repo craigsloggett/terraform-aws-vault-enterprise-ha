@@ -116,31 +116,29 @@ variable "root_volume_size" {
 
 variable "vault_data_disk" {
   type = object({
-    volume_type = string
-    volume_size = number
+    volume_type = optional(string, "gp3")
+    volume_size = optional(number, 50)
     iops        = optional(number, 3000)
     throughput  = optional(number, 125)
-    encrypted   = bool
   })
-  description = "EBS configuration for the Vault Raft data volume (/dev/xvdf)."
+  description = "EBS configuration for the Vault Raft Data storage volume (/dev/xvdf)."
   default = {
     volume_type = "gp3"
-    volume_size = 100
-    encrypted   = true
+    volume_size = 50
+    iops        = 3000
+    throughput  = 125
   }
 }
 
 variable "vault_audit_disk" {
   type = object({
-    volume_type = string
-    volume_size = number
-    encrypted   = bool
+    volume_type = optional(string, "gp3")
+    volume_size = optional(number, 50)
   })
-  description = "EBS configuration for the Vault audit log volume (/dev/xvdg)."
+  description = "EBS configuration for the Vault Audit Log storage volume (/dev/xvdg)."
   default = {
     volume_type = "gp3"
     volume_size = 50
-    encrypted   = true
   }
 }
 

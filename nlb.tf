@@ -46,6 +46,3 @@ resource "aws_lb_listener" "vault" {
     target_group_arn = aws_lb_target_group.vault.arn
   }
 }
-
-# Target group registration is handled by aws_autoscaling_group.vault
-# via the target_group_arns attribute.
