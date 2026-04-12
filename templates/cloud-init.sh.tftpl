@@ -906,9 +906,9 @@ EOF
   chown vault:vault "$${vault_agent_server_tls_template_file}"
   chmod 0644 "$${vault_agent_server_tls_template_file}"
 
-  cat >/etc/systemd/system/vault-agent.service <<'AGENT_UNIT'
+  cat >/etc/systemd/system/vault-agent.service <<EOF
 ${config_vault_agent_service}
-AGENT_UNIT
+EOF
 
   systemctl daemon-reload
   systemctl enable --now vault-agent
