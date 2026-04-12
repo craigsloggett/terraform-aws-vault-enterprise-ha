@@ -74,9 +74,9 @@ vault_pki_country="${vault_pki_country}"
 vault_pki_mount_max_ttl="87600h"
 vault_pki_root_ca_ttl="87600h"
 vault_pki_vault_server_role_max_ttl="24h"
+vault_pki_vault_server_role_ttl="8h"
 vault_aws_auth_role_max_ttl="24h"
-vault_aws_auth_role_ttl="4h"
-vault_server_cert_ttl="24h"
+vault_aws_auth_role_ttl="8h"
 
 # EC2 metadata service (IMDSv2)
 imds_endpoint="http://169.254.169.254"
@@ -842,7 +842,7 @@ issue_node_cert() {
   log_info "Requesting certificate from PKI engine"
   cert_json="$(vault write -format=json pki/issue/vault-server \
     common_name="$${vault_fqdn}" \
-    ttl="$${vault_server_cert_ttl}")"
+    ttl="$${vault_pki_vault_server_role_ttl}")"
 
   tmp_cert="$${vault_tls_dir}/server.crt.tmp"
   tmp_key="$${vault_tls_dir}/server.key.tmp"
