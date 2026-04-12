@@ -909,7 +909,7 @@ EOF
   chmod 0644 "$${vault_agent_server_tls_template_file}"
 
   cat >"$${vault_agent_server_tls_template_command_file}" <<EOF
-${}
+${config_reload_vault_tls_sh}
 EOF
   chown root:root "$${vault_agent_server_tls_template_command_file}"
   chmod 0755 "$${vault_agent_server_tls_template_command_file}"
