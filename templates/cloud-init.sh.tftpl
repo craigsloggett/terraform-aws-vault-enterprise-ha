@@ -26,6 +26,7 @@ vault_config_dir="/etc/vault.d"
 vault_log_dir="/var/log/vault"
 vault_tls_dir="$${vault_home_dir}/tls"
 vault_raft_dir="$${vault_data_dir}/data"
+vault_agent_template_dir="$${vault_config_dir}/templates"
 
 # Vault File Paths
 vault_license_file="$${vault_home_dir}/vault.hclic"
@@ -35,6 +36,8 @@ vault_audit_log_file="$${vault_log_dir}/vault_audit.log"
 vault_tls_ca_file="$${vault_tls_dir}/ca.crt"
 vault_tls_cert_file="$${vault_tls_dir}/server.crt"
 vault_tls_key_file="$${vault_tls_dir}/server.key"
+vault_agent_config_file="$${vault_config_dir}/agent.hcl"
+vault_agent_server_tls_template_file="$${vault_agent_template_dir}/vault-server-tls.hcl"
 
 # EBS Volume Paths
 ebs_raft_device_name="${ebs_raft_device_name}"
@@ -318,6 +321,10 @@ configure_vault_directories() {
   mkdir -p "$${vault_raft_dir}"
   chown vault:vault "$${vault_raft_dir}"
   chmod 700 "$${vault_raft_dir}"
+
+  mkdir -p "$${vault_agent_template_dir}"
+  chown vault:vault "$${vault_agent_template_dir}"
+  chmod 755 "$${vault_agent_template_dir}"
 }
 
 # ---------------------------------------------------------------------------
@@ -433,7 +440,6 @@ write_vault_config() {
 
   log_info "Writing Vault configuration (bind=$${private_ip})"
 
-  # vault.hcl (contains $${private_ip} shell variable, needs unquoted heredoc).
   cat >"$${vault_config_file}" <<EOF
 ${config_vault_hcl}
 EOF
@@ -887,25 +893,18 @@ cleanup_bootstrap_tls() {
 setup_vault_agent() {
   log_info "Setting up Vault Agent for PKI certificate rotation"
 
-  mkdir -p /opt/vault/agent
-  chown vault:vault /opt/vault/agent
-  chmod 0750 /opt/vault/agent
-
-  mkdir -p /etc/vault-agent/templates
-  chown -R vault:vault /etc/vault-agent
-  chmod 0750 /etc/vault-agent /etc/vault-agent/templates
-
-  cat >/etc/vault-agent/agent.hcl <<'AGENT_HCL'
+  cat >"$${vault_agent_config_file}" <<EOF
 ${config_vault_agent_hcl}
-AGENT_HCL
-  chown vault:vault /etc/vault-agent/agent.hcl
-  chmod 0640 /etc/vault-agent/agent.hcl
+EOF
 
-  cat >/etc/vault-agent/templates/server.ctmpl <<'AGENT_CTMPL'
+  chown vault:vault "$${vault_agent_config_file}"
+  chmod 0644 "$${vault_agent_config_file}"
+
+  cat >"$${vault_agent_server_tls_template_file}" <<'EOF'
 ${config_server_ctmpl}
-AGENT_CTMPL
-  chown vault:vault /etc/vault-agent/templates/server.ctmpl
-  chmod 0640 /etc/vault-agent/templates/server.ctmpl
+EOF
+  chown vault:vault "$${vault_agent_server_tls_template_file}"
+  chmod 0644 "$${vault_agent_server_tls_template_file}"
 
   cat >/etc/systemd/system/vault-agent.service <<'AGENT_UNIT'
 ${config_vault_agent_service}

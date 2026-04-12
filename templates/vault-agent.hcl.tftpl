@@ -2,7 +2,7 @@ pid_file = "/opt/vault/agent/agent.pid"
 
 vault {
   address         = "https://127.0.0.1:8200"
-  ca_cert         = "/opt/vault/tls/ca.crt"
+  ca_cert         = "$${vault_tls_ca_file}"
   tls_server_name = "${vault_fqdn}"
 }
 
@@ -17,8 +17,8 @@ auto_auth {
 }
 
 template {
-  source      = "/etc/vault-agent/templates/server.ctmpl"
-  destination = "/opt/vault/tls/server.crt"
+  source      = "$${vault_agent_server_tls_template_file}"
+  destination = "$${vault_tls_cert_file}"
   perms       = "0640"
   command     = "kill -HUP $(systemctl show --property MainPID --value vault.service)"
 }
