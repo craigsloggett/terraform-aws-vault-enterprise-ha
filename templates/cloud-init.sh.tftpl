@@ -27,6 +27,7 @@ vault_log_dir="/var/log/vault"
 vault_tls_dir="$${vault_home_dir}/tls"
 vault_raft_dir="$${vault_data_dir}/data"
 vault_agent_template_dir="$${vault_config_dir}/templates"
+vault_agent_template_commands_dir="/usr/local/libexec/vault/agent"
 
 # Vault File Paths
 vault_license_file="$${vault_home_dir}/vault.hclic"
@@ -38,6 +39,7 @@ vault_tls_cert_file="$${vault_tls_dir}/server.crt"
 vault_tls_key_file="$${vault_tls_dir}/server.key"
 vault_agent_config_file="$${vault_config_dir}/agent.hcl"
 vault_agent_server_tls_template_file="$${vault_agent_template_dir}/vault-server-tls.ctmpl"
+vault_agent_server_tls_template_command_file="$${vault_agent_template_commands_dir}/reload-vault-tls.sh"
 
 # EBS Volume Paths
 ebs_raft_device_name="${ebs_raft_device_name}"
@@ -905,6 +907,16 @@ ${config_vault_server_tls_ctmpl}
 EOF
   chown vault:vault "$${vault_agent_server_tls_template_file}"
   chmod 0644 "$${vault_agent_server_tls_template_file}"
+
+  cat >"$${vault_agent_server_tls_template_command_file}" <<EOF
+${}
+EOF
+  chown root:root "$${vault_agent_server_tls_template_command_file}"
+  chmod 0755 "$${vault_agent_server_tls_template_command_file}"
+
+  cat >/etc/polkit-1/rules.d/10-vault-agent-reload.rules <<'EOF'
+${config_vault_agent_reload_rules}
+EOF
 
   cat >/etc/systemd/system/vault-agent.service <<EOF
 ${config_vault_agent_service}

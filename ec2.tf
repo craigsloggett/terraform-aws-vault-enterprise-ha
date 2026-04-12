@@ -74,12 +74,14 @@ resource "aws_launch_template" "vault" {
       cluster_tag_value = local.cluster_tag_value
     })
 
-    config_vault_service          = local.config_vault_service
-    config_vault_service_override = local.config_vault_service_override
-    config_snapshot_json          = local.config_snapshot_json
-    config_vault_agent_service    = local.config_vault_agent_service
-    config_agent_hcl              = local.config_agent_hcl
-    config_vault_server_tls_ctmpl = local.config_vault_server_tls_ctmpl
+    config_vault_service            = local.config_vault_service
+    config_vault_service_override   = local.config_vault_service_override
+    config_snapshot_json            = local.config_snapshot_json
+    config_vault_agent_service      = local.config_vault_agent_service
+    config_agent_hcl                = local.config_agent_hcl
+    config_vault_server_tls_ctmpl   = local.config_vault_server_tls_ctmpl
+    config_vault_agent_reload_rules = local.config_vault_agent_reload_rules
+    config_reload_vault_tls_sh      = local.config_reload_vault_tls_sh
   }))
 
   block_device_mappings {

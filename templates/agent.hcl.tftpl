@@ -18,7 +18,7 @@ auto_auth {
 
 template {
   source      = "$${vault_agent_server_tls_template_file}"
-  destination = "$${vault_tls_cert_file}"
+  destination = "$${vault_tls_cert_file}.new"
   perms       = "0640"
-  command     = "kill -HUP $(systemctl show --property MainPID --value vault.service)"
+  command     = "$${vault_agent_server_tls_template_command_file}"
 }

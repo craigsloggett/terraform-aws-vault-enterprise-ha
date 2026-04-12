@@ -1,5 +1,5 @@
 {{- with pkiCert "pki/issue/vault-server" "common_name=${vault_fqdn}" "ttl=5m" -}}
-{{ .Key | writeToFile "$${vault_tls_key_file}" "vault" "vault" "0640" }}
+{{ .Key | writeToFile "$${vault_tls_key_file}.new" "vault" "vault" "0640" }}
 {{ .Cert }}
 {{ range .CAChain }}{{ . }}{{ end }}
 {{- end -}}
