@@ -24,10 +24,10 @@ vault_home_dir="/opt/vault"
 vault_data_dir="/var/opt/vault"
 vault_config_dir="/etc/vault.d"
 vault_log_dir="/var/log/vault"
+vault_libexec_dir="/usr/local/libexec/vault"
 vault_tls_dir="$${vault_home_dir}/tls"
 vault_raft_dir="$${vault_data_dir}/data"
 vault_agent_template_dir="$${vault_config_dir}/templates"
-vault_agent_template_commands_dir="/usr/local/libexec/vault/agent"
 
 # Vault File Paths
 vault_license_file="$${vault_home_dir}/vault.hclic"
@@ -39,7 +39,7 @@ vault_tls_cert_file="$${vault_tls_dir}/server.crt"
 vault_tls_key_file="$${vault_tls_dir}/server.key"
 vault_agent_config_file="$${vault_config_dir}/agent.hcl"
 vault_agent_server_tls_template_file="$${vault_agent_template_dir}/vault-server-tls.ctmpl"
-vault_agent_server_tls_template_command_file="$${vault_agent_template_commands_dir}/reload-vault-tls.sh"
+vault_agent_server_tls_template_command_file="$${vault_libexec_dir}/reload-vault-server-tls"
 
 # EBS Volume Paths
 ebs_raft_device_name="${ebs_raft_device_name}"
@@ -316,6 +316,10 @@ configure_vault_directories() {
   chown vault:vault "$${vault_log_dir}"
   chmod 755 "$${vault_log_dir}"
 
+  mkdir -p "$${vault_libexec_dir}"
+  chown root:root "$${vault_libexec_dir}"
+  chmod 755 "$${vault_libexec_dir}"
+
   mkdir -p "$${vault_tls_dir}"
   chown vault:vault "$${vault_tls_dir}"
   chmod 755 "$${vault_tls_dir}"
@@ -327,10 +331,6 @@ configure_vault_directories() {
   mkdir -p "$${vault_agent_template_dir}"
   chown vault:vault "$${vault_agent_template_dir}"
   chmod 755 "$${vault_agent_template_dir}"
-
-  mkdir -p "$${vault_agent_template_commands_dir}"
-  chown root:root "$${vault_agent_template_commands_dir}"
-  chmod 755 "$${vault_agent_template_commands_dir}"
 }
 
 # ---------------------------------------------------------------------------
@@ -913,7 +913,7 @@ EOF
   chmod 0644 "$${vault_agent_server_tls_template_file}"
 
   cat >"$${vault_agent_server_tls_template_command_file}" <<EOF
-${config_reload_vault_tls_sh}
+${config_reload_vault_server_tls}
 EOF
   chown root:root "$${vault_agent_server_tls_template_command_file}"
   chmod 0755 "$${vault_agent_server_tls_template_command_file}"

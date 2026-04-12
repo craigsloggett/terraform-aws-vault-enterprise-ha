@@ -18,7 +18,7 @@ locals {
   config_vault_service_override   = file("${path.module}/files/vault.service.d-override.conf")
   config_vault_agent_service      = file("${path.module}/files/vault-agent.service")
   config_vault_agent_reload_rules = file("${path.module}/files/10-vault-agent-reload.rules")
-  config_reload_vault_tls_sh      = file("${path.module}/files/reload-vault-tls.sh")
+  config_reload_vault_server_tls  = file("${path.module}/files/reload-vault-server-tls")
 
   config_agent_hcl = templatefile("${path.module}/templates/agent.hcl.tftpl", {
     vault_fqdn = local.vault_fqdn
