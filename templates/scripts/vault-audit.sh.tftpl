@@ -1,0 +1,17 @@
+# vault-audit.sh — Vault audit device configuration.
+#
+# This function runs only on the bootstrap node after cluster init.
+
+configure_audit_logs() {
+  vault_audit_log_file="$${1}"
+
+  log_info "Configuring Vault file audit device"
+
+  # Enable the file audit device. /var/log/vault is on a dedicated EBS volume
+  # to isolate audit log IO and growth from the root filesystem.
+  if ! vault audit list -format=json | jq -e '."file/"' >/dev/null 2>&1; then
+    vault audit enable file file_path="$${vault_audit_log_file}"
+  fi
+
+  log_info "Vault file audit device configured"
+}
