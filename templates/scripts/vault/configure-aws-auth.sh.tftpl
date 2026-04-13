@@ -24,7 +24,7 @@ EOF
   log_info "vault-server policy written"
 }
 
-configure_vault_server_role() {
+configure_pki_vault_server_role() {
   vault_aws_auth_role_max_ttl="$${1}"
   vault_aws_auth_role_ttl="$${2}"
 
