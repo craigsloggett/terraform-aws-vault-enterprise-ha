@@ -70,16 +70,10 @@ locals {
     vault_license_secret_arn = aws_secretsmanager_secret.vault_license.arn
   })
 
-  script_vault_get_bootstrap_root_ca = templatefile("${path.module}/templates/scripts/vault/get-bootstrap-root-ca.sh.tftpl", {
-    bootstrap_tls_ca_cert_secret_arn = aws_secretsmanager_secret.vault_bootstrap_ca_cert.arn
-  })
-
-  script_vault_get_bootstrap_tls_cert = templatefile("${path.module}/templates/scripts/vault/get-bootstrap-tls-cert.sh.tftpl", {
+  script_vault_get_bootstrap_tls_materials = templatefile("${path.module}/templates/scripts/vault/get-bootstrap-tls-materials.sh.tftpl", {
+    bootstrap_tls_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_bootstrap_ca_cert.arn
     bootstrap_tls_server_cert_secret_arn = aws_secretsmanager_secret.vault_bootstrap_server_cert.arn
-  })
-
-  script_vault_get_bootstrap_tls_key = templatefile("${path.module}/templates/scripts/vault/get-bootstrap-tls-key.sh.tftpl", {
-    bootstrap_tls_server_key_secret_arn = aws_secretsmanager_secret.vault_bootstrap_server_key.arn
+    bootstrap_tls_server_key_secret_arn  = aws_secretsmanager_secret.vault_bootstrap_server_key.arn
   })
 
   script_vault_write_systemd_unit = templatefile("${path.module}/templates/scripts/vault/write-systemd-unit.sh.tftpl", {
