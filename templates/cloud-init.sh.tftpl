@@ -40,9 +40,6 @@ vault_agent_config_file="$${vault_config_dir}/agent.hcl"
 vault_agent_server_tls_template_file="$${vault_agent_template_dir}/vault-server-tls.ctmpl"
 vault_agent_server_tls_template_command_file="$${vault_libexec_dir}/reload-vault-server-tls"
 
-# EBS Volume Paths
-ebs_raft_mount="$${vault_raft_dir}"
-ebs_audit_mount="$${vault_log_dir}"
 
 # Cluster initialization coordination
 ssm_cluster_state_name="${ssm_cluster_state_name}"
@@ -103,8 +100,8 @@ main() {
   prepare_system
   configure_time
   create_vault_user "$${vault_home_dir}"
-  prepare_disk "${ebs_raft_device_name}" "$${ebs_raft_mount}" "vault-data"
-  prepare_disk "${ebs_audit_device_name}" "$${ebs_audit_mount}" "vault-audit"
+  prepare_disk "${ebs_raft_device_name}" "$${vault_raft_dir}" "vault-data"
+  prepare_disk "${ebs_audit_device_name}" "$${vault_log_dir}" "vault-audit"
   configure_vault_directories \
     "$${vault_home_dir}" \
     "$${vault_data_dir}" \
