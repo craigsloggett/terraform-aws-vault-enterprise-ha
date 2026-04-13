@@ -28,21 +28,27 @@ wait_for_pki_ready() {
 }
 
 issue_node_cert() {
-  vault_fqdn="${1}"
-  region="${2}"
-  vault_tls_dir="${3}"
-  vault_tls_ca_file="${4}"
-  vault_tls_cert_file="${5}"
-  vault_tls_key_file="${6}"
-  vault_pki_server_cert_ttl="${7}"
-  ssm_pki_ca_cert_name="${8}"
+  vault_token="${1}"
+  vault_fqdn="${2}"
+  vault_tls_ca_file="${3}"
+  region="${4}"
+  vault_tls_dir="${5}"
+  vault_tls_cert_file="${6}"
+  vault_tls_key_file="${7}"
+  vault_pki_server_cert_ttl="${8}"
+  ssm_pki_ca_cert_name="${9}"
 
   log_info "Issuing PKI-signed TLS certificate for this node"
 
+  export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_TLS_SERVER_NAME="${vault_fqdn}"
+  export VAULT_CACERT="${vault_tls_ca_file}"
+
   # Follower nodes need to fetch the new CA cert from SSM and authenticate
-  # via the AWS IAM auth method. The bootstrap node already has VAULT_TOKEN
-  # and VAULT_CACERT set from authenticate_vault().
-  if [ -z "${VAULT_TOKEN:-}" ]; then
+  # via the AWS IAM auth method. The bootstrap node already has a token.
+  if [ -n "${vault_token}" ]; then
+    export VAULT_TOKEN="${vault_token}"
+  else
     log_info "Fetching new PKI CA cert from SSM"
     new_ca_cert="$(aws ssm get-parameter \
       --region "${region}" \
@@ -59,9 +65,6 @@ issue_node_cert() {
     printf '%s\n' "${new_ca_cert}" >"${new_ca_cert_file}"
     chown vault:vault "${new_ca_cert_file}"
     chmod 0644 "${new_ca_cert_file}"
-
-    export VAULT_ADDR="https://127.0.0.1:8200"
-    export VAULT_CACERT="${vault_tls_ca_file}"
 
     log_info "Authenticating via AWS IAM auth method"
     vault_token="$(vault login \

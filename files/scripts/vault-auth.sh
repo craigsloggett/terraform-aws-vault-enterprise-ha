@@ -4,12 +4,20 @@
 # This function runs only on the bootstrap node after cluster init.
 
 configure_aws_auth() {
-  vault_iam_role_arn="${1}"
-  vault_aws_auth_role_max_ttl="${2}"
-  vault_aws_auth_role_ttl="${3}"
-  vault_audit_log_file="${4}"
-  region="${5}"
-  ssm_pki_state_name="${6}"
+  vault_token="${1}"
+  vault_fqdn="${2}"
+  vault_tls_ca_file="${3}"
+  vault_iam_role_arn="${4}"
+  vault_aws_auth_role_max_ttl="${5}"
+  vault_aws_auth_role_ttl="${6}"
+  vault_audit_log_file="${7}"
+  region="${8}"
+  ssm_pki_state_name="${9}"
+
+  export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_TLS_SERVER_NAME="${vault_fqdn}"
+  export VAULT_CACERT="${vault_tls_ca_file}"
+  export VAULT_TOKEN="${vault_token}"
 
   log_info "Configuring Vault AWS auth method"
 

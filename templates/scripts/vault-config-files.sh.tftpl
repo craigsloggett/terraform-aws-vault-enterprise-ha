@@ -70,6 +70,15 @@ EOF
 }
 
 configure_autopilot() {
+  vault_token="$${1}"
+  vault_fqdn="$${2}"
+  vault_tls_ca_file="$${3}"
+
+  export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_TLS_SERVER_NAME="$${vault_fqdn}"
+  export VAULT_CACERT="$${vault_tls_ca_file}"
+  export VAULT_TOKEN="$${vault_token}"
+
   log_info "Configuring Raft Autopilot"
 
   vault operator raft autopilot set-config \
@@ -81,7 +90,15 @@ configure_autopilot() {
 }
 
 configure_snapshots() {
-  vault_snapshot_config_file="$${1}"
+  vault_token="$${1}"
+  vault_fqdn="$${2}"
+  vault_tls_ca_file="$${3}"
+  vault_snapshot_config_file="$${4}"
+
+  export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_TLS_SERVER_NAME="$${vault_fqdn}"
+  export VAULT_CACERT="$${vault_tls_ca_file}"
+  export VAULT_TOKEN="$${vault_token}"
 
   log_info "Configuring automated Raft snapshots"
 

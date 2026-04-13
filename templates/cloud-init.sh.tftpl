@@ -163,28 +163,38 @@ main() {
     "$${cluster_tag_key}" \
     "$${cluster_tag_value}"; then
     init_cluster \
+      "$${vault_fqdn}" \
       "$${vault_tls_ca_file}" \
       "$${region}" \
       "$${vault_bootstrap_root_token_secret_arn}" \
       "$${vault_recovery_keys_secret_arn}" \
       "$${ssm_cluster_state_name}"
-    authenticate_vault \
-      "$${region}" \
-      "$${vault_bootstrap_root_token_secret_arn}" \
+    vault_token="$(fetch_secret "$${region}" "$${vault_bootstrap_root_token_secret_arn}")"
+    configure_autopilot \
+      "$${vault_token}" \
+      "$${vault_fqdn}" \
       "$${vault_tls_ca_file}"
-    configure_autopilot
-    configure_snapshots "$${vault_snapshot_config_file}"
+    configure_snapshots \
+      "$${vault_token}" \
+      "$${vault_fqdn}" \
+      "$${vault_tls_ca_file}" \
+      "$${vault_snapshot_config_file}"
     configure_pki_engine \
+      "$${vault_token}" \
+      "$${vault_fqdn}" \
+      "$${vault_tls_ca_file}" \
       "$${vault_pki_mount_max_ttl}" \
       "$${cluster_name}" \
       "$${vault_pki_organization}" \
       "$${vault_pki_country}" \
       "$${vault_pki_root_ca_ttl}" \
-      "$${vault_fqdn}" \
       "$${vault_pki_vault_server_role_max_ttl}" \
       "$${region}" \
       "$${ssm_pki_ca_cert_name}"
     configure_aws_auth \
+      "$${vault_token}" \
+      "$${vault_fqdn}" \
+      "$${vault_tls_ca_file}" \
       "$${vault_iam_role_arn}" \
       "$${vault_aws_auth_role_max_ttl}" \
       "$${vault_aws_auth_role_ttl}" \
@@ -192,10 +202,11 @@ main() {
       "$${region}" \
       "$${ssm_pki_state_name}"
     issue_node_cert \
+      "$${vault_token}" \
       "$${vault_fqdn}" \
+      "$${vault_tls_ca_file}" \
       "$${region}" \
       "$${vault_tls_dir}" \
-      "$${vault_tls_ca_file}" \
       "$${vault_tls_cert_file}" \
       "$${vault_tls_key_file}" \
       "$${vault_pki_server_cert_ttl}" \
@@ -204,10 +215,11 @@ main() {
     join_cluster "$${region}" "$${ssm_cluster_state_name}"
     wait_for_pki_ready "$${region}" "$${ssm_pki_state_name}"
     issue_node_cert \
+      "" \
       "$${vault_fqdn}" \
+      "$${vault_tls_ca_file}" \
       "$${region}" \
       "$${vault_tls_dir}" \
-      "$${vault_tls_ca_file}" \
       "$${vault_tls_cert_file}" \
       "$${vault_tls_key_file}" \
       "$${vault_pki_server_cert_ttl}" \

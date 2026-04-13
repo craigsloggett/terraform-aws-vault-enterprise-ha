@@ -1,5 +1,5 @@
 # shellcheck shell=sh
-# vault-cluster.sh — Cluster initialization, join, and authentication.
+# vault-cluster.sh — Cluster initialization, join, and Raft membership.
 
 is_bootstrap_node() {
   instance_id="${1}"
@@ -34,15 +34,17 @@ is_bootstrap_node() {
 }
 
 init_cluster() {
-  vault_tls_ca_file="${1}"
-  region="${2}"
-  vault_bootstrap_root_token_secret_arn="${3}"
-  vault_recovery_keys_secret_arn="${4}"
-  ssm_cluster_state_name="${5}"
+  vault_fqdn="${1}"
+  vault_tls_ca_file="${2}"
+  region="${3}"
+  vault_bootstrap_root_token_secret_arn="${4}"
+  vault_recovery_keys_secret_arn="${5}"
+  ssm_cluster_state_name="${6}"
 
   log_info "Initializing Vault cluster"
 
   export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_TLS_SERVER_NAME="${vault_fqdn}"
   export VAULT_CACERT="${vault_tls_ca_file}"
 
   # Idempotency guard: if the cluster is already initialized (e.g. this is a
@@ -110,20 +112,4 @@ join_cluster() {
 
   log_error "Unable to join the Vault cluster after ${attempt} attempts, failing bootstrap"
   return 1
-}
-
-authenticate_vault() {
-  region="${1}"
-  vault_bootstrap_root_token_secret_arn="${2}"
-  vault_tls_ca_file="${3}"
-
-  log_info "Authenticating with Vault using bootstrap root token"
-
-  root_token="$(fetch_secret "${region}" "${vault_bootstrap_root_token_secret_arn}")"
-
-  export VAULT_ADDR="https://127.0.0.1:8200"
-  export VAULT_TOKEN="${root_token}"
-  export VAULT_CACERT="${vault_tls_ca_file}"
-
-  log_info "Vault authentication configured"
 }

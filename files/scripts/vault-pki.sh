@@ -4,15 +4,22 @@
 # This function runs only on the bootstrap node after cluster init.
 
 configure_pki_engine() {
-  vault_pki_mount_max_ttl="${1}"
-  cluster_name="${2}"
-  vault_pki_organization="${3}"
-  vault_pki_country="${4}"
-  vault_pki_root_ca_ttl="${5}"
-  vault_fqdn="${6}"
-  vault_pki_vault_server_role_max_ttl="${7}"
-  region="${8}"
-  ssm_pki_ca_cert_name="${9}"
+  vault_token="${1}"
+  vault_fqdn="${2}"
+  vault_tls_ca_file="${3}"
+  vault_pki_mount_max_ttl="${4}"
+  cluster_name="${5}"
+  vault_pki_organization="${6}"
+  vault_pki_country="${7}"
+  vault_pki_root_ca_ttl="${8}"
+  vault_pki_vault_server_role_max_ttl="${9}"
+  region="${10}"
+  ssm_pki_ca_cert_name="${11}"
+
+  export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_TLS_SERVER_NAME="${vault_fqdn}"
+  export VAULT_CACERT="${vault_tls_ca_file}"
+  export VAULT_TOKEN="${vault_token}"
 
   log_info "Configuring Vault PKI secrets engine"
 
