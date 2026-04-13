@@ -47,10 +47,8 @@ locals {
 
   # Cloud-init script fragments — pure shell (no Terraform interpolation)
   script_logging       = file("${path.module}/files/scripts/logging.sh")
-  script_ec2_metadata  = file("${path.module}/files/scripts/ec2-metadata.sh")
   script_aws_helpers   = file("${path.module}/files/scripts/aws-helpers.sh")
   script_system_setup  = file("${path.module}/files/scripts/system-setup.sh")
-  script_ebs           = file("${path.module}/files/scripts/ebs.sh")
   script_vault_system  = file("${path.module}/files/scripts/vault-system.sh")
   script_vault_install = file("${path.module}/files/scripts/vault-install.sh")
   script_vault_cluster = file("${path.module}/files/scripts/vault-cluster.sh")

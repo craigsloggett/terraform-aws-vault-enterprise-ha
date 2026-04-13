@@ -65,10 +65,8 @@ resource "aws_launch_template" "vault" {
     vault_pki_country                     = var.vault_pki_country
 
     script_logging            = local.script_logging
-    script_ec2_metadata       = local.script_ec2_metadata
     script_aws_helpers        = local.script_aws_helpers
     script_system_setup       = local.script_system_setup
-    script_ebs                = local.script_ebs
     script_vault_system       = local.script_vault_system
     script_vault_install      = local.script_vault_install
     script_vault_config_files = local.script_vault_config_files
