@@ -38,7 +38,8 @@ vault_tls_cert_file="$${vault_tls_dir}/server.crt"
 vault_tls_key_file="$${vault_tls_dir}/server.key"
 vault_agent_config_file="$${vault_config_dir}/agent.hcl"
 vault_agent_server_tls_template_file="$${vault_agent_template_dir}/vault-server-tls.ctmpl"
-vault_agent_server_tls_template_command_file="$${vault_libexec_dir}/reload-vault-server-tls"
+vault_agent_server_tls_reload_file="$${vault_libexec_dir}/vault-server-tls-reload.sh"
+vault_agent_reload_rules_file="/etc/polkit-1/rules.d/10-vault-agent-reload.rules"
 
 
 # Cluster initialization coordination
@@ -61,87 +62,65 @@ vault_aws_auth_role_ttl="4h"
 # Function Definitions
 # ---------------------------------------------------------------------------
 
-${script_logging}
+${script_system_logging}
 
-${script_ec2_metadata_helpers}
+${script_aws_imds}
 
-${script_secrets_manager_helpers}
+${script_aws_secrets}
 
-${script_ebs_helpers}
+${script_aws_ebs}
 
-${script_system_setup}
+${script_system_packages}
 
-${script_vault_configure_linux}
+${script_system_time}
 
-${script_vault_get_license}
+${script_vault_user}
 
-${script_vault_get_bootstrap_tls_materials}
+${script_vault_directories}
 
-${script_vault_write_license}
+${script_vault_cli}
 
-${script_vault_write_bootstrap_tls_materials}
+${script_vault_install}
 
-${script_vault_write_config}
+${script_vault_service}
 
-${script_vault_write_snapshot_config}
+${script_vault_license}
 
-${script_vault_configure_cluster}
+${script_vault_config}
 
-${script_vault_configure_autopilot}
+${script_vault_cluster}
 
-${script_vault_configure_snapshots}
+${script_vault_raft}
 
-${script_vault_configure_pki}
+${script_vault_pki}
 
-${script_vault_configure_aws_auth}
+${script_vault_auth}
 
-${script_vault_configure_audit}
+${script_vault_audit}
 
-${script_vault_configure_bootstrap_tls}
+${script_vault_tls}
 
-${script_vault_write_pki_tls_materials}
+${script_agent_config}
 
-${script_agent_write_config}
-
-${script_agent_write_tls_template}
-
-${script_agent_write_reload_script}
-
-${script_agent_write_polkit_rules}
-
-${script_agent_write_systemd_unit}
-
-${script_agent_start}
+${script_agent_service}
 
 # ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
-main() {
+phase_prepare_system() {
   wait_for_network
-
-  # Environment
-  export AWS_REGION="${region}"
-  export VAULT_ADDR="https://127.0.0.1:8200"
-  export VAULT_TLS_SERVER_NAME="$${vault_fqdn}"
-  export VAULT_CACERT="$${vault_tls_ca_file}"
-
-  # System preparation
   prepare_system
   configure_time
+}
+
+phase_prepare_storage() {
+  prepare_disk "${ebs_raft_device_name}" "$${vault_raft_dir}" "vault-raft-data"
+  prepare_disk "${ebs_audit_device_name}" "$${vault_log_dir}" "vault-audit-logs"
+}
+
+phase_prepare_vault_runtime() {
   create_vault_user "$${vault_home_dir}"
-
-  # EBS volumes
-  raft_device="$(get_ebs_device "${ebs_raft_device_name}")"
-  audit_device="$(get_ebs_device "${ebs_audit_device_name}")"
-  format_disk "$${raft_device}" "vault-raft-data"
-  format_disk "$${audit_device}" "vault-audit-logs"
-  mount_disk "$${raft_device}" "$${vault_raft_dir}"
-  mount_disk "$${audit_device}" "$${vault_log_dir}"
-  write_fstab "$${raft_device}" "$${vault_raft_dir}"
-  write_fstab "$${audit_device}" "$${vault_log_dir}"
-
-  # Vault installation
   configure_vault_directories \
     "$${vault_home_dir}" \
     "$${vault_data_dir}" \
@@ -152,92 +131,100 @@ main() {
     "$${vault_raft_dir}" \
     "$${vault_agent_template_dir}"
   install_vault
-  write_vault_systemd_unit
+  write_vault_service_unit
+  write_vault_service_override
+}
 
-  # Vault configuration
+phase_render_bootstrap_artifacts() {
   write_vault_license "$${vault_license_file}"
-  write_bootstrap_root_ca "$${vault_tls_ca_file}"
-  write_bootstrap_tls_cert "$${vault_tls_cert_file}"
-  write_bootstrap_tls_key "$${vault_tls_key_file}"
+  write_bootstrap_tls_materials \
+    "$${vault_tls_ca_file}" \
+    "$${vault_tls_cert_file}" \
+    "$${vault_tls_key_file}"
   write_vault_config "$${vault_config_file}"
+  write_vault_snapshot_config "$${vault_snapshot_config_file}"
+}
 
-  # Start Vault
+phase_start_vault() {
   start_vault
   wait_for_vault_api
+}
 
-  # Cluster initialization
+phase_converge_cluster() {
   if is_bootstrap_node; then
+    vault_node_role="bootstrap"
 
-    # Initialize and authenticate
     initialize_cluster \
       "$${vault_bootstrap_root_token_secret_arn}" \
       "$${ssm_cluster_state_name}"
     export VAULT_TOKEN="$(fetch_secret "$${vault_bootstrap_root_token_secret_arn}")"
 
-    # Raft configuration
     configure_autopilot
-    write_vault_snapshot_config "$${vault_snapshot_config_file}"
     configure_snapshots "$${vault_snapshot_config_file}"
+  else
+    vault_node_role="follower"
 
-    # PKI secrets engine
-    enable_pki_engine "$${vault_pki_mount_max_ttl}"
-    configure_pki_root_ca "$${vault_pki_root_ca_ttl}"
-    configure_pki_urls "$${vault_fqdn}"
-    configure_pki_vault_server_role "$${vault_fqdn}" "$${vault_pki_vault_server_role_max_ttl}"
-    configure_pki_vault_server_role_policy
-    write_pki_ca_cert_to_ssm "$${ssm_pki_ca_cert_name}"
+    join_cluster "$${ssm_cluster_state_name}"
+  fi
+}
 
-    # AWS auth method
-    enable_aws_auth
-    configure_aws_auth_pki_vault_server_role \
+phase_enable_pki_and_tls() {
+  if [ "$${vault_node_role}" = "bootstrap" ]; then
+    configure_pki_engine \
+      "$${vault_fqdn}" \
+      "$${vault_pki_mount_max_ttl}" \
+      "$${vault_pki_root_ca_ttl}" \
+      "$${vault_pki_vault_server_role_max_ttl}"
+    write_vault_server_policy
+    publish_cluster_ca_certificate "$${ssm_pki_ca_cert_name}"
+    configure_aws_auth_method \
       "$${vault_aws_auth_role_max_ttl}" \
       "$${vault_aws_auth_role_ttl}"
-
-    # Audit logging
-    configure_audit_logs "$${vault_audit_log_file}"
-
-    # Signal followers and issue node certificate
-    write_pki_state_ready "$${ssm_pki_state_name}"
-    issue_node_cert \
-      "$${vault_fqdn}" \
-      "$${vault_tls_dir}" \
-      "$${vault_tls_cert_file}" \
-      "$${vault_tls_key_file}" \
-      "$${vault_pki_server_cert_ttl}" \
-      "$${ssm_pki_ca_cert_name}"
-
+    configure_file_audit_device "$${vault_audit_log_file}"
+    mark_pki_ready "$${ssm_pki_state_name}"
   else
-
-    # Wait for bootstrap and issue node certificate
-    join_cluster "$${ssm_cluster_state_name}"
     wait_for_pki_ready "$${ssm_pki_state_name}"
-    issue_node_cert \
-      "$${vault_fqdn}" \
-      "$${vault_tls_dir}" \
-      "$${vault_tls_cert_file}" \
-      "$${vault_tls_key_file}" \
-      "$${vault_pki_server_cert_ttl}" \
-      "$${ssm_pki_ca_cert_name}"
-
   fi
 
-  # TLS rotation
-  reload_vault_tls
-  write_pki_ca_cert \
+  issue_vault_server_certificate \
+    "$${vault_fqdn}" \
+    "$${vault_tls_dir}" \
+    "$${vault_tls_cert_file}" \
+    "$${vault_tls_key_file}" \
+    "$${vault_pki_server_cert_ttl}" \
+    "$${ssm_pki_ca_cert_name}"
+
+  reload_vault_listener
+  write_cluster_ca_certificate \
     "$${vault_tls_ca_file}" \
     "$${vault_tls_dir}" \
     "$${ssm_pki_ca_cert_name}"
+}
 
-  # Vault CLI
+phase_enable_agent_rotation() {
   write_vault_cli_config "$${vault_fqdn}" "$${vault_tls_ca_file}"
-
-  # Vault Agent
   write_vault_agent_config "$${vault_agent_config_file}"
   write_vault_agent_tls_template "$${vault_agent_server_tls_template_file}"
-  write_vault_agent_reload_script "$${vault_agent_server_tls_template_command_file}"
-  write_vault_agent_polkit_rules
-  write_vault_agent_systemd_unit
+  write_vault_agent_reload_script "$${vault_agent_server_tls_reload_file}"
+  write_vault_agent_reload_rules "$${vault_agent_reload_rules_file}"
+  write_vault_agent_service_unit
   start_vault_agent
+}
+
+main() {
+  export AWS_REGION="${region}"
+  export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_TLS_SERVER_NAME="$${vault_fqdn}"
+  export VAULT_CACERT="$${vault_tls_ca_file}"
+
+  phase_prepare_system
+  phase_prepare_storage
+  phase_prepare_vault_runtime
+  phase_render_bootstrap_artifacts
+  phase_start_vault
+  phase_converge_cluster
+  phase_enable_pki_and_tls
+  phase_enable_agent_rotation
 
   log_info "=== Bootstrap complete ==="
 }

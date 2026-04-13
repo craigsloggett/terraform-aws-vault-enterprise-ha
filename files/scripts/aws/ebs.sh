@@ -1,10 +1,10 @@
 # shellcheck shell=sh
-# ebs-helpers.sh — EBS volume resolution and filesystem preparation.
+# ebs.sh — EBS volume resolution and filesystem preparation.
 
-# Note: get_ebs_nvme_device temporarily disables noglob (set +f)
+# Note: resolve_ebs_nvme_device temporarily disables noglob (set +f)
 # for the /dev/nvme* glob scan and re-enables it (set -f) before returning.
 
-get_ebs_nvme_device() {
+resolve_ebs_nvme_device() {
   target_name="${1}"
 
   target_short="${target_name#/dev/}"
@@ -27,8 +27,10 @@ get_ebs_nvme_device() {
   return 1
 }
 
-get_ebs_device() {
+prepare_disk() {
   device_attachment_name="${1}"
+  mount_point="${2}"
+  fs_label="${3}"
 
   if ! command -v ebsnvme-id >/dev/null 2>&1; then
     log_error "ebsnvme-id not found, ensure amazon-ec2-utils is installed in the AMI"
@@ -36,7 +38,7 @@ get_ebs_device() {
   fi
 
   for attempt in 1 2 3 4 5; do
-    device="$(get_ebs_nvme_device "${device_attachment_name}")" && break
+    device="$(resolve_ebs_nvme_device "${device_attachment_name}")" && break
     sleep 5
   done
 
@@ -45,33 +47,16 @@ get_ebs_device() {
     return 1
   fi
 
-  printf '%s' "${device}"
-}
-
-format_disk() {
-  device="${1}"
-  fs_label="${2}"
-
   if ! blkid -p "${device}" >/dev/null 2>&1; then
     log_info "No filesystem on ${device}, formatting as xfs (label=${fs_label})"
     mkfs.xfs -L "${fs_label}" "${device}"
   else
     log_info "Filesystem already present on ${device}, skipping format"
   fi
-}
-
-mount_disk() {
-  device="${1}"
-  mount_point="${2}"
 
   log_info "Mounting ${device} at ${mount_point}"
   mkdir -p "${mount_point}"
   mount -t xfs "${device}" "${mount_point}"
-}
-
-write_fstab() {
-  device="${1}"
-  mount_point="${2}"
 
   uuid="$(blkid -s UUID -o value "${device}")"
   if ! grep -q "${uuid}" /etc/fstab; then

@@ -1,5 +1,5 @@
 # shellcheck shell=sh
-# secrets-manager-helpers.sh — AWS Secrets Manager helpers.
+# secrets.sh — AWS Secrets Manager helpers.
 
 fetch_secret() {
   secret_arn="${1}"

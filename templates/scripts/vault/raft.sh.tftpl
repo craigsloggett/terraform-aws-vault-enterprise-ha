@@ -1,0 +1,23 @@
+# raft.sh — Vault Raft lifecycle configuration.
+
+configure_autopilot() {
+  log_info "Configuring Raft Autopilot"
+
+  vault operator raft autopilot set-config \
+    -cleanup-dead-servers=true \
+    -dead-server-last-contact-threshold=10m \
+    -min-quorum=${vault_minimum_quorum_size}
+
+  log_info "Raft Autopilot configured"
+}
+
+configure_snapshots() {
+  vault_snapshot_config_file="$${1}"
+
+  log_info "Configuring automated Raft snapshots"
+
+  vault write sys/storage/raft/snapshot-auto/config/hourly \
+    @"$${vault_snapshot_config_file}"
+
+  log_info "Automated Raft snapshots configured"
+}

@@ -1,5 +1,5 @@
 # shellcheck shell=sh
-# system-setup.sh — OS-level preparation: networking, packages, time.
+# packages.sh — OS-level networking and package preparation.
 
 wait_for_network() {
   for attempt in 1 2 3 4 5; do
@@ -21,15 +21,4 @@ prepare_system() {
   apt-get -yq update >/dev/null
   apt-get -yq install \
     awscli gnupg jq unzip nvme-cli amazon-ec2-utils chrony >/dev/null
-}
-
-configure_time() {
-  log_info "Configuring system time"
-
-  timedatectl set-timezone UTC
-  log_info "Timezone set to UTC"
-
-  systemctl enable --now chrony
-  chronyc makestep
-  log_info "Time synchronization complete"
 }

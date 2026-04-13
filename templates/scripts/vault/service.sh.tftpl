@@ -1,0 +1,46 @@
+# service.sh — Vault systemd unit and service lifecycle.
+
+write_vault_service_unit() {
+  log_info "Writing Vault systemd unit"
+
+  cat >/etc/systemd/system/vault.service <<EOF
+${config_vault_service}
+EOF
+}
+
+write_vault_service_override() {
+  log_info "Writing Vault systemd override"
+
+  mkdir -p /etc/systemd/system/vault.service.d
+  cat >/etc/systemd/system/vault.service.d/override.conf <<'EOF'
+${config_vault_service_override}
+EOF
+  chmod 0600 /etc/systemd/system/vault.service.d/override.conf
+}
+
+start_vault() {
+  log_info "Starting Vault"
+
+  systemctl daemon-reload
+
+  # Vault starts sealed; no health-check loop here because /v1/sys/health
+  # returns non-2xx until init/unseal is performed by an operator.
+  systemctl enable --now vault
+
+  log_info "Vault started"
+}
+
+wait_for_vault_api() {
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    status="$(curl -sk -o /dev/null -w '%%{http_code}' \
+      "https://127.0.0.1:8200/v1/sys/health" 2>/dev/null)" || true
+
+    if [ "$${status}" != "000" ]; then
+      return 0
+    fi
+    sleep 5
+  done
+
+  log_error "Vault API did not respond after $${attempt} attempts, failing bootstrap"
+  return 1
+}

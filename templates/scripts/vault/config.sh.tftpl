@@ -1,3 +1,5 @@
+# config.sh — Vault runtime configuration artifacts.
+
 write_vault_config() {
   vault_config_file="$${1}"
 
@@ -13,4 +15,17 @@ EOF
 
   chown vault:vault "$${vault_config_file}"
   chmod 0640 "$${vault_config_file}"
+}
+
+write_vault_snapshot_config() {
+  vault_snapshot_config_file="$${1}"
+
+  log_info "Writing Vault snapshot configuration"
+
+  cat >"$${vault_snapshot_config_file}" <<'EOF'
+${config_vault_snapshot_json}
+EOF
+
+  chown vault:vault "$${vault_snapshot_config_file}"
+  chmod 0640 "$${vault_snapshot_config_file}"
 }

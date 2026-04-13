@@ -1,7 +1,0 @@
-write_vault_agent_systemd_unit() {
-  log_info "Writing Vault Agent systemd unit"
-
-  cat >/etc/systemd/system/vault-agent.service <<EOF
-${config_agent_service}
-EOF
-}

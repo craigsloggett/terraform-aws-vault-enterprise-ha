@@ -1,0 +1,50 @@
+# config.sh — Vault Agent runtime configuration artifacts.
+
+write_vault_agent_config() {
+  vault_agent_config_file="$${1}"
+
+  log_info "Writing Vault Agent configuration"
+
+  cat >"$${vault_agent_config_file}" <<EOF
+${config_agent_hcl}
+EOF
+
+  chown vault:vault "$${vault_agent_config_file}"
+  chmod 0644 "$${vault_agent_config_file}"
+}
+
+write_vault_agent_tls_template() {
+  vault_agent_server_tls_template_file="$${1}"
+
+  log_info "Writing Vault Agent TLS certificate template"
+
+  cat >"$${vault_agent_server_tls_template_file}" <<EOF
+${config_agent_server_tls_ctmpl}
+EOF
+
+  chown vault:vault "$${vault_agent_server_tls_template_file}"
+  chmod 0644 "$${vault_agent_server_tls_template_file}"
+}
+
+write_vault_agent_reload_script() {
+  vault_agent_server_tls_reload_file="$${1}"
+
+  log_info "Writing Vault Agent TLS reload script"
+
+  cat >"$${vault_agent_server_tls_reload_file}" <<EOF
+${config_agent_reload_vault_server_tls}
+EOF
+
+  chown root:root "$${vault_agent_server_tls_reload_file}"
+  chmod 0755 "$${vault_agent_server_tls_reload_file}"
+}
+
+write_vault_agent_reload_rules() {
+  vault_agent_reload_rules_file="$${1}"
+
+  log_info "Writing Vault Agent polkit rules"
+
+  cat >"$${vault_agent_reload_rules_file}" <<'EOF'
+${config_agent_reload_rules}
+EOF
+}

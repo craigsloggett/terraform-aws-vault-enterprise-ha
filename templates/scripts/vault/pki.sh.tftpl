@@ -1,8 +1,25 @@
-# configure-pki.sh — PKI secrets engine configuration.
-#
-# These functions run only on the bootstrap node after cluster init.
+# pki.sh — Vault PKI engine configuration and readiness.
 
-enable_pki_engine() {
+wait_for_pki_ready() {
+  ssm_pki_state_name="$${1}"
+
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    state="$(aws ssm get-parameter \
+      --name "$${ssm_pki_state_name}" \
+      --query "Parameter.Value" \
+      --output text 2>/dev/null)" || true
+
+    if [ "$${state}" = "ready" ]; then
+      return 0
+    fi
+    sleep 5
+  done
+
+  log_error "Vault PKI was not ready after $${attempt} attempts, failing bootstrap"
+  return 1
+}
+
+configure_pki_mount() {
   vault_pki_mount_max_ttl="$${1}"
 
   log_info "Enabling Vault PKI secrets engine"
@@ -13,7 +30,7 @@ enable_pki_engine() {
 
   vault secrets tune -max-lease-ttl="$${vault_pki_mount_max_ttl}" pki
 
-  log_info "PKI secrets engine enabled"
+  log_info "Vault PKI secrets engine enabled"
 }
 
 configure_pki_root_ca() {
@@ -44,8 +61,6 @@ configure_pki_urls() {
 
   log_info "Configuring PKI issuing URLs"
 
-  # Configure issuing certificate, CRL, and OCSP URLs.
-  # Vault's built-in OCSP responder handles /v1/pki/ocsp natively.
   vault write pki/config/urls \
     issuing_certificates="https://$${vault_fqdn}:8200/v1/pki/ca" \
     crl_distribution_points="https://$${vault_fqdn}:8200/v1/pki/crl" \
@@ -54,13 +69,12 @@ configure_pki_urls() {
   log_info "PKI issuing URLs configured"
 }
 
-configure_pki_vault_server_role() {
+configure_vault_server_pki_role() {
   vault_fqdn="$${1}"
   vault_pki_vault_server_role_max_ttl="$${2}"
 
   log_info "Creating vault-server PKI role"
 
-  # Create the vault-server role used by nodes to issue their own TLS certs.
   vault write pki/roles/vault-server \
     allowed_domains="$${vault_fqdn}" \
     allow_bare_domains=true \
@@ -75,15 +89,16 @@ configure_pki_vault_server_role() {
   log_info "vault-server PKI role created"
 }
 
-configure_pki_vault_server_role_policy() {
-  log_info "Writing vault-server policy"
+configure_pki_engine() {
+  vault_fqdn="$${1}"
+  vault_pki_mount_max_ttl="$${2}"
+  vault_pki_root_ca_ttl="$${3}"
+  vault_pki_vault_server_role_max_ttl="$${4}"
 
-  vault policy write vault-server - <<EOF
-path "pki/issue/vault-server" {
-  capabilities = ["create", "update"]
+  configure_pki_mount "$${vault_pki_mount_max_ttl}"
+  configure_pki_root_ca "$${vault_pki_root_ca_ttl}"
+  configure_pki_urls "$${vault_fqdn}"
+  configure_vault_server_pki_role \
+    "$${vault_fqdn}" \
+    "$${vault_pki_vault_server_role_max_ttl}"
 }
-EOF
-
-  log_info "vault-server policy written"
-}
-

@@ -1,0 +1,68 @@
+# install.sh — Vault binary installation.
+
+get_system_architecture() {
+  machine="$(uname -m)"
+  case "$${machine}" in
+    x86_64) printf 'amd64' ;;
+    aarch64) printf 'arm64' ;;
+    *)
+      log_error "Unsupported architecture: $${machine}"
+      return 1
+      ;;
+  esac
+}
+
+download_and_verify_vault() {
+  version="$${1}"
+  arch="$${2}"
+  tmp_dir="$${3}"
+
+  base_url="https://releases.hashicorp.com/vault/$${version}"
+  zip_file="vault_$${version}_linux_$${arch}.zip"
+  sums_file="vault_$${version}_SHA256SUMS"
+  sig_file="vault_$${version}_SHA256SUMS.sig"
+
+  curl -fsSL -o "$${tmp_dir}/$${zip_file}" "$${base_url}/$${zip_file}"
+  curl -fsSL -o "$${tmp_dir}/$${sums_file}" "$${base_url}/$${sums_file}"
+  curl -fsSL -o "$${tmp_dir}/$${sig_file}" "$${base_url}/$${sig_file}"
+
+  # GPG signature verification (isolated keyring to avoid polluting the system)
+  export GNUPGHOME="$${tmp_dir}/.gnupg"
+  mkdir -p "$${GNUPGHOME}"
+  chmod 0700 "$${GNUPGHOME}"
+
+  curl -fsSL -o "$${tmp_dir}/hashicorp.asc" \
+    https://www.hashicorp.com/.well-known/pgp-key.txt
+  gpg --quiet --import "$${tmp_dir}/hashicorp.asc"
+  printf '%s\n' "C874011F0AB405110D02105534365D9472D7468F:6:" | gpg --quiet --import-ownertrust
+
+  log_info "Verifying GPG signature"
+  gpg --quiet --verify "$${tmp_dir}/$${sig_file}" "$${tmp_dir}/$${sums_file}"
+
+  log_info "Verifying SHA256 checksum"
+  cd "$${tmp_dir}" || return 1
+  sha256sum -c --ignore-missing "$${sums_file}"
+  cd / || return 1
+}
+
+install_vault() {
+  vault_version="${vault_version}"
+
+  log_info "Installing Vault Enterprise $${vault_version}"
+
+  arch="$(get_system_architecture)"
+  log_info "Detected architecture: $${arch}"
+
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "$${tmp_dir}"' EXIT
+
+  download_and_verify_vault "$${vault_version}" "$${arch}" "$${tmp_dir}"
+
+  unzip -o "$${tmp_dir}/vault_$${vault_version}_linux_$${arch}.zip" -d "$${tmp_dir}"
+  mv "$${tmp_dir}/vault" /usr/bin/vault
+  chown root:root /usr/bin/vault
+  chmod 0755 /usr/bin/vault
+  ln -sf /usr/bin/vault /usr/local/bin/vault
+
+  log_info "Vault Enterprise $${vault_version} installed"
+}

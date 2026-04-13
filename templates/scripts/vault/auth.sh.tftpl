@@ -1,0 +1,35 @@
+# auth.sh — Vault AWS auth configuration.
+
+write_vault_server_policy() {
+  log_info "Writing vault-server policy"
+
+  vault policy write vault-server - <<EOF
+path "pki/issue/vault-server" {
+  capabilities = ["create", "update"]
+}
+EOF
+
+  log_info "vault-server policy written"
+}
+
+configure_aws_auth_method() {
+  vault_aws_auth_role_max_ttl="$${1}"
+  vault_aws_auth_role_ttl="$${2}"
+
+  vault_iam_role_arn="${vault_iam_role_arn}"
+
+  log_info "Configuring Vault AWS auth method"
+
+  if ! vault auth list -format=json | jq -e '."aws/"' >/dev/null 2>&1; then
+    vault auth enable aws
+  fi
+
+  vault write auth/aws/role/vault-server \
+    auth_type=iam \
+    bound_iam_principal_arn="$${vault_iam_role_arn}" \
+    policies=vault-server \
+    max_ttl="$${vault_aws_auth_role_max_ttl}" \
+    ttl="$${vault_aws_auth_role_ttl}"
+
+  log_info "Vault AWS auth method configured"
+}

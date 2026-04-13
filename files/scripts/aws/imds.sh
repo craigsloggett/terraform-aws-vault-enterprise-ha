@@ -1,5 +1,5 @@
 # shellcheck shell=sh
-# ec2-metadata-helpers.sh — EC2 Instance Metadata Service (IMDSv2) helpers.
+# imds.sh — EC2 Instance Metadata Service (IMDSv2) helpers.
 
 get_imds_token() {
   curl -s -X PUT \
