@@ -1,26 +1,29 @@
-# vault-pki.sh — PKI secrets engine configuration.
+# configure-pki.sh — PKI secrets engine configuration.
 #
-# This function runs only on the bootstrap node after cluster init.
+# These functions run only on the bootstrap node after cluster init.
 
-configure_pki_engine() {
-  vault_fqdn="$${1}"
-  vault_pki_mount_max_ttl="$${2}"
-  vault_pki_root_ca_ttl="$${3}"
-  vault_pki_vault_server_role_max_ttl="$${4}"
-  ssm_pki_ca_cert_name="$${5}"
+enable_pki_engine() {
+  vault_pki_mount_max_ttl="$${1}"
 
-  cluster_name="${cluster_name}"
-  vault_pki_organization="${vault_pki_organization}"
-  vault_pki_country="${vault_pki_country}"
+  log_info "Enabling Vault PKI secrets engine"
 
-  log_info "Configuring Vault PKI secrets engine"
-
-  # Enable the PKI secrets engine if not already enabled.
   if ! vault secrets list -format=json | jq -e '."pki/"' >/dev/null 2>&1; then
     vault secrets enable pki
   fi
 
   vault secrets tune -max-lease-ttl="$${vault_pki_mount_max_ttl}" pki
+
+  log_info "PKI secrets engine enabled"
+}
+
+configure_pki_root_ca() {
+  vault_pki_root_ca_ttl="$${1}"
+
+  cluster_name="${cluster_name}"
+  vault_pki_organization="${vault_pki_organization}"
+  vault_pki_country="${vault_pki_country}"
+
+  log_info "Generating PKI root CA"
 
   # Generate root CA with ECDSA P-384 keys, consistent with the bootstrap
   # CA and server certs in tls.tf.
@@ -33,12 +36,29 @@ configure_pki_engine() {
     key_bits=384 |
     jq -r '.data.certificate' >/dev/null
 
+  log_info "PKI root CA generated"
+}
+
+configure_pki_urls() {
+  vault_fqdn="$${1}"
+
+  log_info "Configuring PKI issuing URLs"
+
   # Configure issuing certificate, CRL, and OCSP URLs.
   # Vault's built-in OCSP responder handles /v1/pki/ocsp natively.
   vault write pki/config/urls \
     issuing_certificates="https://$${vault_fqdn}:8200/v1/pki/ca" \
     crl_distribution_points="https://$${vault_fqdn}:8200/v1/pki/crl" \
     ocsp_servers="https://$${vault_fqdn}:8200/v1/pki/ocsp"
+
+  log_info "PKI issuing URLs configured"
+}
+
+configure_pki_vault_server_role() {
+  vault_fqdn="$${1}"
+  vault_pki_vault_server_role_max_ttl="$${2}"
+
+  log_info "Creating vault-server PKI role"
 
   # Create the vault-server role used by nodes to issue their own TLS certs.
   vault write pki/roles/vault-server \
@@ -52,17 +72,7 @@ configure_pki_engine() {
     key_bits=384 \
     ext_key_usage=serverAuth
 
-  # Publish the new CA cert PEM to SSM so follower nodes can fetch it and
-  # trust the new CA before attempting AWS auth. The CA cert is public
-  # material, it is the trust anchor, not the signing key.
-  log_info "Publishing PKI CA cert to SSM"
-  ca_cert_pem="$(vault read -field=certificate pki/cert/ca)"
-  aws ssm put-parameter \
-    --name "$${ssm_pki_ca_cert_name}" \
-    --value "$${ca_cert_pem}" \
-    --overwrite
-
-  log_info "PKI secrets engine configured"
+  log_info "vault-server PKI role created"
 }
 
 configure_pki_vault_server_role_policy() {
@@ -75,4 +85,21 @@ path "pki/issue/vault-server" {
 EOF
 
   log_info "vault-server policy written"
+}
+
+write_pki_ca_cert_to_ssm() {
+  ssm_pki_ca_cert_name="$${1}"
+
+  log_info "Publishing PKI CA cert to SSM"
+
+  # Publish the new CA cert PEM to SSM so follower nodes can fetch it and
+  # trust the new CA before attempting AWS auth. The CA cert is public
+  # material, it is the trust anchor, not the signing key.
+  ca_cert_pem="$(vault read -field=certificate pki/cert/ca)"
+  aws ssm put-parameter \
+    --name "$${ssm_pki_ca_cert_name}" \
+    --value "$${ca_cert_pem}" \
+    --overwrite
+
+  log_info "PKI CA cert published to SSM"
 }

@@ -178,15 +178,14 @@ main() {
     configure_autopilot
     write_vault_snapshot_config "$${vault_snapshot_config_file}"
     configure_snapshots "$${vault_snapshot_config_file}"
-    configure_pki_engine \
-      "$${vault_fqdn}" \
-      "$${vault_pki_mount_max_ttl}" \
-      "$${vault_pki_root_ca_ttl}" \
-      "$${vault_pki_vault_server_role_max_ttl}" \
-      "$${ssm_pki_ca_cert_name}"
-    enable_aws_auth
+    enable_pki_engine "$${vault_pki_mount_max_ttl}"
+    configure_pki_root_ca "$${vault_pki_root_ca_ttl}"
+    configure_pki_urls "$${vault_fqdn}"
+    configure_pki_vault_server_role "$${vault_fqdn}" "$${vault_pki_vault_server_role_max_ttl}"
     configure_pki_vault_server_role_policy
-    configure_pki_vault_server_role \
+    write_pki_ca_cert_to_ssm "$${ssm_pki_ca_cert_name}"
+    enable_aws_auth
+    configure_aws_auth_vault_server_role \
       "$${vault_aws_auth_role_max_ttl}" \
       "$${vault_aws_auth_role_ttl}"
     configure_audit_logs "$${vault_audit_log_file}"
