@@ -92,7 +92,7 @@ configure_snapshots() {
   log_info "Configuring automated Raft snapshots"
 
   cat >"$${vault_snapshot_config_file}" <<'EOF'
-${config_snapshot_json}
+${config_vault_snapshot_json}
 EOF
 
   chown vault:vault "$${vault_snapshot_config_file}"
@@ -119,23 +119,23 @@ EOF
   chmod 0644 "$${vault_agent_config_file}"
 
   cat >"$${vault_agent_server_tls_template_file}" <<EOF
-${config_vault_server_tls_ctmpl}
+${config_agent_server_tls_ctmpl}
 EOF
   chown vault:vault "$${vault_agent_server_tls_template_file}"
   chmod 0644 "$${vault_agent_server_tls_template_file}"
 
   cat >"$${vault_agent_server_tls_template_command_file}" <<EOF
-${config_reload_vault_server_tls}
+${config_agent_reload_vault_server_tls}
 EOF
   chown root:root "$${vault_agent_server_tls_template_command_file}"
   chmod 0755 "$${vault_agent_server_tls_template_command_file}"
 
   cat >/etc/polkit-1/rules.d/10-vault-agent-reload.rules <<'EOF'
-${config_vault_agent_reload_rules}
+${config_agent_reload_rules}
 EOF
 
   cat >/etc/systemd/system/vault-agent.service <<EOF
-${config_vault_agent_service}
+${config_agent_service}
 EOF
 
   systemctl daemon-reload

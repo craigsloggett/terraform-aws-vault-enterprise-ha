@@ -15,21 +15,13 @@ locals {
   ebs_raft_device_name  = "/dev/xvdf"
   ebs_audit_device_name = "/dev/xvdg"
 
-  config_vault_service            = file("${path.module}/files/cluster/vault.service")
-  config_vault_service_override   = file("${path.module}/files/cluster/vault.service.d-override.conf")
-  config_vault_agent_service      = file("${path.module}/files/agent/vault-agent.service")
-  config_vault_agent_reload_rules = file("${path.module}/files/agent/10-vault-agent-reload.rules")
-  config_reload_vault_server_tls  = file("${path.module}/files/agent/reload-vault-server-tls")
+  config_vault_service                 = file("${path.module}/files/config/vault/vault.service")
+  config_vault_service_override        = file("${path.module}/files/config/vault/vault.service.d-override.conf")
+  config_agent_service                 = file("${path.module}/files/config/agent/vault-agent.service")
+  config_agent_reload_rules            = file("${path.module}/files/config/agent/10-vault-agent-reload.rules")
+  config_agent_reload_vault_server_tls = file("${path.module}/files/config/agent/reload-vault-server-tls")
 
-  config_agent_hcl = templatefile("${path.module}/templates/agent/agent.hcl.tftpl", {
-    vault_fqdn = local.vault_fqdn
-  })
-
-  config_vault_server_tls_ctmpl = templatefile("${path.module}/templates/agent/vault-server-tls.ctmpl.tftpl", {
-    vault_fqdn = local.vault_fqdn
-  })
-
-  config_vault_hcl = templatefile("${path.module}/templates/cluster/vault.hcl.tftpl", {
+  config_vault_hcl = templatefile("${path.module}/templates/config/vault/vault.hcl.tftpl", {
     cluster_name      = var.project_name
     vault_fqdn        = trimsuffix(aws_route53_record.vault.fqdn, ".")
     region            = data.aws_region.current.region
@@ -38,11 +30,19 @@ locals {
     cluster_tag_value = local.cluster_tag_value
   })
 
-  config_snapshot_json = templatefile("${path.module}/templates/cluster/snapshot.json.tftpl", {
+  config_vault_snapshot_json = templatefile("${path.module}/templates/config/vault/snapshot.json.tftpl", {
     aws_s3_bucket = aws_s3_bucket.vault_snapshots.id
     aws_s3_region = data.aws_region.current.region
     interval      = var.vault_snapshot_interval
     retain        = var.vault_snapshot_retain
+  })
+
+  config_agent_hcl = templatefile("${path.module}/templates/config/agent/agent.hcl.tftpl", {
+    vault_fqdn = local.vault_fqdn
+  })
+
+  config_agent_server_tls_ctmpl = templatefile("${path.module}/templates/config/agent/vault-server-tls.ctmpl.tftpl", {
+    vault_fqdn = local.vault_fqdn
   })
 
   # Cloud-init script fragments — pure shell (no Terraform interpolation)
@@ -59,16 +59,16 @@ locals {
 
   # Cloud-init script fragment — needs Terraform interpolation for config content
   script_vault_config_files = templatefile("${path.module}/templates/scripts/vault-config-files.sh.tftpl", {
-    config_vault_service            = local.config_vault_service
-    config_vault_service_override   = local.config_vault_service_override
-    config_vault_hcl                = local.config_vault_hcl
-    config_snapshot_json            = local.config_snapshot_json
-    config_agent_hcl                = local.config_agent_hcl
-    config_vault_server_tls_ctmpl   = local.config_vault_server_tls_ctmpl
-    config_reload_vault_server_tls  = local.config_reload_vault_server_tls
-    config_vault_agent_reload_rules = local.config_vault_agent_reload_rules
-    config_vault_agent_service      = local.config_vault_agent_service
-    vault_minimum_quorum_size       = var.vault_node_count
+    config_vault_service                 = local.config_vault_service
+    config_vault_service_override        = local.config_vault_service_override
+    config_vault_hcl                     = local.config_vault_hcl
+    config_vault_snapshot_json           = local.config_vault_snapshot_json
+    config_agent_hcl                     = local.config_agent_hcl
+    config_agent_server_tls_ctmpl        = local.config_agent_server_tls_ctmpl
+    config_agent_reload_vault_server_tls = local.config_agent_reload_vault_server_tls
+    config_agent_reload_rules            = local.config_agent_reload_rules
+    config_agent_service                 = local.config_agent_service
+    vault_minimum_quorum_size            = var.vault_node_count
   })
 
   vpc = var.existing_vpc != null ? {
