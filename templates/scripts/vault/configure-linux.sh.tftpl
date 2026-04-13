@@ -1,4 +1,18 @@
-# vault-install.sh — Vault binary installation and service lifecycle.
+# configure-linux.sh — Vault binary installation, systemd unit, and service lifecycle.
+
+write_vault_systemd_unit() {
+  log_info "Writing Vault systemd unit"
+
+  cat >/etc/systemd/system/vault.service <<EOF
+${config_vault_service}
+EOF
+
+  mkdir -p /etc/systemd/system/vault.service.d
+  cat >/etc/systemd/system/vault.service.d/override.conf <<'EOF'
+${config_vault_service_override}
+EOF
+  chmod 0600 /etc/systemd/system/vault.service.d/override.conf
+}
 
 get_system_architecture() {
   machine="$(uname -m)"

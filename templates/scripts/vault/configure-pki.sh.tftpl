@@ -87,19 +87,3 @@ EOF
   log_info "vault-server policy written"
 }
 
-write_pki_ca_cert_to_ssm() {
-  ssm_pki_ca_cert_name="$${1}"
-
-  log_info "Publishing PKI CA cert to SSM"
-
-  # Publish the new CA cert PEM to SSM so follower nodes can fetch it and
-  # trust the new CA before attempting AWS auth. The CA cert is public
-  # material, it is the trust anchor, not the signing key.
-  ca_cert_pem="$(vault read -field=certificate pki/cert/ca)"
-  aws ssm put-parameter \
-    --name "$${ssm_pki_ca_cert_name}" \
-    --value "$${ca_cert_pem}" \
-    --overwrite
-
-  log_info "PKI CA cert published to SSM"
-}

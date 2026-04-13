@@ -65,18 +65,16 @@ resource "aws_launch_template" "vault" {
 
     # Vault system setup
     script_vault_configure_linux = local.script_vault_configure_linux
-    script_vault_install         = local.script_vault_install
 
     # Vault secrets and configuration
     script_vault_get_license                   = local.script_vault_get_license
     script_vault_get_bootstrap_tls_materials   = local.script_vault_get_bootstrap_tls_materials
-    script_vault_write_systemd_unit            = local.script_vault_write_systemd_unit
     script_vault_write_license                 = local.script_vault_write_license
     script_vault_write_bootstrap_tls_materials = local.script_vault_write_bootstrap_tls_materials
     script_vault_write_config                  = local.script_vault_write_config
 
     # Cluster initialization and Raft
-    script_vault_initialize_cluster    = local.script_vault_initialize_cluster
+    script_vault_configure_cluster     = local.script_vault_configure_cluster
     script_vault_configure_autopilot   = local.script_vault_configure_autopilot
     script_vault_write_snapshot_config = local.script_vault_write_snapshot_config
     script_vault_configure_snapshots   = local.script_vault_configure_snapshots

@@ -68,10 +68,10 @@ locals {
   # Cloud-init scripts — Vault system setup
   # ---------------------------------------------------------------------------
 
-  script_vault_configure_linux = file("${path.module}/files/scripts/vault/configure-linux.sh")
-
-  script_vault_install = templatefile("${path.module}/templates/scripts/vault/install.sh.tftpl", {
-    vault_version = var.vault_version
+  script_vault_configure_linux = templatefile("${path.module}/templates/scripts/vault/configure-linux.sh.tftpl", {
+    vault_version                 = var.vault_version
+    config_vault_service          = local.config_vault_service
+    config_vault_service_override = local.config_vault_service_override
   })
 
   # ---------------------------------------------------------------------------
@@ -88,11 +88,6 @@ locals {
     bootstrap_tls_server_key_secret_arn  = aws_secretsmanager_secret.vault_bootstrap_server_key.arn
   })
 
-  script_vault_write_systemd_unit = templatefile("${path.module}/templates/scripts/vault/write-systemd-unit.sh.tftpl", {
-    config_vault_service          = local.config_vault_service
-    config_vault_service_override = local.config_vault_service_override
-  })
-
   script_vault_write_license                 = file("${path.module}/files/scripts/vault/write-license.sh")
   script_vault_write_bootstrap_tls_materials = file("${path.module}/files/scripts/vault/write-bootstrap-tls-materials.sh")
 
@@ -104,7 +99,7 @@ locals {
   # Cloud-init scripts — cluster initialization and Raft
   # ---------------------------------------------------------------------------
 
-  script_vault_initialize_cluster = templatefile("${path.module}/templates/scripts/vault/initialize-cluster.sh.tftpl", {
+  script_vault_configure_cluster = templatefile("${path.module}/templates/scripts/vault/configure-cluster.sh.tftpl", {
     cluster_tag_key                = local.cluster_tag_key
     cluster_tag_value              = local.cluster_tag_value
     vault_recovery_keys_secret_arn = aws_secretsmanager_secret.vault_recovery_keys.arn

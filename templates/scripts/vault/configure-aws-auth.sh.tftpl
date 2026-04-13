@@ -32,14 +32,3 @@ configure_aws_auth_pki_vault_server_role() {
 
   log_info "vault-server AWS auth role configured"
 }
-
-write_pki_state_ready() {
-  ssm_pki_state_name="$${1}"
-
-  log_info "Writing PKI state: ready"
-
-  aws ssm put-parameter \
-    --name "$${ssm_pki_state_name}" \
-    --value "ready" \
-    --overwrite
-}

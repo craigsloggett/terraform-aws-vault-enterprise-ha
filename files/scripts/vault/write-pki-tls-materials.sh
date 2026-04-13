@@ -1,5 +1,5 @@
 # shellcheck shell=sh
-# write-pki-tls-materials.sh — Replace bootstrap TLS with PKI-issued certificates.
+# write-pki-tls-materials.sh — Write PKI-issued TLS materials and state.
 
 write_pki_ca_cert() {
   vault_tls_ca_file="${1}"
@@ -8,7 +8,7 @@ write_pki_ca_cert() {
 
   log_info "Replacing bootstrap CA cert with PKI CA cert on disk"
 
-  # Fetch the PKI CA cert from SSM. This was written by configure_pki_engine()
+  # Fetch the PKI CA cert from SSM. This was written by write_pki_ca_cert_to_ssm()
   # on the bootstrap node and is available to all nodes without a Vault token.
   pki_ca_cert="$(aws ssm get-parameter \
     --name "${ssm_pki_ca_cert_name}" \
@@ -31,4 +31,32 @@ write_pki_ca_cert() {
     rm -f "${pki_ca_tmp}"
     log_info "Removed temporary PKI CA cert file ${pki_ca_tmp}"
   fi
+}
+
+write_pki_ca_cert_to_ssm() {
+  ssm_pki_ca_cert_name="${1}"
+
+  log_info "Publishing PKI CA cert to SSM"
+
+  # Publish the new CA cert PEM to SSM so follower nodes can fetch it and
+  # trust the new CA before attempting AWS auth. The CA cert is public
+  # material, it is the trust anchor, not the signing key.
+  ca_cert_pem="$(vault read -field=certificate pki/cert/ca)"
+  aws ssm put-parameter \
+    --name "${ssm_pki_ca_cert_name}" \
+    --value "${ca_cert_pem}" \
+    --overwrite
+
+  log_info "PKI CA cert published to SSM"
+}
+
+write_pki_state_ready() {
+  ssm_pki_state_name="${1}"
+
+  log_info "Writing PKI state: ready"
+
+  aws ssm put-parameter \
+    --name "${ssm_pki_state_name}" \
+    --value "ready" \
+    --overwrite
 }
