@@ -64,3 +64,15 @@ configure_pki_engine() {
 
   log_info "PKI secrets engine configured"
 }
+
+configure_pki_vault_server_role_policy() {
+  log_info "Writing vault-server policy"
+
+  vault policy write vault-server - <<EOF
+path "pki/issue/vault-server" {
+  capabilities = ["create", "update"]
+}
+EOF
+
+  log_info "vault-server policy written"
+}

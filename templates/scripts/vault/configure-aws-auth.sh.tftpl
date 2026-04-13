@@ -12,18 +12,6 @@ enable_aws_auth() {
   log_info "AWS auth method enabled"
 }
 
-configure_pki_vault_server_role_policy() {
-  log_info "Writing vault-server policy"
-
-  vault policy write vault-server - <<EOF
-path "pki/issue/vault-server" {
-  capabilities = ["create", "update"]
-}
-EOF
-
-  log_info "vault-server policy written"
-}
-
 configure_pki_vault_server_role() {
   vault_aws_auth_role_max_ttl="$${1}"
   vault_aws_auth_role_ttl="$${2}"
