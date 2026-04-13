@@ -51,7 +51,7 @@ locals {
   script_system_setup  = file("${path.module}/files/scripts/system-setup.sh")
   script_vault_system  = file("${path.module}/files/scripts/vault-system.sh")
   script_vault_install = file("${path.module}/files/scripts/vault-install.sh")
-  script_vault_cluster = file("${path.module}/files/scripts/vault-cluster.sh")
+  script_vault_cluster = file("${path.module}/files/scripts/vault-initialize-cluster.sh")
   script_vault_pki     = file("${path.module}/files/scripts/vault-pki.sh")
   script_vault_auth    = file("${path.module}/files/scripts/vault-auth.sh")
   script_vault_tls     = file("${path.module}/files/scripts/vault-tls.sh")

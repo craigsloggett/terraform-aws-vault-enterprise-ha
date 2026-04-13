@@ -1,5 +1,5 @@
 # shellcheck shell=sh
-# vault-cluster.sh — Cluster initialization, join, and Raft membership.
+# vault-initialize-cluster.sh — Cluster initialization, join, and Raft membership.
 
 is_bootstrap_node() {
   instance_id="${1}"
@@ -21,7 +21,7 @@ is_bootstrap_node() {
   [ "${instance_id}" = "${lowest_id}" ]
 }
 
-init_cluster() {
+initialize_cluster() {
   vault_bootstrap_root_token_secret_arn="${1}"
   vault_recovery_keys_secret_arn="${2}"
   ssm_cluster_state_name="${3}"

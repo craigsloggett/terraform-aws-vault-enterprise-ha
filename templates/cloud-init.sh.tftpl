@@ -165,7 +165,7 @@ main() {
     "$${instance_id}" \
     "$${cluster_tag_key}" \
     "$${cluster_tag_value}"; then
-    init_cluster \
+    initialize_cluster \
       "$${vault_bootstrap_root_token_secret_arn}" \
       "$${vault_recovery_keys_secret_arn}" \
       "$${ssm_cluster_state_name}"
