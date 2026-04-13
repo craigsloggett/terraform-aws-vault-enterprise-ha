@@ -18,31 +18,45 @@ EOF
   chmod 0600 /etc/systemd/system/vault.service.d/override.conf
 }
 
-write_secrets() {
+get_license() {
   region="$${1}"
   vault_license_secret_arn="$${2}"
-  bootstrap_tls_ca_cert_secret_arn="$${3}"
-  bootstrap_tls_server_cert_secret_arn="$${4}"
-  bootstrap_tls_server_key_secret_arn="$${5}"
-  vault_license_file="$${6}"
-  vault_tls_ca_file="$${7}"
-  vault_tls_cert_file="$${8}"
-  vault_tls_key_file="$${9}"
+  fetch_secret "$${region}" "$${vault_license_secret_arn}"
+}
 
-  log_info "Fetching secrets from AWS Secrets Manager"
+get_bootstrap_root_ca() {
+  region="$${1}"
+  bootstrap_tls_ca_cert_secret_arn="$${2}"
+  fetch_secret "$${region}" "$${bootstrap_tls_ca_cert_secret_arn}"
+}
 
-  vault_license="$(fetch_secret "$${region}" "$${vault_license_secret_arn}")"
-  ca_cert="$(fetch_secret "$${region}" "$${bootstrap_tls_ca_cert_secret_arn}")"
-  server_cert="$(fetch_secret "$${region}" "$${bootstrap_tls_server_cert_secret_arn}")"
-  server_key="$(fetch_secret "$${region}" "$${bootstrap_tls_server_key_secret_arn}")"
+get_bootstrap_tls_cert() {
+  region="$${1}"
+  bootstrap_tls_server_cert_secret_arn="$${2}"
+  fetch_secret "$${region}" "$${bootstrap_tls_server_cert_secret_arn}"
+}
 
-  # Write the license file
+get_bootstrap_tls_key() {
+  region="$${1}"
+  bootstrap_tls_server_key_secret_arn="$${2}"
+  fetch_secret "$${region}" "$${bootstrap_tls_server_key_secret_arn}"
+}
+
+write_tls_materials() {
+  vault_license="$${1}"
+  ca_cert="$${2}"
+  server_cert="$${3}"
+  server_key="$${4}"
+  vault_license_file="$${5}"
+  vault_tls_ca_file="$${6}"
+  vault_tls_cert_file="$${7}"
+  vault_tls_key_file="$${8}"
+
   log_info "Writing the Vault license"
   printf '%s\n' "$${vault_license}" >"$${vault_license_file}"
   chown vault:vault "$${vault_license_file}"
   chmod 0640 "$${vault_license_file}"
 
-  # Write TLS certificates
   log_info "Writing bootstrap TLS certificates"
   printf '%s\n' "$${ca_cert}" >"$${vault_tls_ca_file}"
   printf '%s\n' "$${server_cert}" >"$${vault_tls_cert_file}"

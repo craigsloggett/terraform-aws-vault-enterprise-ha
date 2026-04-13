@@ -138,12 +138,16 @@ main() {
   install_vault "$${vault_version}"
   write_vault_systemd_unit
 
-  write_secrets \
-    "$${region}" \
-    "$${vault_license_secret_arn}" \
-    "$${bootstrap_tls_ca_cert_secret_arn}" \
-    "$${bootstrap_tls_server_cert_secret_arn}" \
-    "$${bootstrap_tls_server_key_secret_arn}" \
+  log_info "Fetching secrets from AWS Secrets Manager"
+  vault_license="$(get_license "$${region}" "$${vault_license_secret_arn}")"
+  ca_cert="$(get_bootstrap_root_ca "$${region}" "$${bootstrap_tls_ca_cert_secret_arn}")"
+  server_cert="$(get_bootstrap_tls_cert "$${region}" "$${bootstrap_tls_server_cert_secret_arn}")"
+  server_key="$(get_bootstrap_tls_key "$${region}" "$${bootstrap_tls_server_key_secret_arn}")"
+  write_tls_materials \
+    "$${vault_license}" \
+    "$${ca_cert}" \
+    "$${server_cert}" \
+    "$${server_key}" \
     "$${vault_license_file}" \
     "$${vault_tls_ca_file}" \
     "$${vault_tls_cert_file}" \
