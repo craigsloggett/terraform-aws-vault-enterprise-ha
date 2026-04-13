@@ -106,8 +106,12 @@ main() {
   create_vault_user "$${vault_home_dir}"
   raft_device="$(get_ebs_device "${ebs_raft_device_name}")"
   audit_device="$(get_ebs_device "${ebs_audit_device_name}")"
-  write_disk "$${raft_device}" "$${vault_raft_dir}" "vault-raft-data"
-  write_disk "$${audit_device}" "$${vault_log_dir}" "vault-audit-logs"
+  format_disk "$${raft_device}" "vault-raft-data"
+  format_disk "$${audit_device}" "vault-audit-logs"
+  mount_disk "$${raft_device}" "$${vault_raft_dir}"
+  mount_disk "$${audit_device}" "$${vault_log_dir}"
+  write_fstab "$${raft_device}" "$${vault_raft_dir}"
+  write_fstab "$${audit_device}" "$${vault_log_dir}"
   configure_vault_directories \
     "$${vault_home_dir}" \
     "$${vault_data_dir}" \

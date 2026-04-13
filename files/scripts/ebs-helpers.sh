@@ -48,12 +48,9 @@ get_ebs_device() {
   printf '%s' "${device}"
 }
 
-write_disk() {
+format_disk() {
   device="${1}"
-  mount_point="${2}"
-  fs_label="${3}"
-
-  log_info "Preparing disk ${device} at ${mount_point} (label=${fs_label})"
+  fs_label="${2}"
 
   if ! blkid -p "${device}" >/dev/null 2>&1; then
     log_info "No filesystem on ${device}, formatting as xfs (label=${fs_label})"
@@ -61,16 +58,26 @@ write_disk() {
   else
     log_info "Filesystem already present on ${device}, skipping format"
   fi
+}
 
+mount_disk() {
+  device="${1}"
+  mount_point="${2}"
+
+  log_info "Mounting ${device} at ${mount_point}"
   mkdir -p "${mount_point}"
   mount -t xfs "${device}" "${mount_point}"
-  log_info "Mounted ${device} at ${mount_point}"
+}
+
+write_fstab() {
+  device="${1}"
+  mount_point="${2}"
 
   uuid="$(blkid -s UUID -o value "${device}")"
   if ! grep -q "${uuid}" /etc/fstab; then
     printf 'UUID=%s  %s  xfs  defaults,nofail  0  2\n' \
       "${uuid}" "${mount_point}" \
       >>/etc/fstab
-    log_info "Added fstab entry for UUID=${uuid} (${fs_label})"
+    log_info "Added fstab entry for UUID=${uuid}"
   fi
 }
