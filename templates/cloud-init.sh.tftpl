@@ -136,7 +136,6 @@ get_availability_zone() {
 
 fetch_secret() {
   secret_arn="$${1}"
-  log_info "Fetching secret from AWS Secrets Manager: $${secret_arn}"
 
   for attempt in 1 2 3 4 5; do
     if result=$(aws secretsmanager get-secret-value \
@@ -146,8 +145,6 @@ fetch_secret() {
       printf '%s' "$${result}"
       return 0
     fi
-
-    log_info "Secret not yet available, retrying in 5 seconds ($${attempt}/5)"
     sleep 5
   done
 
