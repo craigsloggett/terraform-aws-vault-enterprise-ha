@@ -6,40 +6,35 @@
 # ---------------------------------------------------------------------------
 
 imds_token() {
-  imds_endpoint="${1}"
-  imds_token_ttl="${2}"
+  imds_token_ttl="${1}"
   curl -s -X PUT \
     -H "X-aws-ec2-metadata-token-ttl-seconds: ${imds_token_ttl}" \
-    "${imds_endpoint}/latest/api/token"
+    "http://169.254.169.254/latest/api/token"
 }
 
 imds_get() {
-  imds_endpoint="${1}"
-  path="${2}"
-  token="${3}"
+  path="${1}"
+  token="${2}"
   curl -s -H "X-aws-ec2-metadata-token: ${token}" \
-    "${imds_endpoint}/latest/meta-data/${path}"
+    "http://169.254.169.254/latest/meta-data/${path}"
 }
 
 get_private_ip() {
-  imds_endpoint="${1}"
-  imds_token_ttl="${2}"
-  token="$(imds_token "${imds_endpoint}" "${imds_token_ttl}")"
-  imds_get "${imds_endpoint}" "local-ipv4" "${token}"
+  imds_token_ttl="${1}"
+  token="$(imds_token "${imds_token_ttl}")"
+  imds_get "local-ipv4" "${token}"
 }
 
 get_instance_id() {
-  imds_endpoint="${1}"
-  imds_token_ttl="${2}"
-  token="$(imds_token "${imds_endpoint}" "${imds_token_ttl}")"
-  imds_get "${imds_endpoint}" "instance-id" "${token}"
+  imds_token_ttl="${1}"
+  token="$(imds_token "${imds_token_ttl}")"
+  imds_get "instance-id" "${token}"
 }
 
 get_availability_zone() {
-  imds_endpoint="${1}"
-  imds_token_ttl="${2}"
-  token="$(imds_token "${imds_endpoint}" "${imds_token_ttl}")"
-  imds_get "${imds_endpoint}" "placement/availability-zone" "${token}"
+  imds_token_ttl="${1}"
+  token="$(imds_token "${imds_token_ttl}")"
+  imds_get "placement/availability-zone" "${token}"
 }
 
 # ---------------------------------------------------------------------------

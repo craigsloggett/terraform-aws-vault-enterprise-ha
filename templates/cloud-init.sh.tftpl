@@ -79,7 +79,6 @@ vault_aws_auth_role_max_ttl="24h"
 vault_aws_auth_role_ttl="4h"
 
 # EC2 metadata service (IMDSv2)
-imds_endpoint="http://169.254.169.254"
 imds_token_ttl="21600"
 
 # ---------------------------------------------------------------------------
@@ -117,9 +116,9 @@ ${script_agent_write_config_files}
 main() {
   wait_for_network
 
-  private_ip="$(get_private_ip "$${imds_endpoint}" "$${imds_token_ttl}")"
-  instance_id="$(get_instance_id "$${imds_endpoint}" "$${imds_token_ttl}")"
-  availability_zone="$(get_availability_zone "$${imds_endpoint}" "$${imds_token_ttl}")"
+  private_ip="$(get_private_ip "$${imds_token_ttl}")"
+  instance_id="$(get_instance_id "$${imds_token_ttl}")"
+  availability_zone="$(get_availability_zone "$${imds_token_ttl}")"
 
   export AWS_REGION="$${region}"
   export VAULT_ADDR="https://127.0.0.1:8200"
