@@ -19,7 +19,6 @@ set -ef
 # ---------------------------------------------------------------------------
 
 # Vault Directories
-vault_version="${vault_version}"
 vault_home_dir="/opt/vault"
 vault_data_dir="/var/opt/vault"
 vault_config_dir="/etc/vault.d"
@@ -42,32 +41,15 @@ vault_agent_server_tls_template_file="$${vault_agent_template_dir}/vault-server-
 vault_agent_server_tls_template_command_file="$${vault_libexec_dir}/reload-vault-server-tls"
 
 # EBS Volume Paths
-ebs_raft_device_name="${ebs_raft_device_name}"
 ebs_raft_mount="$${vault_raft_dir}"
-ebs_audit_device_name="${ebs_audit_device_name}"
 ebs_audit_mount="$${vault_log_dir}"
 
-# AWS
-
-# AWS Secrets Manager (ARNs)
-vault_license_secret_arn="${vault_license_secret_arn}"
-bootstrap_tls_ca_cert_secret_arn="${bootstrap_tls_ca_cert_secret_arn}"
-bootstrap_tls_server_cert_secret_arn="${bootstrap_tls_server_cert_secret_arn}"
-bootstrap_tls_server_key_secret_arn="${bootstrap_tls_server_key_secret_arn}"
-
 # Cluster initialization coordination
-cluster_name="${cluster_name}"
-cluster_tag_key="${cluster_tag_key}"
-cluster_tag_value="${cluster_tag_value}"
 ssm_cluster_state_name="${ssm_cluster_state_name}"
 ssm_pki_state_name="${ssm_pki_state_name}"
 ssm_pki_ca_cert_name="${ssm_pki_ca_cert_name}"
 vault_fqdn="${vault_fqdn}"
-vault_iam_role_arn="${vault_iam_role_arn}"
 vault_bootstrap_root_token_secret_arn="${vault_bootstrap_root_token_secret_arn}"
-vault_recovery_keys_secret_arn="${vault_recovery_keys_secret_arn}"
-vault_pki_organization="${vault_pki_organization}"
-vault_pki_country="${vault_pki_country}"
 
 # Vault PKI TTL Configuration
 vault_pki_mount_max_ttl="87600h"
@@ -125,8 +107,8 @@ main() {
   prepare_system
   configure_time
   create_vault_user "$${vault_home_dir}"
-  prepare_disk "$${ebs_raft_device_name}" "$${ebs_raft_mount}" "vault-data"
-  prepare_disk "$${ebs_audit_device_name}" "$${ebs_audit_mount}" "vault-audit"
+  prepare_disk "${ebs_raft_device_name}" "$${ebs_raft_mount}" "vault-data"
+  prepare_disk "${ebs_audit_device_name}" "$${ebs_audit_mount}" "vault-audit"
   configure_vault_directories \
     "$${vault_home_dir}" \
     "$${vault_data_dir}" \
@@ -136,13 +118,13 @@ main() {
     "$${vault_tls_dir}" \
     "$${vault_raft_dir}" \
     "$${vault_agent_template_dir}"
-  install_vault "$${vault_version}"
+  install_vault "${vault_version}"
   write_vault_systemd_unit
 
-  vault_license="$(get_license "$${vault_license_secret_arn}")"
-  ca_cert="$(get_bootstrap_root_ca "$${bootstrap_tls_ca_cert_secret_arn}")"
-  server_cert="$(get_bootstrap_tls_cert "$${bootstrap_tls_server_cert_secret_arn}")"
-  server_key="$(get_bootstrap_tls_key "$${bootstrap_tls_server_key_secret_arn}")"
+  vault_license="$(get_license "${vault_license_secret_arn}")"
+  ca_cert="$(get_bootstrap_root_ca "${bootstrap_tls_ca_cert_secret_arn}")"
+  server_cert="$(get_bootstrap_tls_cert "${bootstrap_tls_server_cert_secret_arn}")"
+  server_key="$(get_bootstrap_tls_key "${bootstrap_tls_server_key_secret_arn}")"
   write_vault_license "$${vault_license}" "$${vault_license_file}"
   write_tls_materials \
     "$${ca_cert}" \
@@ -162,11 +144,11 @@ main() {
 
   if is_bootstrap_node \
     "$${instance_id}" \
-    "$${cluster_tag_key}" \
-    "$${cluster_tag_value}"; then
+    "${cluster_tag_key}" \
+    "${cluster_tag_value}"; then
     initialize_cluster \
       "$${vault_bootstrap_root_token_secret_arn}" \
-      "$${vault_recovery_keys_secret_arn}" \
+      "${vault_recovery_keys_secret_arn}" \
       "$${ssm_cluster_state_name}"
     export VAULT_TOKEN="$(fetch_secret "$${vault_bootstrap_root_token_secret_arn}")"
     configure_autopilot
@@ -175,14 +157,14 @@ main() {
     configure_pki_engine \
       "$${vault_fqdn}" \
       "$${vault_pki_mount_max_ttl}" \
-      "$${cluster_name}" \
-      "$${vault_pki_organization}" \
-      "$${vault_pki_country}" \
+      "${cluster_name}" \
+      "${vault_pki_organization}" \
+      "${vault_pki_country}" \
       "$${vault_pki_root_ca_ttl}" \
       "$${vault_pki_vault_server_role_max_ttl}" \
       "$${ssm_pki_ca_cert_name}"
     configure_aws_auth \
-      "$${vault_iam_role_arn}" \
+      "${vault_iam_role_arn}" \
       "$${vault_aws_auth_role_max_ttl}" \
       "$${vault_aws_auth_role_ttl}" \
       "$${vault_audit_log_file}" \
