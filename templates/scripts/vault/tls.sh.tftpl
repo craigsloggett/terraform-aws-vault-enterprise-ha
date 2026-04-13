@@ -85,7 +85,7 @@ issue_vault_server_certificate() {
   # Follower nodes need to fetch the new CA cert from SSM and authenticate
   # via the AWS IAM auth method. The bootstrap node already has VAULT_TOKEN
   # set from cluster convergence.
-  if [ -z "${VAULT_TOKEN:-}" ]; then
+  if [ -z "$${VAULT_TOKEN:-}" ]; then
     new_ca_cert="$(fetch_cluster_ca_certificate "$${ssm_pki_ca_cert_name}")"
 
     # Keep the bootstrap CA at VAULT_CACERT until the listener reloads. This
