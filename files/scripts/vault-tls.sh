@@ -4,8 +4,6 @@
 wait_for_pki_ready() {
   ssm_pki_state_name="${1}"
 
-  log_info "Waiting for PKI bootstrap to complete"
-
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
     state="$(aws ssm get-parameter \
       --name "${ssm_pki_state_name}" \
@@ -13,11 +11,8 @@ wait_for_pki_ready() {
       --output text 2>/dev/null)" || true
 
     if [ "${state}" = "ready" ]; then
-      log_info "PKI bootstrap is ready, proceeding"
       return 0
     fi
-
-    log_info "PKI state is '${state}', retrying in 5 seconds (${attempt}/10)"
     sleep 5
   done
 
@@ -39,7 +34,6 @@ issue_node_cert() {
   # via the AWS IAM auth method. The bootstrap node already has VAULT_TOKEN
   # set from main().
   if [ -z "${VAULT_TOKEN:-}" ]; then
-    log_info "Fetching new PKI CA cert from SSM"
     new_ca_cert="$(aws ssm get-parameter \
       --name "${ssm_pki_ca_cert_name}" \
       --query "Parameter.Value" \

@@ -2,14 +2,10 @@
 # system-setup.sh — OS-level preparation: networking, packages, time.
 
 wait_for_network() {
-  log_info "Waiting for network to become available"
-
   for attempt in 1 2 3 4 5; do
     if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
       return 0
     fi
-
-    log_info "Network not yet available, retrying in 5 seconds (${attempt}/5)"
     sleep 5
   done
 

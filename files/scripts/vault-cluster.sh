@@ -6,8 +6,6 @@ is_bootstrap_node() {
   cluster_tag_key="${2}"
   cluster_tag_value="${3}"
 
-  log_info "Performing bootstrap node election"
-
   # Fetch all running instance IDs in this cluster by tag.
   all_ids="$(aws ec2 describe-instances \
     --filters \
@@ -20,15 +18,7 @@ is_bootstrap_node() {
   # tr converts tabs to newlines before sort.
   lowest_id="$(printf '%s' "${all_ids}" | tr '\t' '\n' | sort | head -1)"
 
-  log_info "Own instance ID: ${instance_id} (lowest in cluster: ${lowest_id})"
-
-  if [ "${instance_id}" = "${lowest_id}" ]; then
-    log_info "This node is the bootstrap node"
-    return 0
-  fi
-
-  log_info "This node is a follower"
-  return 1
+  [ "${instance_id}" = "${lowest_id}" ]
 }
 
 init_cluster() {

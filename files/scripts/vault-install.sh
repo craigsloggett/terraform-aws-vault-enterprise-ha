@@ -81,18 +81,13 @@ start_vault() {
 }
 
 wait_for_vault_api() {
-  log_info "Waiting for Vault API to become available"
-
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
     status="$(curl -sk -o /dev/null -w '%{http_code}' \
       "https://127.0.0.1:8200/v1/sys/health" 2>/dev/null)" || true
 
     if [ "${status}" != "000" ]; then
-      log_info "Vault API responding (HTTP ${status})"
       return 0
     fi
-
-    log_info "Vault API not yet available, retrying in 5 seconds (${attempt}/10)"
     sleep 5
   done
 

@@ -121,8 +121,6 @@ main() {
   instance_id="$(get_instance_id "$${imds_endpoint}" "$${imds_token_ttl}")"
   availability_zone="$(get_availability_zone "$${imds_endpoint}" "$${imds_token_ttl}")"
 
-  log_info "Instance $${instance_id} at $${private_ip} in $${availability_zone}"
-
   export AWS_REGION="$${region}"
   export VAULT_ADDR="https://127.0.0.1:8200"
   export VAULT_TLS_SERVER_NAME="$${vault_fqdn}"
@@ -145,7 +143,6 @@ main() {
   install_vault "$${vault_version}"
   write_vault_systemd_unit
 
-  log_info "Fetching secrets from AWS Secrets Manager"
   vault_license="$(get_license "$${vault_license_secret_arn}")"
   ca_cert="$(get_bootstrap_root_ca "$${bootstrap_tls_ca_cert_secret_arn}")"
   server_cert="$(get_bootstrap_tls_cert "$${bootstrap_tls_server_cert_secret_arn}")"
