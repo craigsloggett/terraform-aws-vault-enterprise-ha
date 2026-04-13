@@ -1,19 +1,23 @@
 # shellcheck shell=sh
 # write-pki-tls-materials.sh — Write PKI-issued TLS materials and state.
 
+get_pki_ca_cert() {
+  ssm_pki_ca_cert_name="${1}"
+
+  aws ssm get-parameter \
+    --name "${ssm_pki_ca_cert_name}" \
+    --query "Parameter.Value" \
+    --output text
+}
+
 write_pki_ca_cert() {
   vault_tls_ca_file="${1}"
   vault_tls_dir="${2}"
   ssm_pki_ca_cert_name="${3}"
 
-  log_info "Replacing bootstrap CA cert with PKI CA cert on disk"
+  pki_ca_cert="$(get_pki_ca_cert "${ssm_pki_ca_cert_name}")"
 
-  # Fetch the PKI CA cert from SSM. This was written by write_pki_ca_cert_to_ssm()
-  # on the bootstrap node and is available to all nodes without a Vault token.
-  pki_ca_cert="$(aws ssm get-parameter \
-    --name "${ssm_pki_ca_cert_name}" \
-    --query "Parameter.Value" \
-    --output text)"
+  log_info "Replacing bootstrap CA cert with PKI CA cert on disk"
 
   # Overwrite the bootstrap CA cert at vault_tls_ca_file. vault.hcl references this
   # path for leader_ca_cert_file in the retry_join block, it must now trust
