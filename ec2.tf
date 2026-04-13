@@ -64,17 +64,18 @@ resource "aws_launch_template" "vault" {
     vault_pki_organization                = var.vault_pki_organization
     vault_pki_country                     = var.vault_pki_country
 
-    script_logging            = local.script_logging
-    script_aws_helpers        = local.script_aws_helpers
-    script_system_setup       = local.script_system_setup
-    script_vault_system       = local.script_vault_system
-    script_vault_install      = local.script_vault_install
-    script_vault_config_files = local.script_vault_config_files
-    script_vault_cluster      = local.script_vault_cluster
-    script_vault_pki          = local.script_vault_pki
-    script_vault_auth         = local.script_vault_auth
-    script_vault_tls          = local.script_vault_tls
-    script_vault_cli          = local.script_vault_cli
+    script_logging                  = local.script_logging
+    script_aws_helpers              = local.script_aws_helpers
+    script_system_setup             = local.script_system_setup
+    script_vault_system             = local.script_vault_system
+    script_vault_install            = local.script_vault_install
+    script_vault_write_config_files = local.script_vault_write_config_files
+    script_vault_cluster            = local.script_vault_cluster
+    script_vault_pki                = local.script_vault_pki
+    script_vault_auth               = local.script_vault_auth
+    script_vault_tls                = local.script_vault_tls
+    script_vault_cli                = local.script_vault_cli
+    script_agent_write_config_files = local.script_agent_write_config_files
   }))
 
   block_device_mappings {

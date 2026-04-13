@@ -96,7 +96,7 @@ ${script_vault_system}
 
 ${script_vault_install}
 
-${script_vault_config_files}
+${script_vault_write_config_files}
 
 ${script_vault_cluster}
 
@@ -107,6 +107,8 @@ ${script_vault_auth}
 ${script_vault_tls}
 
 ${script_vault_cli}
+
+${script_agent_write_config_files}
 
 # ---------------------------------------------------------------------------
 # Entrypoint
@@ -217,10 +219,12 @@ main() {
     "$${vault_tls_dir}" \
     "$${ssm_pki_ca_cert_name}"
   write_vault_cli_config "$${vault_fqdn}" "$${vault_tls_ca_file}"
-  setup_vault_agent \
-    "$${vault_agent_config_file}" \
-    "$${vault_agent_server_tls_template_file}" \
-    "$${vault_agent_server_tls_template_command_file}"
+  write_vault_agent_config "$${vault_agent_config_file}"
+  write_vault_agent_tls_template "$${vault_agent_server_tls_template_file}"
+  write_vault_agent_reload_script "$${vault_agent_server_tls_template_command_file}"
+  write_vault_agent_polkit_rules
+  write_vault_agent_systemd_unit
+  start_vault_agent
 
   log_info "=== Bootstrap complete ==="
 }

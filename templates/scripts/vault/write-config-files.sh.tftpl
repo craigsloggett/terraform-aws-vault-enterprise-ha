@@ -1,8 +1,8 @@
-# vault-config-files.sh — Configuration file writers and post-init setup.
+# write-config-files.sh — Vault cluster configuration file writers.
 #
 # This file is rendered by Terraform templatefile() to embed configuration
-# content. Functions here write config files to disk and configure Vault
-# features that require inline configuration data.
+# content. Functions here write Vault cluster config files to disk and
+# configure Vault features that require inline configuration data.
 
 write_vault_systemd_unit() {
   log_info "Writing Vault systemd unit"
@@ -102,44 +102,4 @@ EOF
     @"$${vault_snapshot_config_file}"
 
   log_info "Automated Raft snapshots configured"
-}
-
-setup_vault_agent() {
-  vault_agent_config_file="$${1}"
-  vault_agent_server_tls_template_file="$${2}"
-  vault_agent_server_tls_template_command_file="$${3}"
-
-  log_info "Setting up Vault Agent for PKI certificate rotation"
-
-  cat >"$${vault_agent_config_file}" <<EOF
-${config_agent_hcl}
-EOF
-
-  chown vault:vault "$${vault_agent_config_file}"
-  chmod 0644 "$${vault_agent_config_file}"
-
-  cat >"$${vault_agent_server_tls_template_file}" <<EOF
-${config_agent_server_tls_ctmpl}
-EOF
-  chown vault:vault "$${vault_agent_server_tls_template_file}"
-  chmod 0644 "$${vault_agent_server_tls_template_file}"
-
-  cat >"$${vault_agent_server_tls_template_command_file}" <<EOF
-${config_agent_reload_vault_server_tls}
-EOF
-  chown root:root "$${vault_agent_server_tls_template_command_file}"
-  chmod 0755 "$${vault_agent_server_tls_template_command_file}"
-
-  cat >/etc/polkit-1/rules.d/10-vault-agent-reload.rules <<'EOF'
-${config_agent_reload_rules}
-EOF
-
-  cat >/etc/systemd/system/vault-agent.service <<EOF
-${config_agent_service}
-EOF
-
-  systemctl daemon-reload
-  systemctl enable --now vault-agent
-
-  log_info "Vault Agent started"
 }

@@ -1,0 +1,69 @@
+# write-config-files.sh — Vault Agent configuration file writers.
+#
+# This file is rendered by Terraform templatefile() to embed configuration
+# content. Functions here write Vault Agent config files to disk and
+# start the agent service.
+
+write_vault_agent_config() {
+  vault_agent_config_file="$${1}"
+
+  log_info "Writing Vault Agent configuration"
+
+  cat >"$${vault_agent_config_file}" <<EOF
+${config_agent_hcl}
+EOF
+
+  chown vault:vault "$${vault_agent_config_file}"
+  chmod 0644 "$${vault_agent_config_file}"
+}
+
+write_vault_agent_tls_template() {
+  vault_agent_server_tls_template_file="$${1}"
+
+  log_info "Writing Vault Agent TLS certificate template"
+
+  cat >"$${vault_agent_server_tls_template_file}" <<EOF
+${config_agent_server_tls_ctmpl}
+EOF
+
+  chown vault:vault "$${vault_agent_server_tls_template_file}"
+  chmod 0644 "$${vault_agent_server_tls_template_file}"
+}
+
+write_vault_agent_reload_script() {
+  vault_agent_server_tls_template_command_file="$${1}"
+
+  log_info "Writing Vault Agent TLS reload script"
+
+  cat >"$${vault_agent_server_tls_template_command_file}" <<EOF
+${config_agent_reload_vault_server_tls}
+EOF
+
+  chown root:root "$${vault_agent_server_tls_template_command_file}"
+  chmod 0755 "$${vault_agent_server_tls_template_command_file}"
+}
+
+write_vault_agent_polkit_rules() {
+  log_info "Writing Vault Agent polkit rules"
+
+  cat >/etc/polkit-1/rules.d/10-vault-agent-reload.rules <<'EOF'
+${config_agent_reload_rules}
+EOF
+}
+
+write_vault_agent_systemd_unit() {
+  log_info "Writing Vault Agent systemd unit"
+
+  cat >/etc/systemd/system/vault-agent.service <<EOF
+${config_agent_service}
+EOF
+}
+
+start_vault_agent() {
+  log_info "Starting Vault Agent"
+
+  systemctl daemon-reload
+  systemctl enable --now vault-agent
+
+  log_info "Vault Agent started"
+}

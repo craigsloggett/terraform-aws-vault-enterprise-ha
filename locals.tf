@@ -57,18 +57,21 @@ locals {
   script_vault_tls     = file("${path.module}/files/scripts/vault-tls.sh")
   script_vault_cli     = file("${path.module}/files/scripts/vault-cli.sh")
 
-  # Cloud-init script fragment — needs Terraform interpolation for config content
-  script_vault_config_files = templatefile("${path.module}/templates/scripts/vault-config-files.sh.tftpl", {
-    config_vault_service                 = local.config_vault_service
-    config_vault_service_override        = local.config_vault_service_override
-    config_vault_hcl                     = local.config_vault_hcl
-    config_vault_snapshot_json           = local.config_vault_snapshot_json
+  # Cloud-init script fragments — need Terraform interpolation for config content
+  script_vault_write_config_files = templatefile("${path.module}/templates/scripts/vault/write-config-files.sh.tftpl", {
+    config_vault_service          = local.config_vault_service
+    config_vault_service_override = local.config_vault_service_override
+    config_vault_hcl              = local.config_vault_hcl
+    config_vault_snapshot_json    = local.config_vault_snapshot_json
+    vault_minimum_quorum_size     = var.vault_node_count
+  })
+
+  script_agent_write_config_files = templatefile("${path.module}/templates/scripts/agent/write-config-files.sh.tftpl", {
     config_agent_hcl                     = local.config_agent_hcl
     config_agent_server_tls_ctmpl        = local.config_agent_server_tls_ctmpl
     config_agent_reload_vault_server_tls = local.config_agent_reload_vault_server_tls
     config_agent_reload_rules            = local.config_agent_reload_rules
     config_agent_service                 = local.config_agent_service
-    vault_minimum_quorum_size            = var.vault_node_count
   })
 
   vpc = var.existing_vpc != null ? {
