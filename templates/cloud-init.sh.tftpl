@@ -121,6 +121,11 @@ main() {
 
   log_info "Instance $${instance_id} at $${private_ip} in $${availability_zone}"
 
+  export AWS_REGION="$${region}"
+  export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_TLS_SERVER_NAME="$${vault_fqdn}"
+  export VAULT_CACERT="$${vault_tls_ca_file}"
+
   prepare_system
   configure_time
   create_vault_user "$${vault_home_dir}"
@@ -139,10 +144,10 @@ main() {
   write_vault_systemd_unit
 
   log_info "Fetching secrets from AWS Secrets Manager"
-  vault_license="$(get_license "$${region}" "$${vault_license_secret_arn}")"
-  ca_cert="$(get_bootstrap_root_ca "$${region}" "$${bootstrap_tls_ca_cert_secret_arn}")"
-  server_cert="$(get_bootstrap_tls_cert "$${region}" "$${bootstrap_tls_server_cert_secret_arn}")"
-  server_key="$(get_bootstrap_tls_key "$${region}" "$${bootstrap_tls_server_key_secret_arn}")"
+  vault_license="$(get_license "$${vault_license_secret_arn}")"
+  ca_cert="$(get_bootstrap_root_ca "$${bootstrap_tls_ca_cert_secret_arn}")"
+  server_cert="$(get_bootstrap_tls_cert "$${bootstrap_tls_server_cert_secret_arn}")"
+  server_key="$(get_bootstrap_tls_key "$${bootstrap_tls_server_key_secret_arn}")"
   write_tls_materials \
     "$${vault_license}" \
     "$${ca_cert}" \
@@ -163,66 +168,42 @@ main() {
 
   if is_bootstrap_node \
     "$${instance_id}" \
-    "$${region}" \
     "$${cluster_tag_key}" \
     "$${cluster_tag_value}"; then
     init_cluster \
-      "$${vault_fqdn}" \
-      "$${vault_tls_ca_file}" \
-      "$${region}" \
       "$${vault_bootstrap_root_token_secret_arn}" \
       "$${vault_recovery_keys_secret_arn}" \
       "$${ssm_cluster_state_name}"
-    vault_token="$(fetch_secret "$${region}" "$${vault_bootstrap_root_token_secret_arn}")"
-    configure_autopilot \
-      "$${vault_token}" \
-      "$${vault_fqdn}" \
-      "$${vault_tls_ca_file}"
-    configure_snapshots \
-      "$${vault_token}" \
-      "$${vault_fqdn}" \
-      "$${vault_tls_ca_file}" \
-      "$${vault_snapshot_config_file}"
+    export VAULT_TOKEN="$(fetch_secret "$${vault_bootstrap_root_token_secret_arn}")"
+    configure_autopilot
+    configure_snapshots "$${vault_snapshot_config_file}"
     configure_pki_engine \
-      "$${vault_token}" \
       "$${vault_fqdn}" \
-      "$${vault_tls_ca_file}" \
       "$${vault_pki_mount_max_ttl}" \
       "$${cluster_name}" \
       "$${vault_pki_organization}" \
       "$${vault_pki_country}" \
       "$${vault_pki_root_ca_ttl}" \
       "$${vault_pki_vault_server_role_max_ttl}" \
-      "$${region}" \
       "$${ssm_pki_ca_cert_name}"
     configure_aws_auth \
-      "$${vault_token}" \
-      "$${vault_fqdn}" \
-      "$${vault_tls_ca_file}" \
       "$${vault_iam_role_arn}" \
       "$${vault_aws_auth_role_max_ttl}" \
       "$${vault_aws_auth_role_ttl}" \
       "$${vault_audit_log_file}" \
-      "$${region}" \
       "$${ssm_pki_state_name}"
     issue_node_cert \
-      "$${vault_token}" \
       "$${vault_fqdn}" \
-      "$${vault_tls_ca_file}" \
-      "$${region}" \
       "$${vault_tls_dir}" \
       "$${vault_tls_cert_file}" \
       "$${vault_tls_key_file}" \
       "$${vault_pki_server_cert_ttl}" \
       "$${ssm_pki_ca_cert_name}"
   else
-    join_cluster "$${region}" "$${ssm_cluster_state_name}"
-    wait_for_pki_ready "$${region}" "$${ssm_pki_state_name}"
+    join_cluster "$${ssm_cluster_state_name}"
+    wait_for_pki_ready "$${ssm_pki_state_name}"
     issue_node_cert \
-      "" \
       "$${vault_fqdn}" \
-      "$${vault_tls_ca_file}" \
-      "$${region}" \
       "$${vault_tls_dir}" \
       "$${vault_tls_cert_file}" \
       "$${vault_tls_key_file}" \
@@ -232,7 +213,6 @@ main() {
 
   replace_node_tls
   cleanup_bootstrap_tls \
-    "$${region}" \
     "$${vault_tls_ca_file}" \
     "$${vault_tls_dir}" \
     "$${ssm_pki_ca_cert_name}"

@@ -3,15 +3,13 @@
 
 is_bootstrap_node() {
   instance_id="${1}"
-  region="${2}"
-  cluster_tag_key="${3}"
-  cluster_tag_value="${4}"
+  cluster_tag_key="${2}"
+  cluster_tag_value="${3}"
 
   log_info "Performing bootstrap node election"
 
   # Fetch all running instance IDs in this cluster by tag.
   all_ids="$(aws ec2 describe-instances \
-    --region "${region}" \
     --filters \
     "Name=tag:${cluster_tag_key},Values=${cluster_tag_value}" \
     "Name=instance-state-name,Values=running" \
@@ -34,18 +32,11 @@ is_bootstrap_node() {
 }
 
 init_cluster() {
-  vault_fqdn="${1}"
-  vault_tls_ca_file="${2}"
-  region="${3}"
-  vault_bootstrap_root_token_secret_arn="${4}"
-  vault_recovery_keys_secret_arn="${5}"
-  ssm_cluster_state_name="${6}"
+  vault_bootstrap_root_token_secret_arn="${1}"
+  vault_recovery_keys_secret_arn="${2}"
+  ssm_cluster_state_name="${3}"
 
   log_info "Initializing Vault cluster"
-
-  export VAULT_ADDR="https://127.0.0.1:8200"
-  export VAULT_TLS_SERVER_NAME="${vault_fqdn}"
-  export VAULT_CACERT="${vault_tls_ca_file}"
 
   # Idempotency guard: if the cluster is already initialized (e.g. this is a
   # replacement node that happens to have the lowest instance ID), skip init.
@@ -69,19 +60,16 @@ init_cluster() {
 
   log_info "Storing bootstrap root token in Secrets Manager"
   aws secretsmanager put-secret-value \
-    --region "${region}" \
     --secret-id "${vault_bootstrap_root_token_secret_arn}" \
     --secret-string "${root_token}"
 
   log_info "Storing recovery keys in Secrets Manager"
   aws secretsmanager put-secret-value \
-    --region "${region}" \
     --secret-id "${vault_recovery_keys_secret_arn}" \
     --secret-string "${recovery_keys}"
 
   log_info "Writing cluster state: ready"
   aws ssm put-parameter \
-    --region "${region}" \
     --name "${ssm_cluster_state_name}" \
     --value "ready" \
     --overwrite
@@ -90,14 +78,12 @@ init_cluster() {
 }
 
 join_cluster() {
-  region="${1}"
-  ssm_cluster_state_name="${2}"
+  ssm_cluster_state_name="${1}"
 
   log_info "Waiting for cluster initialization to complete"
 
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
     state="$(aws ssm get-parameter \
-      --region "${region}" \
       --name "${ssm_cluster_state_name}" \
       --query "Parameter.Value" \
       --output text 2>/dev/null)" || true

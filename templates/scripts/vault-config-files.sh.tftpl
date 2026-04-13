@@ -19,27 +19,19 @@ EOF
 }
 
 get_license() {
-  region="$${1}"
-  vault_license_secret_arn="$${2}"
-  fetch_secret "$${region}" "$${vault_license_secret_arn}"
+  fetch_secret "$${1}"
 }
 
 get_bootstrap_root_ca() {
-  region="$${1}"
-  bootstrap_tls_ca_cert_secret_arn="$${2}"
-  fetch_secret "$${region}" "$${bootstrap_tls_ca_cert_secret_arn}"
+  fetch_secret "$${1}"
 }
 
 get_bootstrap_tls_cert() {
-  region="$${1}"
-  bootstrap_tls_server_cert_secret_arn="$${2}"
-  fetch_secret "$${region}" "$${bootstrap_tls_server_cert_secret_arn}"
+  fetch_secret "$${1}"
 }
 
 get_bootstrap_tls_key() {
-  region="$${1}"
-  bootstrap_tls_server_key_secret_arn="$${2}"
-  fetch_secret "$${region}" "$${bootstrap_tls_server_key_secret_arn}"
+  fetch_secret "$${1}"
 }
 
 write_tls_materials() {
@@ -84,15 +76,6 @@ EOF
 }
 
 configure_autopilot() {
-  vault_token="$${1}"
-  vault_fqdn="$${2}"
-  vault_tls_ca_file="$${3}"
-
-  export VAULT_ADDR="https://127.0.0.1:8200"
-  export VAULT_TLS_SERVER_NAME="$${vault_fqdn}"
-  export VAULT_CACERT="$${vault_tls_ca_file}"
-  export VAULT_TOKEN="$${vault_token}"
-
   log_info "Configuring Raft Autopilot"
 
   vault operator raft autopilot set-config \
@@ -104,15 +87,7 @@ configure_autopilot() {
 }
 
 configure_snapshots() {
-  vault_token="$${1}"
-  vault_fqdn="$${2}"
-  vault_tls_ca_file="$${3}"
-  vault_snapshot_config_file="$${4}"
-
-  export VAULT_ADDR="https://127.0.0.1:8200"
-  export VAULT_TLS_SERVER_NAME="$${vault_fqdn}"
-  export VAULT_CACERT="$${vault_tls_ca_file}"
-  export VAULT_TOKEN="$${vault_token}"
+  vault_snapshot_config_file="$${1}"
 
   log_info "Configuring automated Raft snapshots"
 

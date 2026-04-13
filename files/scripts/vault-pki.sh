@@ -4,22 +4,14 @@
 # This function runs only on the bootstrap node after cluster init.
 
 configure_pki_engine() {
-  vault_token="${1}"
-  vault_fqdn="${2}"
-  vault_tls_ca_file="${3}"
-  vault_pki_mount_max_ttl="${4}"
-  cluster_name="${5}"
-  vault_pki_organization="${6}"
-  vault_pki_country="${7}"
-  vault_pki_root_ca_ttl="${8}"
-  vault_pki_vault_server_role_max_ttl="${9}"
-  region="${10}"
-  ssm_pki_ca_cert_name="${11}"
-
-  export VAULT_ADDR="https://127.0.0.1:8200"
-  export VAULT_TLS_SERVER_NAME="${vault_fqdn}"
-  export VAULT_CACERT="${vault_tls_ca_file}"
-  export VAULT_TOKEN="${vault_token}"
+  vault_fqdn="${1}"
+  vault_pki_mount_max_ttl="${2}"
+  cluster_name="${3}"
+  vault_pki_organization="${4}"
+  vault_pki_country="${5}"
+  vault_pki_root_ca_ttl="${6}"
+  vault_pki_vault_server_role_max_ttl="${7}"
+  ssm_pki_ca_cert_name="${8}"
 
   log_info "Configuring Vault PKI secrets engine"
 
@@ -66,7 +58,6 @@ configure_pki_engine() {
   log_info "Publishing PKI CA cert to SSM"
   ca_cert_pem="$(vault read -field=certificate pki/cert/ca)"
   aws ssm put-parameter \
-    --region "${region}" \
     --name "${ssm_pki_ca_cert_name}" \
     --value "${ca_cert_pem}" \
     --overwrite
