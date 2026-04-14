@@ -238,6 +238,57 @@ fetch_secret() {
 }
 
 #######################################
+# Helpers — AWS SSM Parameter Store
+#######################################
+
+#######################################
+# Fetch the value of an AWS SSM Parameter Store parameter.
+# Globals:
+#   AWS_REGION
+# Arguments:
+#   Parameter name.
+# Outputs:
+#   Writes the parameter value to STDOUT.
+#######################################
+fetch_parameter() {
+  parameter_name="$${1}"
+
+  for attempt in 1 2 3 4 5; do
+    if result=$(aws ssm get-parameter \
+      --name "$${parameter_name}" \
+      --query "Parameter.Value" \
+      --output text 2>/dev/null); then
+      printf '%s' "$${result}"
+      return 0
+    fi
+    sleep 5
+  done
+
+  log_error "Failed to retrieve parameter after $${attempt} attempts, failing bootstrap"
+  return 1
+}
+
+#######################################
+# Write a value to an AWS SSM Parameter Store parameter (overwrite if exists).
+# Globals:
+#   AWS_REGION
+# Arguments:
+#   Parameter name.
+#   Parameter value.
+# Outputs:
+#   None.
+#######################################
+put_parameter() {
+  parameter_name="$${1}"
+  parameter_value="$${2}"
+
+  aws ssm put-parameter \
+    --name "$${parameter_name}" \
+    --value "$${parameter_value}" \
+    --overwrite
+}
+
+#######################################
 # Helpers — Cluster Discovery
 #######################################
 
@@ -298,12 +349,7 @@ get_vault_node_role() {
 #######################################
 wait_for_pki_ready() {
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    state="$(
-      aws ssm get-parameter \
-        --name "$${SSM_PKI_STATE_NAME}" \
-        --query "Parameter.Value" \
-        --output text 2>/dev/null
-    )" || true
+    state="$(fetch_parameter "$${SSM_PKI_STATE_NAME}")" || true
 
     if [ "$${state}" = "ready" ]; then
       return 0
@@ -325,10 +371,7 @@ wait_for_pki_ready() {
 #   Writes the PEM-encoded CA certificate to STDOUT.
 #######################################
 fetch_cluster_ca_certificate() {
-  aws ssm get-parameter \
-    --name "$${SSM_PKI_CA_CERT_NAME}" \
-    --query "Parameter.Value" \
-    --output text
+  fetch_parameter "$${SSM_PKI_CA_CERT_NAME}"
 }
 
 #######################################
@@ -434,10 +477,7 @@ initialize_cluster() {
     --secret-string "$${recovery_keys}"
 
   log_info "Writing cluster state: ready"
-  aws ssm put-parameter \
-    --name "$${SSM_CLUSTER_STATE_NAME}" \
-    --value "ready" \
-    --overwrite
+  put_parameter "$${SSM_CLUSTER_STATE_NAME}" "ready"
 
   log_info "Cluster initialization complete"
 }
@@ -454,12 +494,7 @@ join_cluster() {
   log_info "Waiting for cluster initialization to complete"
 
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    state="$(
-      aws ssm get-parameter \
-        --name "$${SSM_CLUSTER_STATE_NAME}" \
-        --query "Parameter.Value" \
-        --output text 2>/dev/null
-    )" || true
+    state="$(fetch_parameter "$${SSM_CLUSTER_STATE_NAME}")" || true
 
     if [ "$${state}" = "ready" ]; then
       return 0
@@ -485,10 +520,7 @@ publish_cluster_ca_certificate() {
   log_info "Publishing PKI CA cert to SSM"
 
   ca_cert_pem="$(vault read -field=certificate pki/cert/ca)"
-  aws ssm put-parameter \
-    --name "$${SSM_PKI_CA_CERT_NAME}" \
-    --value "$${ca_cert_pem}" \
-    --overwrite
+  put_parameter "$${SSM_PKI_CA_CERT_NAME}" "$${ca_cert_pem}"
 
   log_info "PKI CA cert published to SSM"
 }
@@ -504,10 +536,7 @@ publish_cluster_ca_certificate() {
 mark_pki_ready() {
   log_info "Writing PKI state: ready"
 
-  aws ssm put-parameter \
-    --name "$${SSM_PKI_STATE_NAME}" \
-    --value "ready" \
-    --overwrite
+  put_parameter "$${SSM_PKI_STATE_NAME}" "ready"
 }
 
 #######################################
