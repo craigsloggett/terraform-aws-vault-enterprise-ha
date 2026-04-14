@@ -56,42 +56,47 @@ resource "aws_launch_template" "vault" {
     ssm_pki_ca_cert_name                  = aws_ssm_parameter.vault_pki_ca_cert.name
     vault_bootstrap_root_token_secret_arn = aws_secretsmanager_secret.vault_bootstrap_root_token.arn
 
-    # Shared helpers
-    script_system_logging    = local.script_system_logging
-    script_aws_imds          = local.script_aws_imds
-    script_aws_secrets       = local.script_aws_secrets
-    script_aws_ebs           = local.script_aws_ebs
-    script_system_packages   = local.script_system_packages
-    script_system_time       = local.script_system_time
-    script_vault_user        = local.script_vault_user
-    script_vault_directories = local.script_vault_directories
-    script_vault_cli         = local.script_vault_cli
+    # Vault install
+    vault_version = var.vault_version
 
-    # Vault install and service
-    script_vault_install = local.script_vault_install
-    script_vault_service = local.script_vault_service
+    # Vault service
+    config_vault_service          = local.config_vault_service
+    config_vault_service_override = local.config_vault_service_override
+
+    # Vault license
+    vault_license_secret_arn = aws_secretsmanager_secret.vault_license.arn
 
     # Vault configuration
-    script_vault_license = local.script_vault_license
-    script_vault_config  = local.script_vault_config
+    config_vault_hcl           = local.config_vault_hcl
+    config_vault_snapshot_json = local.config_vault_snapshot_json
 
-    # Cluster initialization and Raft
-    script_vault_cluster = local.script_vault_cluster
-    script_vault_raft    = local.script_vault_raft
+    # Cluster initialization
+    cluster_tag_key                = local.cluster_tag_key
+    cluster_tag_value              = local.cluster_tag_value
+    vault_recovery_keys_secret_arn = aws_secretsmanager_secret.vault_recovery_keys.arn
 
-    # PKI secrets engine
-    script_vault_pki = local.script_vault_pki
+    # Raft
+    vault_minimum_quorum_size = var.vault_node_count
 
-    # AWS auth and audit
-    script_vault_auth  = local.script_vault_auth
-    script_vault_audit = local.script_vault_audit
+    # PKI
+    cluster_name           = title(var.project_name)
+    vault_pki_organization = var.vault_pki_organization
+    vault_pki_country      = var.vault_pki_country
 
-    # TLS rotation
-    script_vault_tls = local.script_vault_tls
+    # AWS auth
+    vault_iam_role_arn = aws_iam_role.vault.arn
+
+    # Bootstrap TLS
+    bootstrap_tls_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_bootstrap_ca_cert.arn
+    bootstrap_tls_server_cert_secret_arn = aws_secretsmanager_secret.vault_bootstrap_server_cert.arn
+    bootstrap_tls_server_key_secret_arn  = aws_secretsmanager_secret.vault_bootstrap_server_key.arn
 
     # Vault Agent
-    script_agent_config  = local.script_agent_config
-    script_agent_service = local.script_agent_service
+    config_agent_hcl                     = local.config_agent_hcl
+    config_agent_server_tls_ctmpl        = local.config_agent_server_tls_ctmpl
+    config_agent_reload_vault_server_tls = local.config_agent_reload_vault_server_tls
+    config_agent_reload_rules            = local.config_agent_reload_rules
+    config_agent_service                 = local.config_agent_service
   }))
 
   block_device_mappings {
