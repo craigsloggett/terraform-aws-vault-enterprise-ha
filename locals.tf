@@ -19,10 +19,10 @@ locals {
   # Vault cluster configuration content
   # ---------------------------------------------------------------------------
 
-  config_vault_service          = file("${path.module}/files/config/vault/vault.service")
-  config_vault_service_override = file("${path.module}/files/config/vault/vault.service.override.conf")
+  config_vault_service          = file("${path.module}/files/vault/vault.service")
+  config_vault_service_override = file("${path.module}/files/vault/vault.service.override.conf")
 
-  config_vault_hcl = templatefile("${path.module}/templates/config/vault/vault.hcl.tftpl", {
+  config_vault_hcl = templatefile("${path.module}/templates/vault/vault.hcl.tftpl", {
     cluster_name      = var.project_name
     vault_fqdn        = trimsuffix(aws_route53_record.vault.fqdn, ".")
     region            = data.aws_region.current.region
@@ -31,7 +31,7 @@ locals {
     cluster_tag_value = local.cluster_tag_value
   })
 
-  config_vault_snapshot_json = templatefile("${path.module}/templates/config/vault/snapshot.json.tftpl", {
+  config_vault_snapshot_json = templatefile("${path.module}/templates/vault/snapshot.json.tftpl", {
     aws_s3_bucket = aws_s3_bucket.vault_snapshots.id
     aws_s3_region = data.aws_region.current.region
     interval      = var.vault_snapshot_interval
@@ -42,15 +42,15 @@ locals {
   # Vault Agent configuration content
   # ---------------------------------------------------------------------------
 
-  config_agent_service                 = file("${path.module}/files/config/agent/vault-agent.service")
-  config_agent_reload_rules            = file("${path.module}/files/config/agent/vault-agent-reload.rules")
-  config_agent_reload_vault_server_tls = file("${path.module}/files/config/agent/vault-server-tls-reload.sh")
+  config_agent_service                 = file("${path.module}/files/agent/vault-agent.service")
+  config_agent_reload_rules            = file("${path.module}/files/agent/vault-agent-reload.rules")
+  config_agent_reload_vault_server_tls = file("${path.module}/files/agent/vault-server-tls-reload.sh")
 
-  config_agent_hcl = templatefile("${path.module}/templates/config/agent/agent.hcl.tftpl", {
+  config_agent_hcl = templatefile("${path.module}/templates/agent/agent.hcl.tftpl", {
     vault_fqdn = local.vault_fqdn
   })
 
-  config_agent_server_tls_ctmpl = templatefile("${path.module}/templates/config/agent/vault-server-tls.ctmpl.tftpl", {
+  config_agent_server_tls_ctmpl = templatefile("${path.module}/templates/agent/vault-server-tls.ctmpl.tftpl", {
     vault_fqdn = local.vault_fqdn
   })
 
