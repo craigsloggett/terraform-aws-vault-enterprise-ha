@@ -253,7 +253,8 @@ put_secret() {
 
   aws secretsmanager put-secret-value \
     --secret-id "$${_secret_arn}" \
-    --secret-string "$${_secret_value}"
+    --secret-string "$${_secret_value}" \
+    >/dev/null
 }
 
 #######################################
@@ -304,7 +305,8 @@ put_parameter() {
   aws ssm put-parameter \
     --name "$${_parameter_name}" \
     --value "$${_parameter_value}" \
-    --overwrite
+    --overwrite \
+    >/dev/null
 }
 
 #######################################
@@ -909,7 +911,7 @@ install_vault() {
 
   download_and_verify_vault "$${VAULT_VERSION}" "$${_arch}" "$${_tmp_dir}"
 
-  unzip -o "$${_tmp_dir}/vault_$${VAULT_VERSION}_linux_$${_arch}.zip" -d "$${_tmp_dir}"
+  unzip -o -q "$${_tmp_dir}/vault_$${VAULT_VERSION}_linux_$${_arch}.zip" -d "$${_tmp_dir}"
   mv "$${_tmp_dir}/vault" /usr/bin/vault
   chown root:root /usr/bin/vault
   chmod 0755 /usr/bin/vault
@@ -1136,7 +1138,8 @@ configure_snapshots() {
   log_info "Configuring automated Raft snapshots"
 
   vault write sys/storage/raft/snapshot-auto/config/hourly \
-    @"$${VAULT_SNAPSHOT_CONFIG_FILE}"
+    @"$${VAULT_SNAPSHOT_CONFIG_FILE}" \
+    >/dev/null
 
   log_info "Automated Raft snapshots configured"
 }
@@ -1178,7 +1181,7 @@ configure_pki_mount() {
     vault secrets enable pki
   fi
 
-  vault secrets tune -max-lease-ttl="$${VAULT_PKI_MOUNT_MAX_TTL}" pki
+  vault secrets tune -max-lease-ttl="$${VAULT_PKI_MOUNT_MAX_TTL}" pki >/dev/null
 
   log_info "Vault PKI secrets engine enabled"
 }
@@ -1194,14 +1197,14 @@ configure_pki_mount() {
 configure_pki_root_ca() {
   log_info "Generating PKI root CA"
 
-  vault write -format=json pki/root/generate/internal \
+  vault write pki/root/generate/internal \
     common_name="$${CLUSTER_NAME} Vault Root CA" \
     organization="$${VAULT_PKI_ORGANIZATION}" \
     country="$${VAULT_PKI_COUNTRY}" \
     ttl="$${VAULT_PKI_ROOT_CA_TTL}" \
     key_type=ec \
-    key_bits=384 |
-    jq -r '.data.certificate' >/dev/null
+    key_bits=384 \
+    >/dev/null
 
   log_info "PKI root CA generated"
 }
@@ -1219,7 +1222,8 @@ configure_pki_urls() {
   vault write pki/config/urls \
     issuing_certificates="https://$${VAULT_FQDN}:8200/v1/pki/ca" \
     crl_distribution_points="https://$${VAULT_FQDN}:8200/v1/pki/crl" \
-    ocsp_servers="https://$${VAULT_FQDN}:8200/v1/pki/ocsp"
+    ocsp_servers="https://$${VAULT_FQDN}:8200/v1/pki/ocsp" \
+    >/dev/null
 
   log_info "PKI issuing URLs configured"
 }
@@ -1244,7 +1248,8 @@ configure_vault_server_pki_role() {
     max_ttl="$${VAULT_PKI_VAULT_SERVER_ROLE_MAX_TTL}" \
     key_type=ec \
     key_bits=384 \
-    ext_key_usage=serverAuth
+    ext_key_usage=serverAuth \
+    >/dev/null
 
   log_info "vault-server PKI role created"
 }
@@ -1310,7 +1315,8 @@ configure_aws_auth_method() {
     bound_iam_principal_arn="$${VAULT_IAM_ROLE_ARN}" \
     policies=vault-server \
     max_ttl="$${VAULT_AWS_AUTH_ROLE_MAX_TTL}" \
-    ttl="$${VAULT_AWS_AUTH_ROLE_TTL}"
+    ttl="$${VAULT_AWS_AUTH_ROLE_TTL}" \
+    >/dev/null
 
   log_info "Vault AWS auth method configured"
 }
