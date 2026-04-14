@@ -952,6 +952,9 @@ write_vault_service_override() {
   cat >/etc/systemd/system/vault.service.d/override.conf <<'EOF'
 ${config_vault_service_override}
 EOF
+
+  # Overrides can contain sensitive values so marking it as read-only
+  # by the file owner.
   chmod 0600 /etc/systemd/system/vault.service.d/override.conf
 }
 
@@ -1387,7 +1390,7 @@ issue_vault_server_certificate() {
 reload_vault_listener() {
   log_info "Reloading Vault TLS listener with PKI-signed certificate"
 
-  systemctl kill -s HUP vault
+  systemctl kill --signal=SIGHUP --kill-whom=main vault.service
 
   log_info "Vault TLS listener reloaded"
 }
