@@ -382,7 +382,7 @@ prepare_disk() {
 
   if ! blkid -p "$${_device}" >/dev/null 2>&1; then
     log_info "No filesystem on $${_device}, formatting as xfs (label=$${_fs_label})"
-    mkfs.xfs -L "$${_fs_label}" "$${_device}"
+    mkfs.xfs -L "$${_fs_label}" "$${_device}" >/dev/null
   else
     log_info "Filesystem already present on $${_device}, skipping format"
   fi
