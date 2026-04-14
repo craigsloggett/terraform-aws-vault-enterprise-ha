@@ -49,6 +49,35 @@ readonly SSM_CLUSTER_STATE_NAME="${ssm_cluster_state_name}"
 readonly SSM_PKI_STATE_NAME="${ssm_pki_state_name}"
 readonly SSM_PKI_CA_CERT_NAME="${ssm_pki_ca_cert_name}"
 
+# AWS
+readonly AWS_REGION="${aws_region}"
+
+# Cluster Discovery
+readonly CLUSTER_TAG_KEY="${cluster_tag_key}"
+readonly CLUSTER_TAG_VALUE="${cluster_tag_value}"
+readonly CLUSTER_NAME="${cluster_name}"
+
+# Secrets Manager ARNs
+readonly VAULT_RECOVERY_KEYS_SECRET_ARN="${vault_recovery_keys_secret_arn}"
+readonly BOOTSTRAP_TLS_CA_CERT_SECRET_ARN="${bootstrap_tls_ca_cert_secret_arn}"
+readonly BOOTSTRAP_TLS_SERVER_CERT_SECRET_ARN="${bootstrap_tls_server_cert_secret_arn}"
+readonly BOOTSTRAP_TLS_SERVER_KEY_SECRET_ARN="${bootstrap_tls_server_key_secret_arn}"
+readonly VAULT_LICENSE_SECRET_ARN="${vault_license_secret_arn}"
+
+# IAM
+readonly VAULT_IAM_ROLE_ARN="${vault_iam_role_arn}"
+
+# EBS Device Names
+readonly EBS_RAFT_DEVICE_NAME="${ebs_raft_device_name}"
+readonly EBS_AUDIT_DEVICE_NAME="${ebs_audit_device_name}"
+
+# Autopilot
+readonly VAULT_MINIMUM_QUORUM_SIZE="${vault_minimum_quorum_size}"
+
+# Vault PKI Organization
+readonly VAULT_PKI_ORGANIZATION="${vault_pki_organization}"
+readonly VAULT_PKI_COUNTRY="${vault_pki_country}"
+
 # Vault PKI TTL Configuration
 readonly VAULT_PKI_MOUNT_MAX_TTL="87600h"
 readonly VAULT_PKI_ROOT_CA_TTL="87600h"
@@ -216,22 +245,19 @@ fetch_secret() {
 # Determine whether this node should perform cluster bootstrap by claiming the
 # SSM cluster-state parameter.
 # Globals:
-#   AWS_REGION
+#   AWS_REGION, CLUSTER_TAG_KEY, CLUSTER_TAG_VALUE
 # Arguments:
 #   None
 # Returns:
 #   0 if this node won the bootstrap claim, non-zero otherwise.
 #######################################
 is_bootstrap_node() {
-  cluster_tag_key="${cluster_tag_key}"
-  cluster_tag_value="${cluster_tag_value}"
-
   instance_id="$(get_instance_id)"
 
   # Fetch all running instance IDs in this cluster by tag.
   all_ids="$(aws ec2 describe-instances \
     --filters \
-    "Name=tag:$${cluster_tag_key},Values=$${cluster_tag_value}" \
+    "Name=tag:$${CLUSTER_TAG_KEY},Values=$${CLUSTER_TAG_VALUE}" \
     "Name=instance-state-name,Values=running" \
     --query "Reservations[].Instances[].InstanceId" \
     --output text)"
@@ -304,61 +330,53 @@ fetch_cluster_ca_certificate() {
 #######################################
 # Fetch the bootstrap CA certificate from AWS Secrets Manager.
 # Globals:
-#   AWS_REGION
+#   AWS_REGION, BOOTSTRAP_TLS_CA_CERT_SECRET_ARN
 # Arguments:
 #   None
 # Outputs:
 #   Writes the PEM-encoded bootstrap CA certificate to STDOUT.
 #######################################
 fetch_bootstrap_ca_cert() {
-  bootstrap_tls_ca_cert_secret_arn="${bootstrap_tls_ca_cert_secret_arn}"
-
-  fetch_secret "$${bootstrap_tls_ca_cert_secret_arn}"
+  fetch_secret "$${BOOTSTRAP_TLS_CA_CERT_SECRET_ARN}"
 }
 
 #######################################
 # Fetch the bootstrap server certificate from AWS Secrets Manager.
 # Globals:
-#   AWS_REGION
+#   AWS_REGION, BOOTSTRAP_TLS_SERVER_CERT_SECRET_ARN
 # Arguments:
 #   None
 # Outputs:
 #   Writes the PEM-encoded bootstrap server certificate to STDOUT.
 #######################################
 fetch_bootstrap_server_cert() {
-  bootstrap_tls_server_cert_secret_arn="${bootstrap_tls_server_cert_secret_arn}"
-
-  fetch_secret "$${bootstrap_tls_server_cert_secret_arn}"
+  fetch_secret "$${BOOTSTRAP_TLS_SERVER_CERT_SECRET_ARN}"
 }
 
 #######################################
 # Fetch the bootstrap server private key from AWS Secrets Manager.
 # Globals:
-#   AWS_REGION
+#   AWS_REGION, BOOTSTRAP_TLS_SERVER_KEY_SECRET_ARN
 # Arguments:
 #   None
 # Outputs:
 #   Writes the PEM-encoded bootstrap server key to STDOUT.
 #######################################
 fetch_bootstrap_server_key() {
-  bootstrap_tls_server_key_secret_arn="${bootstrap_tls_server_key_secret_arn}"
-
-  fetch_secret "$${bootstrap_tls_server_key_secret_arn}"
+  fetch_secret "$${BOOTSTRAP_TLS_SERVER_KEY_SECRET_ARN}"
 }
 
 #######################################
 # Fetch the Vault Enterprise license string from AWS Secrets Manager.
 # Globals:
-#   AWS_REGION
+#   AWS_REGION, VAULT_LICENSE_SECRET_ARN
 # Arguments:
 #   None
 # Outputs:
 #   Writes the license string to STDOUT.
 #######################################
 fetch_vault_license() {
-  vault_license_secret_arn="${vault_license_secret_arn}"
-
-  fetch_secret "$${vault_license_secret_arn}"
+  fetch_secret "$${VAULT_LICENSE_SECRET_ARN}"
 }
 
 #######################################
@@ -370,13 +388,11 @@ fetch_vault_license() {
 # root token to Secrets Manager, and mark cluster state as initialized in SSM.
 # Globals:
 #   AWS_REGION, VAULT_ADDR, VAULT_BOOTSTRAP_ROOT_TOKEN_SECRET_ARN,
-#   SSM_CLUSTER_STATE_NAME
+#   VAULT_RECOVERY_KEYS_SECRET_ARN, SSM_CLUSTER_STATE_NAME
 # Arguments:
 #   None.
 #######################################
 initialize_cluster() {
-  vault_recovery_keys_secret_arn="${vault_recovery_keys_secret_arn}"
-
   log_info "Initializing Vault cluster"
 
   # Idempotency guard: if the cluster is already initialized (e.g. this is a
@@ -406,7 +422,7 @@ initialize_cluster() {
 
   log_info "Storing recovery keys in Secrets Manager"
   aws secretsmanager put-secret-value \
-    --secret-id "$${vault_recovery_keys_secret_arn}" \
+    --secret-id "$${VAULT_RECOVERY_KEYS_SECRET_ARN}" \
     --secret-string "$${recovery_keys}"
 
   log_info "Writing cluster state: ready"
@@ -1019,7 +1035,7 @@ configure_file_audit_device() {
 # Configure Raft autopilot parameters (cleanup of dead servers, server
 # stabilization time, etc.) on the Vault cluster.
 # Globals:
-#   VAULT_ADDR, VAULT_TOKEN
+#   VAULT_ADDR, VAULT_MINIMUM_QUORUM_SIZE, VAULT_TOKEN
 # Arguments:
 #   None
 #######################################
@@ -1029,7 +1045,7 @@ configure_autopilot() {
   vault operator raft autopilot set-config \
     -cleanup-dead-servers=true \
     -dead-server-last-contact-threshold=10m \
-    -min-quorum=${vault_minimum_quorum_size}
+    -min-quorum=$${VAULT_MINIMUM_QUORUM_SIZE}
 
   log_info "Raft Autopilot configured"
 }
@@ -1100,23 +1116,20 @@ configure_pki_mount() {
 #######################################
 # Generate the root CA certificate inside the PKI engine.
 # Globals:
-#   VAULT_ADDR, VAULT_PKI_ROOT_CA_TTL, VAULT_TOKEN
+#   CLUSTER_NAME, VAULT_ADDR, VAULT_PKI_COUNTRY, VAULT_PKI_ORGANIZATION,
+#   VAULT_PKI_ROOT_CA_TTL, VAULT_TOKEN
 # Arguments:
 #   None.
 #######################################
 configure_pki_root_ca() {
-  cluster_name="${cluster_name}"
-  vault_pki_organization="${vault_pki_organization}"
-  vault_pki_country="${vault_pki_country}"
-
   log_info "Generating PKI root CA"
 
   # Generate root CA with ECDSA P-384 keys, consistent with the bootstrap
   # CA and server certs in tls.tf.
   vault write -format=json pki/root/generate/internal \
-    common_name="$${cluster_name} Vault Root CA" \
-    organization="$${vault_pki_organization}" \
-    country="$${vault_pki_country}" \
+    common_name="$${CLUSTER_NAME} Vault Root CA" \
+    organization="$${VAULT_PKI_ORGANIZATION}" \
+    country="$${VAULT_PKI_COUNTRY}" \
     ttl="$${VAULT_PKI_ROOT_CA_TTL}" \
     key_type=ec \
     key_bits=384 |
@@ -1213,13 +1226,11 @@ EOF
 # role to instance profiles permitted to request server certificates.
 # Globals:
 #   VAULT_ADDR, VAULT_AWS_AUTH_ROLE_MAX_TTL, VAULT_AWS_AUTH_ROLE_TTL,
-#   VAULT_TOKEN
+#   VAULT_IAM_ROLE_ARN, VAULT_TOKEN
 # Arguments:
 #   None.
 #######################################
 configure_aws_auth_method() {
-  vault_iam_role_arn="${vault_iam_role_arn}"
-
   log_info "Configuring Vault AWS auth method"
 
   if ! vault auth list -format=json | jq -e '."aws/"' >/dev/null 2>&1; then
@@ -1228,7 +1239,7 @@ configure_aws_auth_method() {
 
   vault write auth/aws/role/vault-server \
     auth_type=iam \
-    bound_iam_principal_arn="$${vault_iam_role_arn}" \
+    bound_iam_principal_arn="$${VAULT_IAM_ROLE_ARN}" \
     policies=vault-server \
     max_ttl="$${VAULT_AWS_AUTH_ROLE_MAX_TTL}" \
     ttl="$${VAULT_AWS_AUTH_ROLE_TTL}"
@@ -1459,8 +1470,8 @@ phase_prepare_system() {
 }
 
 phase_prepare_storage() {
-  prepare_disk "${ebs_raft_device_name}" "$${VAULT_RAFT_DIR}" "vault-raft"
-  prepare_disk "${ebs_audit_device_name}" "$${VAULT_LOG_DIR}" "vault-audit"
+  prepare_disk "$${EBS_RAFT_DEVICE_NAME}" "$${VAULT_RAFT_DIR}" "vault-raft"
+  prepare_disk "$${EBS_AUDIT_DEVICE_NAME}" "$${VAULT_LOG_DIR}" "vault-audit"
 }
 
 phase_prepare_vault_runtime() {
@@ -1537,7 +1548,7 @@ phase_enable_agent_rotation() {
 #   Forwarded positional arguments (currently unused).
 #######################################
 main() {
-  export AWS_REGION="${region}"
+  export AWS_REGION="$${AWS_REGION}"
   export VAULT_ADDR="https://127.0.0.1:8200"
   export VAULT_TLS_SERVER_NAME="$${VAULT_FQDN}"
   export VAULT_CACERT="$${VAULT_TLS_CA_FILE}"

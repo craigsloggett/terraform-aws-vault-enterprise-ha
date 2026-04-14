@@ -43,7 +43,7 @@ resource "aws_launch_template" "vault" {
 
   user_data = base64gzip(templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
     # Environment
-    region     = data.aws_region.current.region
+    aws_region = data.aws_region.current.region
     vault_fqdn = local.vault_fqdn
 
     # EBS volumes

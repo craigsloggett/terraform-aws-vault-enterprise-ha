@@ -25,7 +25,7 @@ locals {
   config_vault_hcl = templatefile("${path.module}/templates/vault/vault.hcl.tftpl", {
     cluster_name      = var.project_name
     vault_fqdn        = trimsuffix(aws_route53_record.vault.fqdn, ".")
-    region            = data.aws_region.current.region
+    aws_region        = data.aws_region.current.region
     kms_key_alias     = aws_kms_alias.vault.name
     cluster_tag_key   = local.cluster_tag_key
     cluster_tag_value = local.cluster_tag_value
@@ -45,8 +45,8 @@ locals {
   config_agent_service                 = file("${path.module}/files/agent/vault-agent.service")
   config_agent_reload_rules            = file("${path.module}/files/agent/vault-agent-reload.rules")
   config_agent_reload_vault_server_tls = file("${path.module}/files/agent/vault-server-tls-reload.sh")
-  config_agent_hcl                     = file("${path.module}/files/agent/agent.hcl.tftpl")
-  config_agent_server_tls_ctmpl        = file("${path.module}/files/agent/vault-server-tls.ctmpl.tftpl")
+  config_agent_hcl                     = file("${path.module}/files/agent/agent.hcl")
+  config_agent_server_tls_ctmpl        = file("${path.module}/files/agent/vault-server-tls.ctmpl")
 
   vpc = var.existing_vpc != null ? {
     id                 = var.existing_vpc.vpc_id
