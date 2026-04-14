@@ -312,6 +312,24 @@ put_parameter() {
 #######################################
 
 #######################################
+# Check whether the Vault cluster has already been initialized.
+# Globals:
+#   VAULT_ADDR
+# Arguments:
+#   None.
+# Returns:
+#   0 if the cluster is initialized, non-zero otherwise.
+#######################################
+is_cluster_initialized() {
+  initialized="$(
+    vault status -format=json 2>/dev/null |
+      jq -r '.initialized' 2>/dev/null
+  )" || true
+
+  [ "$${initialized}" = "true" ]
+}
+
+#######################################
 # Determine whether this node should perform cluster bootstrap by claiming the
 # SSM cluster-state parameter.
 # Globals:
@@ -461,13 +479,7 @@ fetch_vault_license() {
 initialize_cluster() {
   log_info "Initializing Vault cluster"
 
-  # Idempotency guard: if the cluster is already initialized (e.g. this is a
-  # replacement node that happens to have the lowest instance ID), skip init.
-  initialized="$(
-    vault status -format=json 2>/dev/null |
-      jq -r '.initialized' 2>/dev/null
-  )" || true
-  if [ "$${initialized}" = "true" ]; then
+  if is_cluster_initialized; then
     log_info "Cluster is already initialized, skipping operator init"
     return 0
   fi
