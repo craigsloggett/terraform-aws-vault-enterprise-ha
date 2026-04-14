@@ -238,7 +238,7 @@ fetch_secret() {
 }
 
 #######################################
-# Helpers — Fetch SSM Parameter
+# Helpers — Cluster Discovery
 #######################################
 
 #######################################
@@ -384,7 +384,7 @@ fetch_vault_license() {
 }
 
 #######################################
-# Helpers — Publish SSM Parameter
+# Helpers — Cluster Coordination
 #######################################
 
 #######################################
@@ -658,7 +658,7 @@ prepare_system() {
 # Arguments:
 #   None
 #######################################
-configure_time() {
+configure_system_time() {
   log_info "Configuring system time"
 
   timedatectl set-timezone UTC
@@ -755,7 +755,7 @@ configure_vault_directories() {
 # Arguments:
 #   None.
 #######################################
-write_vault_cli_config() {
+write_vault_shell_env() {
   log_info "Writing Vault CLI environment to /etc/profile.d/99-vault-cli-config.sh"
 
   cat >/etc/profile.d/99-vault-cli-config.sh <<EOF
@@ -779,7 +779,7 @@ EOF
 # Outputs:
 #   Writes the architecture string to STDOUT.
 #######################################
-get_system_architecture() {
+detect_system_architecture() {
   machine="$(uname -m)"
   case "$${machine}" in
     x86_64) printf 'amd64' ;;
@@ -846,7 +846,7 @@ install_vault() {
 
   log_info "Installing Vault Enterprise $${VAULT_VERSION}"
 
-  arch="$(get_system_architecture)"
+  arch="$(detect_system_architecture)"
   log_info "Detected architecture: $${arch}"
 
   tmp_dir="$(mktemp -d)"
@@ -1260,7 +1260,7 @@ configure_aws_auth_method() {
 }
 
 #######################################
-# Fetch TLS Materials
+# Rotate TLS Materials
 #######################################
 
 #######################################
@@ -1482,7 +1482,7 @@ EOF
 phase_prepare_system() {
   wait_for_network
   prepare_system
-  configure_time
+  configure_system_time
 }
 
 phase_prepare_storage() {
@@ -1545,7 +1545,7 @@ phase_enable_pki_and_tls() {
 }
 
 phase_enable_agent_rotation() {
-  write_vault_cli_config
+  write_vault_shell_env
   write_vault_agent_config
   write_vault_agent_tls_template
   write_vault_agent_reload_script
