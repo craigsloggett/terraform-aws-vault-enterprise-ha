@@ -189,15 +189,6 @@ put_parameter() {
 #   Vault Cluster Discovery Helpers   #
 #######################################
 
-is_vault_cluster_initialized() {
-  initialized="$(
-    vault status -format=json 2>/dev/null |
-      jq -r '.initialized' 2>/dev/null
-  )" || true
-
-  [ "$${initialized}" = "true" ]
-}
-
 is_bootstrap_node() {
   instance_id="$(get_instance_id)"
 
@@ -217,10 +208,16 @@ is_bootstrap_node() {
 }
 
 get_vault_node_role() {
-  if is_bootstrap_node; then
-    printf 'bootstrap'
-  else
+  cluster_state="$(fetch_parameter "$${SSM_CLUSTER_STATE_NAME}" 2>/dev/null)" || cluster_state=""
+
+  if [ "$${cluster_state}" = "ready" ]; then
     printf 'follower'
+  else
+    if is_bootstrap_node; then
+      printf 'bootstrap'
+    else
+      printf 'follower'
+    fi
   fi
 }
 
@@ -264,11 +261,6 @@ fetch_vault_license() {
 
 initialize_vault_cluster() {
   log_info "Initializing Vault cluster"
-
-  if is_vault_cluster_initialized; then
-    log_info "Cluster is already initialized, skipping operator init"
-    return 0
-  fi
 
   log_info "Running vault operator init"
   # KMS auto-unseal is configured, so recovery shares/threshold are used
@@ -605,6 +597,19 @@ wait_for_vault_api() {
   done
 
   log_error "Vault API did not respond after $${attempt} attempts, failing bootstrap"
+  return 1
+}
+
+wait_for_vault_unsealed() {
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    sealed="$(vault status -format=json 2>/dev/null | jq -r '.sealed')" || true
+    if [ "$${sealed}" = "false" ]; then
+      return 0
+    fi
+    sleep 5
+  done
+
+  log_error "Vault did not unseal after $${attempt} attempts, failing bootstrap"
   return 1
 }
 
@@ -989,6 +994,7 @@ main() {
     configure_snapshots
   else
     join_cluster
+    wait_for_vault_unsealed
   fi
 
   # Enable PKI and TLS
