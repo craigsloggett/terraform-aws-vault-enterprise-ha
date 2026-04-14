@@ -45,8 +45,13 @@ locals {
   config_agent_service                 = file("${path.module}/files/agent/vault-agent.service")
   config_agent_reload_rules            = file("${path.module}/files/agent/vault-agent-reload.rules")
   config_agent_reload_vault_server_tls = file("${path.module}/files/agent/vault-server-tls-reload.sh")
-  config_agent_hcl                     = file("${path.module}/files/agent/agent.hcl")
-  config_agent_server_tls_ctmpl        = file("${path.module}/files/agent/vault-server-tls.ctmpl")
+  config_agent_hcl = templatefile("${path.module}/templates/agent/agent.hcl.tftpl", {
+    vault_fqdn = trimsuffix(aws_route53_record.vault.fqdn, ".")
+  })
+
+  config_agent_server_tls_ctmpl = templatefile("${path.module}/templates/agent/vault-server-tls.ctmpl.tftpl", {
+    vault_fqdn = trimsuffix(aws_route53_record.vault.fqdn, ".")
+  })
 
   vpc = var.existing_vpc != null ? {
     id                 = var.existing_vpc.vpc_id

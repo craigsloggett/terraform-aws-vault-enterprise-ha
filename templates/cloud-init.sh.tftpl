@@ -867,7 +867,7 @@ install_vault() {
 write_vault_service_unit() {
   log_info "Writing Vault systemd unit"
 
-  cat >/etc/systemd/system/vault.service <<EOF
+  cat >/etc/systemd/system/vault.service <<'EOF'
 ${config_vault_service}
 EOF
 }
@@ -1361,7 +1361,7 @@ write_cluster_ca_certificate() {
 write_vault_agent_service_unit() {
   log_info "Writing Vault Agent systemd unit"
 
-  cat >/etc/systemd/system/vault-agent.service <<EOF
+  cat >/etc/systemd/system/vault-agent.service <<'EOF'
 ${config_agent_service}
 EOF
 }
@@ -1413,7 +1413,7 @@ EOF
 write_vault_agent_config() {
   log_info "Writing Vault Agent configuration"
 
-  cat >"$${VAULT_AGENT_CONFIG_FILE}" <<EOF
+  cat >"$${VAULT_AGENT_CONFIG_FILE}" <<'EOF'
 ${config_agent_hcl}
 EOF
 
@@ -1432,7 +1432,7 @@ EOF
 write_vault_agent_tls_template() {
   log_info "Writing Vault Agent TLS certificate template"
 
-  cat >"$${VAULT_AGENT_SERVER_TLS_TEMPLATE_FILE}" <<EOF
+  cat >"$${VAULT_AGENT_SERVER_TLS_TEMPLATE_FILE}" <<'EOF'
 ${config_agent_server_tls_ctmpl}
 EOF
 
@@ -1451,7 +1451,7 @@ EOF
 write_vault_agent_reload_script() {
   log_info "Writing Vault Agent TLS reload script"
 
-  cat >"$${VAULT_AGENT_SERVER_TLS_RELOAD_FILE}" <<EOF
+  cat >"$${VAULT_AGENT_SERVER_TLS_RELOAD_FILE}" <<'EOF'
 ${config_agent_reload_vault_server_tls}
 EOF
 

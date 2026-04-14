@@ -3,7 +3,7 @@ Description=HashiCorp Vault - A Secret Management Tool
 Documentation=https://developer.hashicorp.com/vault/docs
 Requires=network-online.target
 After=network-online.target
-ConditionFileNotEmpty=${vault_config_file}
+ConditionFileNotEmpty=/etc/vault.d/vault.hcl
 StartLimitIntervalSec=60
 StartLimitBurst=3
 
@@ -18,7 +18,7 @@ SecureBits=keep-caps
 AmbientCapabilities=CAP_IPC_LOCK
 CapabilityBoundingSet=CAP_SYSLOG CAP_IPC_LOCK
 NoNewPrivileges=yes
-ExecStart=/usr/bin/vault server -config=${vault_config_file}
+ExecStart=/usr/bin/vault server -config=/etc/vault.d/vault.hcl
 ExecReload=/bin/kill --signal HUP \$MAINPID
 KillMode=process
 KillSignal=SIGINT
