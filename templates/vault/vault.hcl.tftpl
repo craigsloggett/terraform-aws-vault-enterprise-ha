@@ -7,20 +7,20 @@ log_format = "json"
 
 cluster_addr = "https://$${private_ip}:8201"
 api_addr     = "https://${vault_fqdn}:8200"
-license_path = "$${vault_license_file}"
+license_path = "$${VAULT_LICENSE_FILE}"
 
 listener "tcp" {
   address                  = "0.0.0.0:8200"
   cluster_address          = "0.0.0.0:8201"
-  tls_cert_file            = "$${vault_tls_cert_file}"
-  tls_key_file             = "$${vault_tls_key_file}"
+  tls_cert_file            = "$${VAULT_TLS_CERT_FILE}"
+  tls_key_file             = "$${VAULT_TLS_KEY_FILE}"
   tls_min_version          = "tls12"
   tls_cipher_suites        = "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
   tls_disable_client_certs = true
 }
 
 storage "raft" {
-  path                      = "$${vault_raft_dir}"
+  path                      = "$${VAULT_RAFT_DIR}"
   node_id                   = "$${instance_id}"
   autopilot_redundancy_zone = "$${availability_zone}"
 
@@ -28,7 +28,7 @@ storage "raft" {
     auto_join             = "provider=aws tag_key=${cluster_tag_key} tag_value=${cluster_tag_value}"
     auto_join_scheme      = "https"
     leader_tls_servername = "${vault_fqdn}"
-    leader_ca_cert_file   = "$${vault_tls_ca_file}"
+    leader_ca_cert_file   = "$${VAULT_TLS_CA_FILE}"
   }
 }
 
