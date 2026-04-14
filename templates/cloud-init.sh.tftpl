@@ -1619,7 +1619,6 @@ phase_enable_agent_rotation() {
 #   Forwarded positional arguments (currently unused).
 #######################################
 main() {
-  export AWS_REGION="$${AWS_REGION}"
   export VAULT_ADDR="https://127.0.0.1:8200"
   export VAULT_TLS_SERVER_NAME="$${VAULT_FQDN}"
   export VAULT_CACERT="$${VAULT_TLS_CA_FILE}"
