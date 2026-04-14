@@ -1194,8 +1194,6 @@ configure_pki_mount() {
 configure_pki_root_ca() {
   log_info "Generating PKI root CA"
 
-  # Generate root CA with ECDSA P-384 keys, consistent with the bootstrap
-  # CA and server certs in tls.tf.
   vault write -format=json pki/root/generate/internal \
     common_name="$${CLUSTER_NAME} Vault Root CA" \
     organization="$${VAULT_PKI_ORGANIZATION}" \
