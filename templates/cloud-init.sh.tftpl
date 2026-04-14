@@ -14,10 +14,6 @@
 
 set -ef
 
-# ---------------------------------------------------------------------------
-# Input Parameters
-# ---------------------------------------------------------------------------
-
 # Vault Directories
 readonly VAULT_HOME_DIR="/opt/vault"
 readonly VAULT_DATA_DIR="/var/opt/vault"
@@ -86,12 +82,8 @@ readonly VAULT_PKI_SERVER_CERT_TTL="24h"
 readonly VAULT_AWS_AUTH_ROLE_MAX_TTL="24h"
 readonly VAULT_AWS_AUTH_ROLE_TTL="4h"
 
-# ---------------------------------------------------------------------------
-# Function Definitions
-# ---------------------------------------------------------------------------
-
 #######################################
-# Logging Helpers
+#           Logging Helpers           #
 #######################################
 
 log_info() {
@@ -107,7 +99,7 @@ log_error() {
 }
 
 #######################################
-# EC2 Metadata Helpers
+#        EC2 Metadata Helpers         #
 #######################################
 
 get_imds_token() {
@@ -136,7 +128,7 @@ get_availability_zone() {
 }
 
 #######################################
-# AWS Secrets Manager Helpers
+#     AWS Secrets Manager Helpers     #
 #######################################
 
 fetch_secret() {
@@ -167,7 +159,7 @@ put_secret() {
 }
 
 #######################################
-# AWS SSM Parameter Store Helpers
+#   AWS SSM Parameter Store Helpers   #
 #######################################
 
 fetch_parameter() {
@@ -200,7 +192,7 @@ put_parameter() {
 }
 
 #######################################
-# Vault Cluster Discovery Helpers
+#   Vault Cluster Discovery Helpers   #
 #######################################
 
 is_cluster_initialized() {
@@ -273,7 +265,7 @@ fetch_vault_license() {
 }
 
 #######################################
-# Cluster Coordination Helpers
+#    Cluster Coordination Helpers     #
 #######################################
 
 initialize_cluster() {
@@ -340,16 +332,15 @@ mark_pki_ready() {
 }
 
 #######################################
-# Configure Host EBS Volumes
+#     Configure Host EBS Volumes      #
 #######################################
 
-# Note: resolve_ebs_nvme_device temporarily disables noglob (set +f)
-# for the /dev/nvme* glob scan and re-enables it (set -f) before returning.
 resolve_ebs_nvme_device() {
   _target_name="$${1}"
 
   _target_short="$${_target_name#/dev/}"
 
+  # Temporarily disable noglob for the /dev/nvme* glob scan.
   set +f
   for _nvme in /dev/nvme*n1; do
     [ -e "$${_nvme}" ] || continue
@@ -416,7 +407,7 @@ prepare_disk() {
 }
 
 #######################################
-# Configure Host System Packages
+#        Configure Host System        #
 #######################################
 
 wait_for_network() {
@@ -441,10 +432,6 @@ prepare_system() {
     awscli gnupg jq unzip nvme-cli amazon-ec2-utils chrony >/dev/null
 }
 
-#######################################
-# Configure Host System Time
-#######################################
-
 configure_system_time() {
   log_info "Configuring system time"
 
@@ -457,7 +444,7 @@ configure_system_time() {
 }
 
 #######################################
-# Install and Configure Vault Server
+# Install and Configure Vault Server  #
 #######################################
 
 create_vault_user() {
@@ -502,10 +489,6 @@ configure_vault_directories() {
   mkdir -p "$${VAULT_RAFT_DIR}"
   chown vault:vault "$${VAULT_RAFT_DIR}"
   chmod 700 "$${VAULT_RAFT_DIR}"
-
-  mkdir -p "$${VAULT_AGENT_TEMPLATE_DIR}"
-  chown vault:vault "$${VAULT_AGENT_TEMPLATE_DIR}"
-  chmod 755 "$${VAULT_AGENT_TEMPLATE_DIR}"
 }
 
 write_vault_shell_env() {
@@ -672,7 +655,7 @@ write_bootstrap_tls_materials() {
 }
 
 #######################################
-# Configure Vault Cluster
+#       Configure Vault Cluster       #
 #######################################
 
 configure_file_audit_device() {
@@ -718,7 +701,7 @@ EOF
 }
 
 #######################################
-# Configure PKI Engine
+#        Configure PKI Engine         #
 #######################################
 
 configure_pki_mount() {
@@ -797,26 +780,22 @@ EOF
   log_info "vault-server policy written"
 }
 
-#######################################
-# Configure AWS Auth Method
-#######################################
+write_cluster_ca_certificate() {
+  _cluster_ca_cert="$(fetch_pki_ca_cert)"
 
-configure_aws_auth_method() {
-  log_info "Configuring Vault AWS auth method"
+  log_info "Replacing bootstrap CA cert with PKI CA cert on disk"
 
-  if ! vault auth list -format=json | jq -e '."aws/"' >/dev/null 2>&1; then
-    vault auth enable aws
+  printf '%s\n' "$${_cluster_ca_cert}" >"$${VAULT_TLS_CA_FILE}"
+  chown vault:vault "$${VAULT_TLS_CA_FILE}"
+  chmod 0644 "$${VAULT_TLS_CA_FILE}"
+
+  log_info "Bootstrap CA cert replaced with PKI CA cert at $${VAULT_TLS_CA_FILE}"
+
+  _temporary_cluster_ca_file="$${VAULT_TLS_DIR}/pki-ca.crt"
+  if [ -f "$${_temporary_cluster_ca_file}" ]; then
+    rm -f "$${_temporary_cluster_ca_file}"
+    log_info "Removed temporary PKI CA cert file $${_temporary_cluster_ca_file}"
   fi
-
-  vault write auth/aws/role/vault-server \
-    auth_type=iam \
-    bound_iam_principal_arn="$${VAULT_IAM_ROLE_ARN}" \
-    policies=vault-server \
-    max_ttl="$${VAULT_AWS_AUTH_ROLE_MAX_TTL}" \
-    ttl="$${VAULT_AWS_AUTH_ROLE_TTL}" \
-    >/dev/null
-
-  log_info "Vault AWS auth method configured"
 }
 
 issue_vault_server_certificate() {
@@ -875,27 +854,45 @@ reload_vault_listener() {
   log_info "Vault TLS listener reloaded"
 }
 
-write_cluster_ca_certificate() {
-  _cluster_ca_cert="$(fetch_pki_ca_cert)"
+#######################################
+#      Configure AWS Auth Method      #
+#######################################
 
-  log_info "Replacing bootstrap CA cert with PKI CA cert on disk"
+enable_aws_auth_method() {
+  log_info "Enabling Vault AWS auth method"
 
-  printf '%s\n' "$${_cluster_ca_cert}" >"$${VAULT_TLS_CA_FILE}"
-  chown vault:vault "$${VAULT_TLS_CA_FILE}"
-  chmod 0644 "$${VAULT_TLS_CA_FILE}"
-
-  log_info "Bootstrap CA cert replaced with PKI CA cert at $${VAULT_TLS_CA_FILE}"
-
-  _temporary_cluster_ca_file="$${VAULT_TLS_DIR}/pki-ca.crt"
-  if [ -f "$${_temporary_cluster_ca_file}" ]; then
-    rm -f "$${_temporary_cluster_ca_file}"
-    log_info "Removed temporary PKI CA cert file $${_temporary_cluster_ca_file}"
+  if ! vault auth list -format=json | jq -e '."aws/"' >/dev/null 2>&1; then
+    vault auth enable aws
   fi
+
+  log_info "Vault AWS auth method enabled"
+}
+
+bind_vault_server_iam_role() {
+  log_info "Binding vault-server IAM role"
+
+  vault write auth/aws/role/vault-server \
+    auth_type=iam \
+    bound_iam_principal_arn="$${VAULT_IAM_ROLE_ARN}" \
+    policies=vault-server \
+    max_ttl="$${VAULT_AWS_AUTH_ROLE_MAX_TTL}" \
+    ttl="$${VAULT_AWS_AUTH_ROLE_TTL}" \
+    >/dev/null
+
+  log_info "vault-server IAM role bound"
 }
 
 #######################################
-# Install and Configure Vault Agent
+#  Install and Configure Vault Agent  #
 #######################################
+
+configure_vault_agent_directories() {
+  log_info "Configuring Vault Agent directory tree"
+
+  mkdir -p "$${VAULT_AGENT_TEMPLATE_DIR}"
+  chown vault:vault "$${VAULT_AGENT_TEMPLATE_DIR}"
+  chmod 755 "$${VAULT_AGENT_TEMPLATE_DIR}"
+}
 
 write_vault_agent_service_unit() {
   log_info "Writing Vault Agent systemd unit"
@@ -955,10 +952,6 @@ EOF
   chmod 0755 "$${VAULT_AGENT_SERVER_TLS_RELOAD_FILE}"
 }
 
-# ---------------------------------------------------------------------------
-# Entrypoint
-# ---------------------------------------------------------------------------
-
 phase_prepare_system() {
   wait_for_network
   prepare_system
@@ -1012,7 +1005,8 @@ phase_enable_pki_and_tls() {
     configure_pki_engine
     write_vault_server_policy
     publish_cluster_ca_certificate
-    configure_aws_auth_method
+    enable_aws_auth_method
+    bind_vault_server_iam_role
     configure_file_audit_device
     mark_pki_ready
   else
@@ -1026,6 +1020,7 @@ phase_enable_pki_and_tls() {
 }
 
 phase_enable_agent_rotation() {
+  configure_vault_agent_directories
   write_vault_shell_env
   write_vault_agent_config
   write_vault_agent_tls_template
