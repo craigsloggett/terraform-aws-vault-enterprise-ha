@@ -1,5 +1,5 @@
 #!/bin/sh
-# setup-vault-server.sh
+# cloud-init.sh.tftpl
 #
 # This script is rendered by Terraform using templatefile() and placed in
 # EC2 instance user data.
@@ -91,76 +91,31 @@ readonly VAULT_AWS_AUTH_ROLE_TTL="4h"
 # ---------------------------------------------------------------------------
 
 #######################################
-# Helpers — Logging
+# Logging Helpers
 #######################################
 
-#######################################
-# Write an informational message to STDERR with an [INFO] prefix.
-# Globals:
-#   None
-# Arguments:
-#   Message to log.
-# Outputs:
-#   Writes the formatted message to STDERR.
-#######################################
 log_info() {
   printf '[INFO]  %s\n' "$${1}"
 }
 
-#######################################
-# Write a warning message to STDERR with a [WARN] prefix.
-# Globals:
-#   None
-# Arguments:
-#   Message to log.
-# Outputs:
-#   Writes the formatted message to STDERR.
-#######################################
 log_warn() {
   printf '[WARN]  %s\n' "$${1}" >&2
 }
 
-#######################################
-# Write an error message to STDERR with an [ERROR] prefix.
-# Globals:
-#   None
-# Arguments:
-#   Message to log.
-# Outputs:
-#   Writes the formatted message to STDERR.
-#######################################
 log_error() {
   printf '[ERROR] %s\n' "$${1}" >&2
 }
 
 #######################################
-# Helpers — Get EC2 Metadata
+# EC2 Metadata Helpers
 #######################################
 
-#######################################
-# Fetch a short-lived IMDSv2 session token from the instance metadata service.
-# Globals:
-#   None
-# Arguments:
-#   None
-# Outputs:
-#   Writes the IMDSv2 token to STDOUT.
-#######################################
 get_imds_token() {
   curl -s -X PUT \
     -H "X-aws-ec2-metadata-token-ttl-seconds: 3600" \
     "http://169.254.169.254/latest/api/token"
 }
 
-#######################################
-# Fetch a metadata value from the EC2 IMDSv2 endpoint.
-# Globals:
-#   None
-# Arguments:
-#   Metadata path (e.g. "instance-id").
-# Outputs:
-#   Writes the metadata value to STDOUT.
-#######################################
 get_imds_metadata() {
   _path="$${1}"
   _token="$(get_imds_token)"
@@ -168,58 +123,22 @@ get_imds_metadata() {
     "http://169.254.169.254/latest/meta-data/$${_path}"
 }
 
-#######################################
-# Resolve the private IPv4 address of the current EC2 instance via IMDSv2.
-# Globals:
-#   None
-# Arguments:
-#   None
-# Outputs:
-#   Writes the private IPv4 address to STDOUT.
-#######################################
 get_private_ip() {
   get_imds_metadata "local-ipv4"
 }
 
-#######################################
-# Resolve the EC2 instance ID via IMDSv2.
-# Globals:
-#   None
-# Arguments:
-#   None
-# Outputs:
-#   Writes the instance ID to STDOUT.
-#######################################
 get_instance_id() {
   get_imds_metadata "instance-id"
 }
 
-#######################################
-# Resolve the EC2 availability zone of the current instance via IMDSv2.
-# Globals:
-#   None
-# Arguments:
-#   None
-# Outputs:
-#   Writes the availability zone to STDOUT.
-#######################################
 get_availability_zone() {
   get_imds_metadata "placement/availability-zone"
 }
 
 #######################################
-# Helpers — Fetch AWS Secrets
+# AWS Secrets Manager Helpers
 #######################################
 
-#######################################
-# Fetch the SecretString of an AWS Secrets Manager secret.
-# Globals:
-#   AWS_REGION
-# Arguments:
-#   Secret ARN or name.
-# Outputs:
-#   Writes the secret value to STDOUT.
-#######################################
 fetch_secret() {
   _secret_arn="$${1}"
 
@@ -237,16 +156,6 @@ fetch_secret() {
   return 1
 }
 
-#######################################
-# Write a value to an AWS Secrets Manager secret.
-# Globals:
-#   AWS_REGION
-# Arguments:
-#   Secret ARN or name.
-#   Secret value.
-# Outputs:
-#   None.
-#######################################
 put_secret() {
   _secret_arn="$${1}"
   _secret_value="$${2}"
@@ -258,18 +167,9 @@ put_secret() {
 }
 
 #######################################
-# Helpers — AWS SSM Parameter Store
+# AWS SSM Parameter Store Helpers
 #######################################
 
-#######################################
-# Fetch the value of an AWS SSM Parameter Store parameter.
-# Globals:
-#   AWS_REGION
-# Arguments:
-#   Parameter name.
-# Outputs:
-#   Writes the parameter value to STDOUT.
-#######################################
 fetch_parameter() {
   _parameter_name="$${1}"
 
@@ -288,16 +188,6 @@ fetch_parameter() {
   return 1
 }
 
-#######################################
-# Write a value to an AWS SSM Parameter Store parameter (overwrite if exists).
-# Globals:
-#   AWS_REGION
-# Arguments:
-#   Parameter name.
-#   Parameter value.
-# Outputs:
-#   None.
-#######################################
 put_parameter() {
   _parameter_name="$${1}"
   _parameter_value="$${2}"
@@ -310,18 +200,9 @@ put_parameter() {
 }
 
 #######################################
-# Helpers — Cluster Discovery
+# Vault Cluster Discovery Helpers
 #######################################
 
-#######################################
-# Check whether the Vault cluster has already been initialized.
-# Globals:
-#   VAULT_ADDR
-# Arguments:
-#   None.
-# Returns:
-#   0 if the cluster is initialized, non-zero otherwise.
-#######################################
 is_cluster_initialized() {
   _initialized="$(
     vault status -format=json 2>/dev/null |
@@ -331,16 +212,6 @@ is_cluster_initialized() {
   [ "$${_initialized}" = "true" ]
 }
 
-#######################################
-# Determine whether this node should perform cluster bootstrap by claiming the
-# SSM cluster-state parameter.
-# Globals:
-#   AWS_REGION, CLUSTER_TAG_KEY, CLUSTER_TAG_VALUE
-# Arguments:
-#   None
-# Returns:
-#   0 if this node won the bootstrap claim, non-zero otherwise.
-#######################################
 is_bootstrap_node() {
   _instance_id="$(get_instance_id)"
 
@@ -354,23 +225,11 @@ is_bootstrap_node() {
       --output text
   )"
 
-  # The --output text format returns tab-separated values on one line.
-  # tr converts tabs to newlines before sort.
   _lowest_id="$(printf '%s' "$${_all_ids}" | tr '\t' '\n' | sort | head -1)"
 
   [ "$${_instance_id}" = "$${_lowest_id}" ]
 }
 
-#######################################
-# Return the role of this node: "bootstrap" if it won the bootstrap claim,
-# "follower" otherwise.
-# Globals:
-#   AWS_REGION
-# Arguments:
-#   None.
-# Outputs:
-#   Writes "bootstrap" or "follower" to STDOUT.
-#######################################
 get_vault_node_role() {
   if is_bootstrap_node; then
     printf 'bootstrap'
@@ -379,13 +238,6 @@ get_vault_node_role() {
   fi
 }
 
-#######################################
-# Block until the SSM PKI-ready flag has been published by the bootstrap node.
-# Globals:
-#   AWS_REGION, SSM_PKI_STATE_NAME
-# Arguments:
-#   None.
-#######################################
 wait_for_pki_ready() {
   for _attempt in 1 2 3 4 5 6 7 8 9 10; do
     _state="$(fetch_parameter "$${SSM_PKI_STATE_NAME}")" || true
@@ -400,84 +252,30 @@ wait_for_pki_ready() {
   return 1
 }
 
-#######################################
-# Read the cluster CA certificate published in SSM Parameter Store.
-# Globals:
-#   AWS_REGION, SSM_PKI_CA_CERT_NAME
-# Arguments:
-#   None.
-# Outputs:
-#   Writes the PEM-encoded CA certificate to STDOUT.
-#######################################
-fetch_cluster_ca_certificate() {
+fetch_pki_ca_cert() {
   fetch_parameter "$${SSM_PKI_CA_CERT_NAME}"
 }
 
-#######################################
-# Fetch the bootstrap CA certificate from AWS Secrets Manager.
-# Globals:
-#   AWS_REGION, BOOTSTRAP_TLS_CA_CERT_SECRET_ARN
-# Arguments:
-#   None
-# Outputs:
-#   Writes the PEM-encoded bootstrap CA certificate to STDOUT.
-#######################################
 fetch_bootstrap_ca_cert() {
   fetch_secret "$${BOOTSTRAP_TLS_CA_CERT_SECRET_ARN}"
 }
 
-#######################################
-# Fetch the bootstrap server certificate from AWS Secrets Manager.
-# Globals:
-#   AWS_REGION, BOOTSTRAP_TLS_SERVER_CERT_SECRET_ARN
-# Arguments:
-#   None
-# Outputs:
-#   Writes the PEM-encoded bootstrap server certificate to STDOUT.
-#######################################
 fetch_bootstrap_server_cert() {
   fetch_secret "$${BOOTSTRAP_TLS_SERVER_CERT_SECRET_ARN}"
 }
 
-#######################################
-# Fetch the bootstrap server private key from AWS Secrets Manager.
-# Globals:
-#   AWS_REGION, BOOTSTRAP_TLS_SERVER_KEY_SECRET_ARN
-# Arguments:
-#   None
-# Outputs:
-#   Writes the PEM-encoded bootstrap server key to STDOUT.
-#######################################
 fetch_bootstrap_server_key() {
   fetch_secret "$${BOOTSTRAP_TLS_SERVER_KEY_SECRET_ARN}"
 }
 
-#######################################
-# Fetch the Vault Enterprise license string from AWS Secrets Manager.
-# Globals:
-#   AWS_REGION, VAULT_LICENSE_SECRET_ARN
-# Arguments:
-#   None
-# Outputs:
-#   Writes the license string to STDOUT.
-#######################################
 fetch_vault_license() {
   fetch_secret "$${VAULT_LICENSE_SECRET_ARN}"
 }
 
 #######################################
-# Helpers — Cluster Coordination
+# Cluster Coordination Helpers
 #######################################
 
-#######################################
-# Initialize the Vault cluster on the bootstrap node, persist the resulting
-# root token to Secrets Manager, and mark cluster state as initialized in SSM.
-# Globals:
-#   AWS_REGION, VAULT_ADDR, VAULT_BOOTSTRAP_ROOT_TOKEN_SECRET_ARN,
-#   VAULT_RECOVERY_KEYS_SECRET_ARN, SSM_CLUSTER_STATE_NAME
-# Arguments:
-#   None.
-#######################################
 initialize_cluster() {
   log_info "Initializing Vault cluster"
 
@@ -511,14 +309,6 @@ initialize_cluster() {
   log_info "Cluster initialization complete"
 }
 
-#######################################
-# Join this follower node to the existing Raft cluster once SSM signals that
-# the bootstrap node has completed initialization.
-# Globals:
-#   AWS_REGION, SSM_CLUSTER_STATE_NAME, VAULT_ADDR
-# Arguments:
-#   None.
-#######################################
 join_cluster() {
   for _attempt in 1 2 3 4 5 6 7 8 9 10; do
     _state="$(fetch_parameter "$${SSM_CLUSTER_STATE_NAME}")" || true
@@ -534,14 +324,6 @@ join_cluster() {
   return 1
 }
 
-#######################################
-# Publish the cluster CA certificate to SSM so that follower nodes can trust
-# certificates issued by the Vault PKI engine.
-# Globals:
-#   AWS_REGION, SSM_PKI_CA_CERT_NAME, VAULT_ADDR, VAULT_TOKEN
-# Arguments:
-#   None.
-#######################################
 publish_cluster_ca_certificate() {
   log_info "Publishing PKI CA cert to SSM"
 
@@ -551,14 +333,6 @@ publish_cluster_ca_certificate() {
   log_info "PKI CA cert published to SSM"
 }
 
-#######################################
-# Mark the PKI engine as ready in SSM so that follower nodes can proceed to
-# request server certificates.
-# Globals:
-#   AWS_REGION, SSM_PKI_STATE_NAME
-# Arguments:
-#   None.
-#######################################
 mark_pki_ready() {
   log_info "Writing PKI state: ready"
 
@@ -566,19 +340,9 @@ mark_pki_ready() {
 }
 
 #######################################
-# Configure Host — EBS
+# Configure Host EBS Volumes
 #######################################
 
-#######################################
-# Resolve an EBS volume attachment name (e.g. /dev/sdf) to the actual NVMe
-# device path (e.g. /dev/nvme1n1) using ebsnvme-id.
-# Globals:
-#   None
-# Arguments:
-#   EBS attachment device name.
-# Outputs:
-#   Writes the resolved NVMe device path to STDOUT.
-#######################################
 # Note: resolve_ebs_nvme_device temporarily disables noglob (set +f)
 # for the /dev/nvme* glob scan and re-enables it (set -f) before returning.
 resolve_ebs_nvme_device() {
@@ -604,16 +368,6 @@ resolve_ebs_nvme_device() {
   return 1
 }
 
-#######################################
-# Format an EBS volume with XFS (if not already formatted), label it, and
-# mount it at the given path with an fstab entry for persistence.
-# Globals:
-#   None
-# Arguments:
-#   EBS attachment device name.
-#   Mount point path.
-#   Filesystem label.
-#######################################
 prepare_disk() {
   _device_attachment_name="$${1}"
   _mount_point="$${2}"
@@ -662,17 +416,9 @@ prepare_disk() {
 }
 
 #######################################
-# Configure Host — System Packages
+# Configure Host System Packages
 #######################################
 
-#######################################
-# Block until the instance has working network connectivity and apt metadata
-# can be refreshed.
-# Globals:
-#   None
-# Arguments:
-#   None
-#######################################
 wait_for_network() {
   for _attempt in 1 2 3 4 5; do
     if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
@@ -685,14 +431,6 @@ wait_for_network() {
   return 1
 }
 
-#######################################
-# Refresh apt metadata and install the base set of OS packages required by the
-# Vault server runtime.
-# Globals:
-#   None
-# Arguments:
-#   None
-#######################################
 prepare_system() {
   log_info "Preparing system packages"
 
@@ -704,17 +442,9 @@ prepare_system() {
 }
 
 #######################################
-# Configure Host — System Time
+# Configure Host System Time
 #######################################
 
-#######################################
-# Enable systemd-timesyncd and set the system timezone so that audit log
-# timestamps and certificate validity windows are correct.
-# Globals:
-#   None
-# Arguments:
-#   None
-#######################################
 configure_system_time() {
   log_info "Configuring system time"
 
@@ -727,17 +457,9 @@ configure_system_time() {
 }
 
 #######################################
-# Install + Configure Vault Server — Vault User
+# Install and Configure Vault Server
 #######################################
 
-#######################################
-# Create the vault system user and group with the given home directory and
-# a non-login shell.
-# Globals:
-#   VAULT_HOME_DIR
-# Arguments:
-#   None.
-#######################################
 create_vault_user() {
   log_info "Creating vault system user"
 
@@ -750,20 +472,6 @@ create_vault_user() {
   fi
 }
 
-#######################################
-# Install + Configure Vault Server — Vault Directories
-#######################################
-
-#######################################
-# Create the Vault server directory tree (home, data, config, log, tls, raft)
-# with the appropriate ownership and permissions.
-# Globals:
-#   VAULT_AGENT_TEMPLATE_DIR, VAULT_CONFIG_DIR, VAULT_DATA_DIR,
-#   VAULT_HOME_DIR, VAULT_LIBEXEC_DIR, VAULT_LOG_DIR, VAULT_RAFT_DIR,
-#   VAULT_TLS_DIR
-# Arguments:
-#   None.
-#######################################
 configure_vault_directories() {
   log_info "Configuring Vault directory tree"
 
@@ -800,18 +508,6 @@ configure_vault_directories() {
   chmod 755 "$${VAULT_AGENT_TEMPLATE_DIR}"
 }
 
-#######################################
-# Install + Configure Vault Server — Vault CLI
-#######################################
-
-#######################################
-# Write a system-wide profile snippet that exports VAULT_ADDR, VAULT_CACERT,
-# and VAULT_TLS_SERVER_NAME for interactive shells.
-# Globals:
-#   VAULT_FQDN, VAULT_TLS_CA_FILE
-# Arguments:
-#   None.
-#######################################
 write_vault_shell_env() {
   log_info "Writing Vault CLI environment to /etc/profile.d/99-vault-cli-config.sh"
 
@@ -822,20 +518,6 @@ export VAULT_CACERT="$${VAULT_TLS_CA_FILE}"
 EOF
 }
 
-#######################################
-# Install + Configure Vault Server — Vault Download / Verify
-#######################################
-
-#######################################
-# Detect the system CPU architecture in the form expected by HashiCorp release
-# artifacts (e.g. amd64, arm64).
-# Globals:
-#   None
-# Arguments:
-#   None
-# Outputs:
-#   Writes the architecture string to STDOUT.
-#######################################
 detect_system_architecture() {
   _machine="$(uname -m)"
   case "$${_machine}" in
@@ -848,16 +530,6 @@ detect_system_architecture() {
   esac
 }
 
-#######################################
-# Download the Vault Enterprise binary from releases.hashicorp.com along with
-# its checksum and signature, and verify the artifact before extraction.
-# Globals:
-#   None
-# Arguments:
-#   Vault version string.
-#   System architecture string.
-#   Temporary directory for downloads.
-#######################################
 download_and_verify_vault() {
   _version="$${1}"
   _arch="$${2}"
@@ -891,14 +563,6 @@ download_and_verify_vault() {
   cd / || return 1
 }
 
-#######################################
-# Install the verified Vault binary onto the system PATH and create a symlink
-# at /usr/local/bin/vault.
-# Globals:
-#   None
-# Arguments:
-#   None
-#######################################
 install_vault() {
 
   log_info "Installing Vault Enterprise $${VAULT_VERSION}"
@@ -920,17 +584,6 @@ install_vault() {
   log_info "Vault Enterprise $${VAULT_VERSION} installed"
 }
 
-#######################################
-# Install + Configure Vault Server — Vault Systemd Services
-#######################################
-
-#######################################
-# Write the vault.service systemd unit file.
-# Globals:
-#   None
-# Arguments:
-#   None
-#######################################
 write_vault_service_unit() {
   log_info "Writing Vault systemd unit"
 
@@ -939,14 +592,6 @@ ${config_vault_service}
 EOF
 }
 
-#######################################
-# Write a systemd drop-in override for vault.service to inject environment
-# variables and runtime tuning specific to this deployment.
-# Globals:
-#   None
-# Arguments:
-#   None
-#######################################
 write_vault_service_override() {
   log_info "Writing Vault systemd override"
 
@@ -960,33 +605,15 @@ EOF
   chmod 0600 /etc/systemd/system/vault.service.d/override.conf
 }
 
-#######################################
-# Enable and start the vault.service systemd unit.
-# Globals:
-#   None
-# Arguments:
-#   None
-#######################################
 start_vault() {
   log_info "Starting Vault"
 
   systemctl daemon-reload
-
-  # Vault starts sealed; no health-check loop here because /v1/sys/health
-  # returns non-2xx until init/unseal is performed by an operator.
   systemctl enable --now vault
 
   log_info "Vault started"
 }
 
-#######################################
-# Block until the local Vault API responds to health checks (sealed responses
-# are treated as ready for initialization).
-# Globals:
-#   VAULT_ADDR, VAULT_CACERT, VAULT_TLS_SERVER_NAME
-# Arguments:
-#   None
-#######################################
 wait_for_vault_api() {
   for _attempt in 1 2 3 4 5 6 7 8 9 10; do
     _status="$(
@@ -1004,18 +631,6 @@ wait_for_vault_api() {
   return 1
 }
 
-#######################################
-# Install + Configure Vault Server — Vault License
-#######################################
-
-#######################################
-# Write the Vault Enterprise license file to disk with vault:vault ownership
-# and 0640 permissions.
-# Globals:
-#   VAULT_LICENSE_FILE
-# Arguments:
-#   None.
-#######################################
 write_vault_license() {
   _vault_license="$(fetch_vault_license)"
 
@@ -1025,18 +640,6 @@ write_vault_license() {
   chmod 0640 "$${VAULT_LICENSE_FILE}"
 }
 
-#######################################
-# Install + Configure Vault Server — Vault Configuration File
-#######################################
-
-#######################################
-# Render and write vault.hcl with listener, storage, seal, and cluster
-# configuration for this node.
-# Globals:
-#   VAULT_CONFIG_FILE
-# Arguments:
-#   None.
-#######################################
 write_vault_config() {
   _private_ip="$(get_private_ip)"
   _instance_id="$(get_instance_id)"
@@ -1052,15 +655,6 @@ EOF
   chmod 0640 "$${VAULT_CONFIG_FILE}"
 }
 
-#######################################
-# Write the bootstrap CA, server certificate, and server key to the TLS
-# directory so that Vault can start its TLS listener before the PKI engine
-# has issued a long-lived certificate.
-# Globals:
-#   VAULT_TLS_CA_FILE, VAULT_TLS_CERT_FILE, VAULT_TLS_KEY_FILE
-# Arguments:
-#   None.
-#######################################
 write_bootstrap_tls_materials() {
   _ca_cert="$(fetch_bootstrap_ca_cert)"
   _server_cert="$(fetch_bootstrap_server_cert)"
@@ -1078,17 +672,9 @@ write_bootstrap_tls_materials() {
 }
 
 #######################################
-# Configure Vault Cluster — Configure Audit Logs
+# Configure Vault Cluster
 #######################################
 
-#######################################
-# Enable a file audit device on the Vault cluster pointing at the audit log
-# file path on this node.
-# Globals:
-#   VAULT_ADDR, VAULT_AUDIT_LOG_FILE, VAULT_TOKEN
-# Arguments:
-#   None.
-#######################################
 configure_file_audit_device() {
   log_info "Configuring Vault file audit device"
 
@@ -1099,18 +685,6 @@ configure_file_audit_device() {
   log_info "Vault file audit device configured"
 }
 
-#######################################
-# Configure Vault Cluster — Configure Autopilot
-#######################################
-
-#######################################
-# Configure Raft autopilot parameters (cleanup of dead servers, server
-# stabilization time, etc.) on the Vault cluster.
-# Globals:
-#   VAULT_ADDR, VAULT_MINIMUM_QUORUM_SIZE, VAULT_TOKEN
-# Arguments:
-#   None
-#######################################
 configure_autopilot() {
   log_info "Configuring Raft Autopilot"
 
@@ -1122,18 +696,6 @@ configure_autopilot() {
   log_info "Raft Autopilot configured"
 }
 
-#######################################
-# Configure Vault Cluster — Configure Snapshots
-#######################################
-
-#######################################
-# Configure automated Raft snapshots on the Vault cluster using the rendered
-# snapshot agent configuration.
-# Globals:
-#   VAULT_ADDR, VAULT_SNAPSHOT_CONFIG_FILE, VAULT_TOKEN
-# Arguments:
-#   None.
-#######################################
 configure_snapshots() {
   log_info "Configuring automated Raft snapshots"
 
@@ -1144,13 +706,6 @@ configure_snapshots() {
   log_info "Automated Raft snapshots configured"
 }
 
-#######################################
-# Render the snapshot agent configuration JSON to disk.
-# Globals:
-#   VAULT_SNAPSHOT_CONFIG_FILE
-# Arguments:
-#   None.
-#######################################
 write_vault_snapshot_config() {
   log_info "Writing Vault snapshot configuration"
 
@@ -1163,17 +718,9 @@ EOF
 }
 
 #######################################
-# Configure Vault Cluster — Configure PKI Engine
+# Configure PKI Engine
 #######################################
 
-#######################################
-# Enable and tune the PKI secrets engine mount used to issue Vault server
-# certificates.
-# Globals:
-#   VAULT_ADDR, VAULT_PKI_MOUNT_MAX_TTL, VAULT_TOKEN
-# Arguments:
-#   None.
-#######################################
 configure_pki_mount() {
   log_info "Enabling Vault PKI secrets engine"
 
@@ -1186,14 +733,6 @@ configure_pki_mount() {
   log_info "Vault PKI secrets engine enabled"
 }
 
-#######################################
-# Generate the root CA certificate inside the PKI engine.
-# Globals:
-#   CLUSTER_NAME, VAULT_ADDR, VAULT_PKI_COUNTRY, VAULT_PKI_ORGANIZATION,
-#   VAULT_PKI_ROOT_CA_TTL, VAULT_TOKEN
-# Arguments:
-#   None.
-#######################################
 configure_pki_root_ca() {
   log_info "Generating PKI root CA"
 
@@ -1209,13 +748,6 @@ configure_pki_root_ca() {
   log_info "PKI root CA generated"
 }
 
-#######################################
-# Configure the issuing and CRL distribution URLs on the PKI engine.
-# Globals:
-#   VAULT_ADDR, VAULT_FQDN, VAULT_TOKEN
-# Arguments:
-#   None.
-#######################################
 configure_pki_urls() {
   log_info "Configuring PKI issuing URLs"
 
@@ -1228,14 +760,6 @@ configure_pki_urls() {
   log_info "PKI issuing URLs configured"
 }
 
-#######################################
-# Configure the PKI role used to issue server certificates to Vault nodes,
-# constrained to the Vault server FQDN with ECDSA P-384 keys.
-# Globals:
-#   VAULT_ADDR, VAULT_FQDN, VAULT_PKI_VAULT_SERVER_ROLE_MAX_TTL, VAULT_TOKEN
-# Arguments:
-#   None.
-#######################################
 configure_vault_server_pki_role() {
   log_info "Creating vault-server PKI role"
 
@@ -1254,15 +778,6 @@ configure_vault_server_pki_role() {
   log_info "vault-server PKI role created"
 }
 
-#######################################
-# Composite entrypoint that mounts the PKI engine, generates the root CA,
-# configures issuing URLs, and creates the Vault server role.
-# Globals:
-#   VAULT_ADDR, VAULT_FQDN, VAULT_PKI_MOUNT_MAX_TTL, VAULT_PKI_ROOT_CA_TTL,
-#   VAULT_PKI_VAULT_SERVER_ROLE_MAX_TTL, VAULT_TOKEN
-# Arguments:
-#   None.
-#######################################
 configure_pki_engine() {
   configure_pki_mount
   configure_pki_root_ca
@@ -1270,14 +785,6 @@ configure_pki_engine() {
   configure_vault_server_pki_role
 }
 
-#######################################
-# Write the vault-server policy that grants the rights required to issue
-# server certificates from the PKI engine.
-# Globals:
-#   VAULT_ADDR, VAULT_TOKEN
-# Arguments:
-#   None
-#######################################
 write_vault_server_policy() {
   log_info "Writing vault-server policy"
 
@@ -1291,18 +798,9 @@ EOF
 }
 
 #######################################
-# Configure Vault Cluster — Configure AWS Auth Method
+# Configure AWS Auth Method
 #######################################
 
-#######################################
-# Enable and configure the AWS IAM auth method, then bind the vault-server
-# role to instance profiles permitted to request server certificates.
-# Globals:
-#   VAULT_ADDR, VAULT_AWS_AUTH_ROLE_MAX_TTL, VAULT_AWS_AUTH_ROLE_TTL,
-#   VAULT_IAM_ROLE_ARN, VAULT_TOKEN
-# Arguments:
-#   None.
-#######################################
 configure_aws_auth_method() {
   log_info "Configuring Vault AWS auth method"
 
@@ -1321,27 +819,13 @@ configure_aws_auth_method() {
   log_info "Vault AWS auth method configured"
 }
 
-#######################################
-# Rotate TLS Materials
-#######################################
-
-#######################################
-# Issue a server certificate for this Vault node from the PKI engine and
-# atomically install it into the TLS directory.
-# Globals:
-#   SSM_PKI_CA_CERT_NAME, VAULT_ADDR, VAULT_FQDN, VAULT_PKI_SERVER_CERT_TTL,
-#   VAULT_TLS_CERT_FILE, VAULT_TLS_DIR, VAULT_TLS_KEY_FILE, VAULT_TOKEN
-# Arguments:
-#   None.
-#######################################
 issue_vault_server_certificate() {
   log_info "Issuing PKI-signed TLS certificate for this node"
 
   # Follower nodes need to fetch the new CA cert from SSM and authenticate
-  # via the AWS IAM auth method. The bootstrap node already has VAULT_TOKEN
-  # set from cluster convergence.
+  # via the AWS IAM auth method.
   if [ -z "$${VAULT_TOKEN:-}" ]; then
-    _new_ca_cert="$(fetch_cluster_ca_certificate)"
+    _new_ca_cert="$(fetch_pki_ca_cert)"
 
     # Keep the bootstrap CA at VAULT_CACERT until the listener reloads. This
     # temporary file is only for follower-node AWS auth and later cleanup.
@@ -1383,14 +867,6 @@ issue_vault_server_certificate() {
   log_info "PKI-signed certificate written to $${VAULT_TLS_CERT_FILE}"
 }
 
-#######################################
-# Send SIGHUP to the running Vault process so that it re-reads its TLS
-# listener materials without restarting.
-# Globals:
-#   None
-# Arguments:
-#   None
-#######################################
 reload_vault_listener() {
   log_info "Reloading Vault TLS listener with PKI-signed certificate"
 
@@ -1399,16 +875,8 @@ reload_vault_listener() {
   log_info "Vault TLS listener reloaded"
 }
 
-#######################################
-# Replace the bootstrap CA certificate on disk with the cluster CA fetched
-# from SSM, so that the Vault listener trusts the long-lived PKI chain.
-# Globals:
-#   AWS_REGION, SSM_PKI_CA_CERT_NAME, VAULT_TLS_CA_FILE, VAULT_TLS_DIR
-# Arguments:
-#   None.
-#######################################
 write_cluster_ca_certificate() {
-  _cluster_ca_cert="$(fetch_cluster_ca_certificate)"
+  _cluster_ca_cert="$(fetch_pki_ca_cert)"
 
   log_info "Replacing bootstrap CA cert with PKI CA cert on disk"
 
@@ -1426,16 +894,9 @@ write_cluster_ca_certificate() {
 }
 
 #######################################
-# Install + Configure Vault Agent — Vault Agent Systemd Services
+# Install and Configure Vault Agent
 #######################################
 
-#######################################
-# Write the vault-agent.service systemd unit file.
-# Globals:
-#   None
-# Arguments:
-#   None
-#######################################
 write_vault_agent_service_unit() {
   log_info "Writing Vault Agent systemd unit"
 
@@ -1444,13 +905,6 @@ ${config_agent_service}
 EOF
 }
 
-#######################################
-# Enable and start the vault-agent.service systemd unit.
-# Globals:
-#   None
-# Arguments:
-#   None
-#######################################
 start_vault_agent() {
   log_info "Starting Vault Agent"
 
@@ -1460,14 +914,6 @@ start_vault_agent() {
   log_info "Vault Agent started"
 }
 
-#######################################
-# Write the polkit rule that allows the vault user to send SIGHUP to
-# vault.service from the reload script without elevated privileges.
-# Globals:
-#   VAULT_AGENT_RELOAD_RULES_FILE
-# Arguments:
-#   None.
-#######################################
 write_vault_agent_reload_rules() {
   log_info "Writing Vault Agent polkit rules"
 
@@ -1476,18 +922,6 @@ ${config_agent_reload_rules}
 EOF
 }
 
-#######################################
-# Install + Configure Vault Agent — Vault Agent Configuration Files
-#######################################
-
-#######################################
-# Render and write the Vault Agent agent.hcl file with auto-auth, sinks, and
-# the template stanza for the Vault server certificate.
-# Globals:
-#   VAULT_AGENT_CONFIG_FILE
-# Arguments:
-#   None.
-#######################################
 write_vault_agent_config() {
   log_info "Writing Vault Agent configuration"
 
@@ -1499,14 +933,6 @@ EOF
   chmod 0644 "$${VAULT_AGENT_CONFIG_FILE}"
 }
 
-#######################################
-# Render and write the consul-template (.ctmpl) template that produces the
-# Vault server certificate bundle from the PKI engine.
-# Globals:
-#   VAULT_AGENT_SERVER_TLS_TEMPLATE_FILE
-# Arguments:
-#   None.
-#######################################
 write_vault_agent_tls_template() {
   log_info "Writing Vault Agent TLS certificate template"
 
@@ -1518,14 +944,6 @@ EOF
   chmod 0644 "$${VAULT_AGENT_SERVER_TLS_TEMPLATE_FILE}"
 }
 
-#######################################
-# Write the helper script invoked by Vault Agent on template render that
-# atomically swaps in the new TLS materials and signals Vault to reload.
-# Globals:
-#   VAULT_AGENT_SERVER_TLS_RELOAD_FILE
-# Arguments:
-#   None.
-#######################################
 write_vault_agent_reload_script() {
   log_info "Writing Vault Agent TLS reload script"
 
@@ -1577,7 +995,8 @@ phase_converge_cluster() {
 
   if [ "$${_vault_node_role}" = "bootstrap" ]; then
     initialize_cluster
-    export VAULT_TOKEN="$(fetch_secret "$${VAULT_BOOTSTRAP_ROOT_TOKEN_SECRET_ARN}")"
+    VAULT_TOKEN="$(fetch_secret "$${VAULT_BOOTSTRAP_ROOT_TOKEN_SECRET_ARN}")"
+    export VAULT_TOKEN
 
     configure_autopilot
     configure_snapshots
@@ -1616,15 +1035,6 @@ phase_enable_agent_rotation() {
   start_vault_agent
 }
 
-#######################################
-# Orchestrate the full Vault server bootstrap: prepare the host, install and
-# start Vault, initialize or join the cluster, configure cluster-wide
-# subsystems, fetch TLS materials, and bring up Vault Agent for cert rotation.
-# Globals:
-#   AWS_REGION, VAULT_ADDR, VAULT_CACERT, VAULT_TLS_SERVER_NAME, VAULT_TOKEN
-# Arguments:
-#   Forwarded positional arguments (currently unused).
-#######################################
 main() {
   export VAULT_ADDR="https://127.0.0.1:8200"
   export VAULT_TLS_SERVER_NAME="$${VAULT_FQDN}"
