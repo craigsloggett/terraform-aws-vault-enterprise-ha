@@ -952,41 +952,41 @@ EOF
   chmod 0755 "$${VAULT_AGENT_SERVER_TLS_RELOAD_FILE}"
 }
 
-phase_prepare_system() {
+main() {
+  export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_TLS_SERVER_NAME="$${VAULT_FQDN}"
+  export VAULT_CACERT="$${VAULT_TLS_CA_FILE}"
+
+  # Prepare System
   wait_for_network
   prepare_system
   configure_system_time
-}
 
-phase_prepare_storage() {
+  # Prepare Storage
   prepare_disk "$${EBS_RAFT_DEVICE_NAME}" "$${VAULT_RAFT_DIR}" "vault-raft"
   prepare_disk "$${EBS_AUDIT_DEVICE_NAME}" "$${VAULT_LOG_DIR}" "vault-audit"
-}
 
-phase_prepare_vault_runtime() {
+  # Prepare Vault Server
   create_vault_user
   configure_vault_directories
   install_vault
   write_vault_service_unit
   write_vault_service_override
-}
 
-phase_render_bootstrap_artifacts() {
+  # Render Bootstrap Artifacts
   write_vault_license
   write_bootstrap_tls_materials
   write_vault_config
   write_vault_snapshot_config
-}
 
-phase_start_vault() {
+  # Start Vault
   start_vault
   wait_for_vault_api
-}
 
-phase_converge_cluster() {
-  _vault_node_role="$${1}"
+  # Setup Vault Cluster
+  vault_node_role="$(get_vault_node_role)"
 
-  if [ "$${_vault_node_role}" = "bootstrap" ]; then
+  if [ "$${vault_node_role}" = "bootstrap" ]; then
     initialize_cluster
     VAULT_TOKEN="$(fetch_secret "$${VAULT_BOOTSTRAP_ROOT_TOKEN_SECRET_ARN}")"
     export VAULT_TOKEN
@@ -996,12 +996,9 @@ phase_converge_cluster() {
   else
     join_cluster
   fi
-}
 
-phase_enable_pki_and_tls() {
-  _vault_node_role="$${1}"
-
-  if [ "$${_vault_node_role}" = "bootstrap" ]; then
+  # Enable PKI and TLS
+  if [ "$${vault_node_role}" = "bootstrap" ]; then
     configure_pki_engine
     write_vault_server_policy
     publish_cluster_ca_certificate
@@ -1014,12 +1011,10 @@ phase_enable_pki_and_tls() {
   fi
 
   issue_vault_server_certificate
-
   reload_vault_listener
   write_cluster_ca_certificate
-}
 
-phase_enable_agent_rotation() {
+  # Enable Vault Agent TLS Rotation
   configure_vault_agent_directories
   write_vault_shell_env
   write_vault_agent_config
@@ -1028,24 +1023,6 @@ phase_enable_agent_rotation() {
   write_vault_agent_reload_rules
   write_vault_agent_service_unit
   start_vault_agent
-}
-
-main() {
-  export VAULT_ADDR="https://127.0.0.1:8200"
-  export VAULT_TLS_SERVER_NAME="$${VAULT_FQDN}"
-  export VAULT_CACERT="$${VAULT_TLS_CA_FILE}"
-
-  phase_prepare_system
-  phase_prepare_storage
-  phase_prepare_vault_runtime
-  phase_render_bootstrap_artifacts
-  phase_start_vault
-
-  _vault_node_role="$(get_vault_node_role)"
-
-  phase_converge_cluster "$${_vault_node_role}"
-  phase_enable_pki_and_tls "$${_vault_node_role}"
-  phase_enable_agent_rotation
 
   log_info "=== Bootstrap complete ==="
 }

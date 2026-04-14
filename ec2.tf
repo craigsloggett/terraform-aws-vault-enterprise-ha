@@ -56,27 +56,19 @@ resource "aws_launch_template" "vault" {
     ssm_pki_ca_cert_name                  = aws_ssm_parameter.vault_pki_ca_cert.name
     vault_bootstrap_root_token_secret_arn = aws_secretsmanager_secret.vault_bootstrap_root_token.arn
 
-    # Vault install
-    vault_version = var.vault_version
-
-    # Vault service
+    # Vault
+    vault_version                 = var.vault_version
     config_vault_service          = local.config_vault_service
     config_vault_service_override = local.config_vault_service_override
-
-    # Vault license
-    vault_license_secret_arn = aws_secretsmanager_secret.vault_license.arn
-
-    # Vault configuration
-    config_vault_hcl           = local.config_vault_hcl
-    config_vault_snapshot_json = local.config_vault_snapshot_json
+    vault_license_secret_arn      = aws_secretsmanager_secret.vault_license.arn
+    config_vault_hcl              = local.config_vault_hcl
+    config_vault_snapshot_json    = local.config_vault_snapshot_json
 
     # Cluster initialization
     cluster_tag_key                = local.cluster_tag_key
     cluster_tag_value              = local.cluster_tag_value
     vault_recovery_keys_secret_arn = aws_secretsmanager_secret.vault_recovery_keys.arn
-
-    # Raft
-    vault_minimum_quorum_size = var.vault_node_count
+    vault_minimum_quorum_size      = var.vault_node_count
 
     # PKI
     cluster_name           = title(var.project_name)
