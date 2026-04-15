@@ -72,11 +72,11 @@ resource "aws_launch_template" "vault" {
     vault_minimum_quorum_size             = var.vault_node_count
 
     # PKI and TLS
-    cluster_name                    = title(var.project_name)
-    vault_pki_state_ssm_name        = aws_ssm_parameter.vault_pki_state.name
-    vault_pki_root_ca_cert_ssm_name = aws_ssm_parameter.vault_pki_root_ca_cert.name
-    vault_pki_organization          = var.vault_pki_organization
-    vault_pki_country               = var.vault_pki_country
+    cluster_name                 = title(var.project_name)
+    vault_pki_organization       = var.vault_pki_organization
+    vault_pki_country            = var.vault_pki_country
+    vault_pki_state_ssm_name     = aws_ssm_parameter.vault_pki_state.name
+    vault_tls_ca_bundle_ssm_name = aws_ssm_parameter.vault_tls_ca_bundle.name
 
     # AWS Auth
     vault_iam_role_arn = aws_iam_role.vault.arn

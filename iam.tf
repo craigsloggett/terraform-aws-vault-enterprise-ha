@@ -144,7 +144,7 @@ data "aws_iam_policy_document" "vault_ssm" {
     resources = [
       aws_ssm_parameter.vault_cluster_state.arn,
       aws_ssm_parameter.vault_pki_state.arn,
-      aws_ssm_parameter.vault_pki_root_ca_cert.arn,
+      aws_ssm_parameter.vault_tls_ca_bundle.arn,
     ]
   }
 }
