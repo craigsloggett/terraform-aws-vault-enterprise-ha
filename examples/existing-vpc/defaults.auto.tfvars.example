@@ -1,10 +1,10 @@
-project_name      = "vault"
-vpc_name          = "hashistack"
-route53_zone_name = "example.com"
-vault_license     = "your-vault-enterprise-license-here"
-ec2_key_pair_name = "my-key-pair"
-ec2_ami_owner     = "123456789012"
-ec2_ami_name      = "hc-base-ubuntu-2404-amd64-*"
+project_name             = "vault"
+vpc_name                 = "hashistack"
+route53_zone_name        = "example.com"
+vault_enterprise_license = "your-vault-enterprise-license-here"
+ec2_key_pair_name        = "my-key-pair"
+ec2_ami_owner            = "123456789012"
+ec2_ami_name             = "hc-base-ubuntu-2404-amd64-*"
 
 nlb_internal            = false
 vault_api_allowed_cidrs = ["0.0.0.0/0"]
