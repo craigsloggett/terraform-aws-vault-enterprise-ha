@@ -58,9 +58,9 @@ resource "aws_launch_template" "vault" {
 
     # Bootstrap Artifacts
     vault_license_secret_arn             = aws_secretsmanager_secret.vault_license.arn
-    bootstrap_tls_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_bootstrap_ca_cert.arn
-    bootstrap_tls_server_cert_secret_arn = aws_secretsmanager_secret.vault_bootstrap_server_cert.arn
-    bootstrap_tls_server_key_secret_arn  = aws_secretsmanager_secret.vault_bootstrap_server_key.arn
+    bootstrap_tls_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_bootstrap_tls_ca_cert.arn
+    bootstrap_tls_server_cert_secret_arn = aws_secretsmanager_secret.vault_bootstrap_tls_cert.arn
+    bootstrap_tls_server_key_secret_arn  = aws_secretsmanager_secret.vault_bootstrap_tls_private_key.arn
     config_vault_snapshot_json           = local.config_vault_snapshot_json
 
     # Cluster Coordination
