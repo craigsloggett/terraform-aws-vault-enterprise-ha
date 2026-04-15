@@ -239,6 +239,6 @@ module "vault" {
 | <a name="output_vault_kms_key_id"></a> [vault\_kms\_key\_id](#output\_vault\_kms\_key\_id) | KMS key ID used for Vault auto-unseal. |
 | <a name="output_vault_snapshots_bucket"></a> [vault\_snapshots\_bucket](#output\_vault\_snapshots\_bucket) | S3 bucket for Vault snapshots. |
 | <a name="output_vault_target_group_arn"></a> [vault\_target\_group\_arn](#output\_vault\_target\_group\_arn) | ARN of the Vault NLB target group. |
-| <a name="output_vault_tls_ca_bundle"></a> [vault\_tls\_ca\_bundle](#output\_vault\_tls\_ca\_bundle) | Vault PKI Managed TLS CA Bundle |
+| <a name="output_vault_tls_ca_bundle_ssm_name"></a> [vault\_tls\_ca\_bundle\_ssm\_name](#output\_vault\_tls\_ca\_bundle\_ssm\_name) | SSM Parameter for the Vault PKI managed TLS CA bundle. |
 | <a name="output_vault_url"></a> [vault\_url](#output\_vault\_url) | URL of the Vault cluster. |
 <!-- END_TF_DOCS -->
