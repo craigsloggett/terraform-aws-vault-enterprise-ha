@@ -757,7 +757,8 @@ configure_pki_vault_intermediate_ca() {
 
   # Import the signed cert back into the intermediate mount
   vault write pki_vault/intermediate/set-signed \
-    certificate=@"$${tmp_dir}/pki_vault_intermediate.crt"
+    certificate=@"$${tmp_dir}/pki_vault_intermediate.crt" \
+    >/dev/null
 
   # Clean up CSR/cert from disk
   rm "$${tmp_dir}/pki_vault_intermediate.csr" "$${tmp_dir}/pki_vault_intermediate.crt"
