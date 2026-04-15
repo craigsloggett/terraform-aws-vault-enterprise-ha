@@ -56,6 +56,7 @@ resource "aws_launch_template" "vault" {
     config_vault_service_override = local.config_vault_service_override
     config_vault_hcl              = local.config_vault_hcl
     config_vault_server_policy    = local.config_vault_server_policy
+    config_vault_admin_policy     = local.config_vault_admin_policy
 
     # Bootstrap Artifacts
     vault_enterprise_license_secret_arn  = aws_secretsmanager_secret.vault_enterprise_license.arn

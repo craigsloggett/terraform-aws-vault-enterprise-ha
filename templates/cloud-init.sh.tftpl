@@ -799,6 +799,18 @@ EOF
   log_info "vault-server policy written"
 }
 
+write_admin_policy() {
+  log_info "Writing admin policy"
+
+  cat >"$${VAULT_POLICY_DIR}/admin.hcl" <<'EOF'
+${config_vault_admin_policy}
+EOF
+
+  vault policy write admin "$${VAULT_POLICY_DIR}/admin.hcl"
+
+  log_info "admin policy written"
+}
+
 write_cluster_ca_certificate() {
   cluster_tls_ca_bundle="$(fetch_tls_ca_bundle)"
 
@@ -1046,9 +1058,11 @@ main() {
     configure_pki_vault_intermediate_ca
     configure_vault_server_pki_role
     write_vault_server_policy
+    write_admin_policy
     publish_tls_ca_bundle
     enable_aws_auth_method
     bind_vault_server_iam_role
+    bind_admin_iam_role
     configure_file_audit_device
     mark_pki_ready
   else
