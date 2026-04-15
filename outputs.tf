@@ -1,6 +1,6 @@
 output "vault_url" {
   description = "URL of the Vault cluster."
-  value       = "https://${local.vault_fqdn}:8200"
+  value       = "https://${local.vault_fqdn}"
 }
 
 output "bastion_public_ip" {
