@@ -57,26 +57,26 @@ resource "aws_launch_template" "vault" {
     config_vault_hcl              = local.config_vault_hcl
 
     # Bootstrap Artifacts
-    vault_license_secret_arn             = aws_secretsmanager_secret.vault_license.arn
-    bootstrap_tls_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_bootstrap_ca_cert.arn
-    bootstrap_tls_server_cert_secret_arn = aws_secretsmanager_secret.vault_bootstrap_server_cert.arn
-    bootstrap_tls_server_key_secret_arn  = aws_secretsmanager_secret.vault_bootstrap_server_key.arn
+    vault_enterprise_license_secret_arn  = aws_secretsmanager_secret.vault_enterprise_license.arn
+    bootstrap_tls_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_bootstrap_tls_ca_cert.arn
+    bootstrap_tls_cert_secret_arn        = aws_secretsmanager_secret.vault_bootstrap_tls_cert.arn
+    bootstrap_tls_private_key_secret_arn = aws_secretsmanager_secret.vault_bootstrap_tls_private_key.arn
     config_vault_snapshot_json           = local.config_vault_snapshot_json
 
     # Cluster Coordination
-    cluster_tag_key                       = local.cluster_tag_key
-    cluster_tag_value                     = local.cluster_tag_value
-    ssm_cluster_state_name                = aws_ssm_parameter.vault_cluster_state.name
+    vault_cluster_tag_key                 = local.vault_cluster_tag_key
+    vault_cluster_tag_value               = local.vault_cluster_tag_value
+    vault_cluster_state_ssm_name          = aws_ssm_parameter.vault_cluster_state.name
     vault_bootstrap_root_token_secret_arn = aws_secretsmanager_secret.vault_bootstrap_root_token.arn
     vault_recovery_keys_secret_arn        = aws_secretsmanager_secret.vault_recovery_keys.arn
     vault_minimum_quorum_size             = var.vault_node_count
 
     # PKI and TLS
-    cluster_name           = title(var.project_name)
-    ssm_pki_state_name     = aws_ssm_parameter.vault_pki_state.name
-    ssm_pki_ca_cert_name   = aws_ssm_parameter.vault_pki_ca_cert.name
-    vault_pki_organization = var.vault_pki_organization
-    vault_pki_country      = var.vault_pki_country
+    cluster_name                 = title(var.project_name)
+    vault_pki_organization       = var.vault_pki_organization
+    vault_pki_country            = var.vault_pki_country
+    vault_pki_state_ssm_name     = aws_ssm_parameter.vault_pki_state.name
+    vault_tls_ca_bundle_ssm_name = aws_ssm_parameter.vault_tls_ca_bundle.name
 
     # AWS Auth
     vault_iam_role_arn = aws_iam_role.vault.arn
@@ -130,8 +130,8 @@ resource "aws_launch_template" "vault" {
     resource_type = "instance"
 
     tags = merge(var.common_tags, {
-      Name                    = "${var.project_name}-vault-enterprise"
-      (local.cluster_tag_key) = local.cluster_tag_value
+      Name                          = "${var.project_name}-vault-enterprise"
+      (local.vault_cluster_tag_key) = local.vault_cluster_tag_value
     })
   }
 
@@ -182,7 +182,7 @@ resource "aws_autoscaling_group" "vault" {
 
   dynamic "tag" {
     for_each = merge(var.common_tags, {
-      (local.cluster_tag_key) = local.cluster_tag_value
+      (local.vault_cluster_tag_key) = local.vault_cluster_tag_value
     })
 
     content {

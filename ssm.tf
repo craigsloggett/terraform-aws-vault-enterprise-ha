@@ -1,12 +1,12 @@
-resource "aws_ssm_parameter" "vault_pki_ca_cert" {
-  name        = "/${var.project_name}/vault/pki/ca-cert"
+resource "aws_ssm_parameter" "vault_tls_ca_bundle" {
+  name        = "/${var.project_name}/vault/tls/ca-bundle"
   type        = "String"
-  value       = "uninitialized"
-  description = "Vault PKI CA certificate PEM (public)"
+  value       = "Uninitialized"
+  description = "Vault PKI Managed TLS CA Bundle"
 
   lifecycle {
     ignore_changes = [value]
   }
 
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-pki-ca-cert" })
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-tls-ca-bundle" })
 }

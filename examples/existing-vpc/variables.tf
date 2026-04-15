@@ -13,7 +13,7 @@ variable "route53_zone_name" {
   description = "Name of the existing Route 53 hosted zone."
 }
 
-variable "vault_license" {
+variable "vault_enterprise_license" {
   type        = string
   description = "Vault Enterprise license string."
   sensitive   = true

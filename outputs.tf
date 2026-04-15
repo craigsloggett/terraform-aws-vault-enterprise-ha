@@ -1,6 +1,6 @@
 output "vault_url" {
   description = "URL of the Vault cluster."
-  value       = "https://${local.vault_fqdn}:8200"
+  value       = "https://${local.vault_fqdn}"
 }
 
 output "bastion_public_ip" {
@@ -33,8 +33,7 @@ output "ec2_ami_name" {
   value       = var.ec2_ami.name
 }
 
-output "vault_bootstrap_ca_cert" {
-  description = "Bootstrap TLS CA certificate for trusting the Vault TLS chain."
-  value       = tls_self_signed_cert.bootstrap_ca.cert_pem
-  sensitive   = true
+output "vault_tls_ca_bundle_ssm_name" {
+  description = "SSM Parameter for the Vault PKI managed TLS CA bundle."
+  value       = aws_ssm_parameter.vault_tls_ca_bundle.name
 }

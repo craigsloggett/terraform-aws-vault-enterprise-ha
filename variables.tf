@@ -18,7 +18,7 @@ variable "route53_zone" {
   description = "Route 53 hosted zone for the Vault DNS record."
 }
 
-variable "vault_license" {
+variable "vault_enterprise_license" {
   type        = string
   description = "Vault Enterprise license string."
   sensitive   = true

@@ -47,10 +47,10 @@ data "aws_iam_policy_document" "vault_secrets_manager" {
     effect  = "Allow"
     actions = ["secretsmanager:GetSecretValue"]
     resources = [
-      aws_secretsmanager_secret.vault_license.arn,
-      aws_secretsmanager_secret.vault_bootstrap_ca_cert.arn,
-      aws_secretsmanager_secret.vault_bootstrap_server_cert.arn,
-      aws_secretsmanager_secret.vault_bootstrap_server_key.arn,
+      aws_secretsmanager_secret.vault_enterprise_license.arn,
+      aws_secretsmanager_secret.vault_bootstrap_tls_ca_cert.arn,
+      aws_secretsmanager_secret.vault_bootstrap_tls_cert.arn,
+      aws_secretsmanager_secret.vault_bootstrap_tls_private_key.arn,
     ]
   }
 }
@@ -144,7 +144,7 @@ data "aws_iam_policy_document" "vault_ssm" {
     resources = [
       aws_ssm_parameter.vault_cluster_state.arn,
       aws_ssm_parameter.vault_pki_state.arn,
-      aws_ssm_parameter.vault_pki_ca_cert.arn,
+      aws_ssm_parameter.vault_tls_ca_bundle.arn,
     ]
   }
 }

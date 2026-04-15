@@ -38,7 +38,7 @@ resource "aws_lb_target_group" "vault" {
 
 resource "aws_lb_listener" "vault" {
   load_balancer_arn = aws_lb.vault.arn
-  port              = 8200
+  port              = 443
   protocol          = "TCP"
 
   default_action {

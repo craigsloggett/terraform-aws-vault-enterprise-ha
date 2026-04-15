@@ -2,13 +2,13 @@
 
 # CA
 
-resource "tls_private_key" "bootstrap_ca" {
+resource "tls_private_key" "vault_bootstrap_tls_ca_private_key" {
   algorithm   = "ECDSA"
   ecdsa_curve = "P384"
 }
 
-resource "tls_self_signed_cert" "bootstrap_ca" {
-  private_key_pem = tls_private_key.bootstrap_ca.private_key_pem
+resource "tls_self_signed_cert" "vault_bootstrap_tls_ca_cert" {
+  private_key_pem = tls_private_key.vault_bootstrap_tls_ca_private_key.private_key_pem
 
   subject {
     common_name  = "${var.project_name} CA"
@@ -26,13 +26,13 @@ resource "tls_self_signed_cert" "bootstrap_ca" {
 
 # Private Key
 
-resource "tls_private_key" "bootstrap_server" {
+resource "tls_private_key" "vault_bootstrap_tls_private_key" {
   algorithm   = "ECDSA"
   ecdsa_curve = "P384"
 }
 
-resource "tls_cert_request" "bootstrap_server" {
-  private_key_pem = tls_private_key.bootstrap_server.private_key_pem
+resource "tls_cert_request" "vault_bootstrap_tls_cert_request" {
+  private_key_pem = tls_private_key.vault_bootstrap_tls_private_key.private_key_pem
 
   subject {
     common_name  = local.vault_fqdn
@@ -47,10 +47,10 @@ resource "tls_cert_request" "bootstrap_server" {
   ip_addresses = ["127.0.0.1"]
 }
 
-resource "tls_locally_signed_cert" "bootstrap_server" {
-  cert_request_pem   = tls_cert_request.bootstrap_server.cert_request_pem
-  ca_private_key_pem = tls_private_key.bootstrap_ca.private_key_pem
-  ca_cert_pem        = tls_self_signed_cert.bootstrap_ca.cert_pem
+resource "tls_locally_signed_cert" "vault_bootstrap_tls_cert" {
+  cert_request_pem   = tls_cert_request.vault_bootstrap_tls_cert_request.cert_request_pem
+  ca_private_key_pem = tls_private_key.vault_bootstrap_tls_ca_private_key.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.vault_bootstrap_tls_ca_cert.cert_pem
 
   validity_period_hours = 24
 
@@ -63,48 +63,48 @@ resource "tls_locally_signed_cert" "bootstrap_server" {
 
 # Secrets Manager
 
-resource "aws_secretsmanager_secret" "vault_bootstrap_ca_cert" {
+resource "aws_secretsmanager_secret" "vault_bootstrap_tls_ca_cert" {
   name_prefix = "${var.project_name}-vault-bootstrap-tls-ca-cert-"
-  description = "Bootstrap TLS CA certificate for Vault"
+  description = "Bootstrap TLS CA certificate"
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-ca-cert" })
 }
 
-resource "aws_secretsmanager_secret_version" "vault_bootstrap_ca_cert" {
-  secret_id     = aws_secretsmanager_secret.vault_bootstrap_ca_cert.id
-  secret_string = tls_self_signed_cert.bootstrap_ca.cert_pem
+resource "aws_secretsmanager_secret_version" "vault_bootstrap_tls_ca_cert" {
+  secret_id     = aws_secretsmanager_secret.vault_bootstrap_tls_ca_cert.id
+  secret_string = tls_self_signed_cert.vault_bootstrap_tls_ca_cert.cert_pem
 }
 
-resource "aws_secretsmanager_secret" "vault_bootstrap_server_cert" {
-  name_prefix = "${var.project_name}-vault-bootstrap-tls-server-cert-"
-  description = "Bootstrap TLS server certificate for Vault"
+resource "aws_secretsmanager_secret" "vault_bootstrap_tls_cert" {
+  name_prefix = "${var.project_name}-vault-bootstrap-tls-cert-"
+  description = "Bootstrap TLS Certificate"
 
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-server-cert" })
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-cert" })
 }
 
-resource "aws_secretsmanager_secret_version" "vault_bootstrap_server_cert" {
-  secret_id     = aws_secretsmanager_secret.vault_bootstrap_server_cert.id
-  secret_string = tls_locally_signed_cert.bootstrap_server.cert_pem
+resource "aws_secretsmanager_secret_version" "vault_bootstrap_tls_cert" {
+  secret_id     = aws_secretsmanager_secret.vault_bootstrap_tls_cert.id
+  secret_string = tls_locally_signed_cert.vault_bootstrap_tls_cert.cert_pem
 }
 
-resource "aws_secretsmanager_secret" "vault_bootstrap_server_key" {
-  name_prefix = "${var.project_name}-vault-bootstrap-tls-server-key-"
-  description = "Bootstrap TLS server private key for Vault"
+resource "aws_secretsmanager_secret" "vault_bootstrap_tls_private_key" {
+  name_prefix = "${var.project_name}-vault-bootstrap-tls-private-key-"
+  description = "Bootstrap TLS Private Key"
 
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-server-key" })
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-private-key" })
 }
 
-resource "aws_secretsmanager_secret_version" "vault_bootstrap_server_key" {
-  secret_id     = aws_secretsmanager_secret.vault_bootstrap_server_key.id
-  secret_string = tls_private_key.bootstrap_server.private_key_pem
+resource "aws_secretsmanager_secret_version" "vault_bootstrap_tls_private_key" {
+  secret_id     = aws_secretsmanager_secret.vault_bootstrap_tls_private_key.id
+  secret_string = tls_private_key.vault_bootstrap_tls_private_key.private_key_pem
 }
 
-resource "aws_secretsmanager_secret_policy" "vault_bootstrap_server_key" {
-  secret_arn = aws_secretsmanager_secret.vault_bootstrap_server_key.arn
-  policy     = data.aws_iam_policy_document.vault_bootstrap_server_key.json
+resource "aws_secretsmanager_secret_policy" "vault_bootstrap_tls_private_key" {
+  secret_arn = aws_secretsmanager_secret.vault_bootstrap_tls_private_key.arn
+  policy     = data.aws_iam_policy_document.vault_bootstrap_tls_private_key.json
 }
 
-data "aws_iam_policy_document" "vault_bootstrap_server_key" {
+data "aws_iam_policy_document" "vault_bootstrap_tls_private_key" {
   statement {
     sid    = "AllowVaultInstanceRole"
     effect = "Allow"
@@ -115,7 +115,7 @@ data "aws_iam_policy_document" "vault_bootstrap_server_key" {
     }
 
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.vault_bootstrap_server_key.arn]
+    resources = [aws_secretsmanager_secret.vault_bootstrap_tls_private_key.arn]
   }
 }
 
@@ -123,7 +123,7 @@ data "aws_iam_policy_document" "vault_bootstrap_server_key" {
 
 resource "aws_secretsmanager_secret" "vault_bootstrap_root_token" {
   name_prefix = "${var.project_name}-vault-bootstrap-root-token-"
-  description = "Bootstrap root token for Vault (revoked after initialization)"
+  description = "Bootstrap Root Token"
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-root-token" })
 }
@@ -131,10 +131,10 @@ resource "aws_secretsmanager_secret" "vault_bootstrap_root_token" {
 # Initialization Coordination SSM Parameters
 
 resource "aws_ssm_parameter" "vault_cluster_state" {
-  name        = "/${var.project_name}/vault/cluster/state"
+  name        = "/${var.project_name}/vault/bootstrap/cluster/state"
   type        = "String"
   value       = "uninitialized"
-  description = "Vault cluster initialization state flag (uninitialized | ready)"
+  description = "Bootstrap Initialization State Flag (uninitialized | ready)"
 
   lifecycle {
     ignore_changes = [value]
@@ -144,10 +144,10 @@ resource "aws_ssm_parameter" "vault_cluster_state" {
 }
 
 resource "aws_ssm_parameter" "vault_pki_state" {
-  name        = "/${var.project_name}/vault/pki/state"
+  name        = "/${var.project_name}/vault/bootstrap/pki/state"
   type        = "String"
   value       = "uninitialized"
-  description = "Vault PKI bootstrap state flag (uninitialized | ready)"
+  description = "Bootstrap PKI State Flag (uninitialized | ready)"
 
   lifecycle {
     ignore_changes = [value]

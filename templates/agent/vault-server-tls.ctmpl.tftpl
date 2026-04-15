@@ -1,5 +1,8 @@
-{{- with pkiCert "pki/issue/vault-server" "common_name=${vault_fqdn}" "ttl=24h" -}}
+{{- with pkiCert "pki_vault/issue/vault-server" "common_name=${vault_fqdn}" "ttl=24h" -}}
 {{ .Key | writeToFile "/opt/vault/tls/server.key.new" "vault" "vault" "0640" }}
 {{ .Cert }}
 {{ range .CAChain }}{{ . }}{{ end }}
+{{- end -}}
+{{- with secret "pki_root/cert/ca" -}}
+{{ .Data.certificate }}
 {{- end -}}

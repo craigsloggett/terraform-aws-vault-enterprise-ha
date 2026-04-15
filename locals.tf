@@ -10,10 +10,10 @@ locals {
   instance_refresh_min_healthy_pct = floor(
     (var.vault_node_count - 1) / var.vault_node_count * 100
   )
-  cluster_tag_key       = "vault-cluster"
-  cluster_tag_value     = var.project_name
-  ebs_raft_device_name  = "/dev/xvdf"
-  ebs_audit_device_name = "/dev/xvdg"
+  vault_cluster_tag_key   = "vault-cluster"
+  vault_cluster_tag_value = var.project_name
+  ebs_raft_device_name    = "/dev/xvdf"
+  ebs_audit_device_name   = "/dev/xvdg"
 
   # ---------------------------------------------------------------------------
   # Vault cluster configuration content
@@ -23,12 +23,12 @@ locals {
   config_vault_service_override = file("${path.module}/files/vault/vault.service.override.conf")
 
   config_vault_hcl = templatefile("${path.module}/templates/vault/vault.hcl.tftpl", {
-    cluster_name      = var.project_name
-    vault_fqdn        = trimsuffix(aws_route53_record.vault.fqdn, ".")
-    aws_region        = data.aws_region.current.region
-    kms_key_alias     = aws_kms_alias.vault.name
-    cluster_tag_key   = local.cluster_tag_key
-    cluster_tag_value = local.cluster_tag_value
+    cluster_name            = var.project_name
+    vault_fqdn              = trimsuffix(aws_route53_record.vault.fqdn, ".")
+    aws_region              = data.aws_region.current.region
+    kms_key_alias           = aws_kms_alias.vault.name
+    vault_cluster_tag_key   = local.vault_cluster_tag_key
+    vault_cluster_tag_value = local.vault_cluster_tag_value
   })
 
   config_vault_snapshot_json = templatefile("${path.module}/templates/vault/snapshot.json.tftpl", {
