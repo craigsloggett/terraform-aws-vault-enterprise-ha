@@ -21,8 +21,8 @@ listener "tcp" {
 
 storage "raft" {
   path                      = "/var/opt/vault/data"
-  node_id                   = "$${_instance_id}"
-  autopilot_redundancy_zone = "$${_availability_zone}"
+  node_id                   = "$${instance_id}"
+  autopilot_redundancy_zone = "$${availability_zone}"
 
   retry_join {
     auto_join             = "provider=aws tag_key=${cluster_tag_key} tag_value=${cluster_tag_value}"
