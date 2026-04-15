@@ -752,6 +752,8 @@ configure_pki_vault_intermediate_ca() {
   vault write -format=json pki_root/root/sign-intermediate \
     csr=@"$${tmp_dir}/pki_vault_intermediate.csr" \
     common_name="$${CLUSTER_NAME} Vault Intermediate CA" \
+    organization="$${VAULT_PKI_ORGANIZATION}" \
+    country="$${VAULT_PKI_COUNTRY}" \
     ttl="$${VAULT_PKI_VAULT_CA_TTL}" |
     jq -r '.data.certificate' >"$${tmp_dir}/pki_vault_intermediate.crt"
 
