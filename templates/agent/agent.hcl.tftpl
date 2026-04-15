@@ -2,7 +2,7 @@ pid_file = "/run/vault/agent.pid"
 
 vault {
   address         = "https://127.0.0.1:8200"
-  ca_cert         = "$${vault_tls_ca_file}"
+  ca_cert         = "/opt/vault/tls/ca.crt"
   tls_server_name = "${vault_fqdn}"
 }
 
@@ -17,8 +17,8 @@ auto_auth {
 }
 
 template {
-  source      = "$${vault_agent_server_tls_template_file}"
-  destination = "$${vault_tls_cert_file}.new"
+  source      = "/etc/vault.d/templates/vault-server-tls.ctmpl"
+  destination = "/opt/vault/tls/server.crt.new"
   perms       = "0640"
-  command     = "$${vault_agent_server_tls_reload_file}"
+  command     = "/usr/local/libexec/vault/vault-server-tls-reload.sh"
 }

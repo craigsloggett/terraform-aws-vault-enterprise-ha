@@ -43,55 +43,50 @@ resource "aws_launch_template" "vault" {
 
   user_data = base64gzip(templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
     # Environment
-    region     = data.aws_region.current.region
-    vault_fqdn = local.vault_fqdn
+    vault_version = var.vault_version
+    vault_fqdn    = local.vault_fqdn
+    aws_region    = data.aws_region.current.region
 
-    # EBS volumes
+    # Prepare Storage
     ebs_raft_device_name  = local.ebs_raft_device_name
     ebs_audit_device_name = local.ebs_audit_device_name
 
-    # Cluster coordination
+    # Vault Server Configuration
+    config_vault_service          = local.config_vault_service
+    config_vault_service_override = local.config_vault_service_override
+    config_vault_hcl              = local.config_vault_hcl
+
+    # Bootstrap Artifacts
+    vault_license_secret_arn             = aws_secretsmanager_secret.vault_license.arn
+    bootstrap_tls_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_bootstrap_ca_cert.arn
+    bootstrap_tls_server_cert_secret_arn = aws_secretsmanager_secret.vault_bootstrap_server_cert.arn
+    bootstrap_tls_server_key_secret_arn  = aws_secretsmanager_secret.vault_bootstrap_server_key.arn
+    config_vault_snapshot_json           = local.config_vault_snapshot_json
+
+    # Cluster Coordination
+    cluster_tag_key                       = local.cluster_tag_key
+    cluster_tag_value                     = local.cluster_tag_value
     ssm_cluster_state_name                = aws_ssm_parameter.vault_cluster_state.name
-    ssm_pki_state_name                    = aws_ssm_parameter.vault_pki_state.name
-    ssm_pki_ca_cert_name                  = aws_ssm_parameter.vault_pki_ca_cert.name
     vault_bootstrap_root_token_secret_arn = aws_secretsmanager_secret.vault_bootstrap_root_token.arn
+    vault_recovery_keys_secret_arn        = aws_secretsmanager_secret.vault_recovery_keys.arn
+    vault_minimum_quorum_size             = var.vault_node_count
 
-    # Shared helpers
-    script_system_logging    = local.script_system_logging
-    script_aws_imds          = local.script_aws_imds
-    script_aws_secrets       = local.script_aws_secrets
-    script_aws_ebs           = local.script_aws_ebs
-    script_system_packages   = local.script_system_packages
-    script_system_time       = local.script_system_time
-    script_vault_user        = local.script_vault_user
-    script_vault_directories = local.script_vault_directories
-    script_vault_cli         = local.script_vault_cli
+    # PKI and TLS
+    cluster_name           = title(var.project_name)
+    ssm_pki_state_name     = aws_ssm_parameter.vault_pki_state.name
+    ssm_pki_ca_cert_name   = aws_ssm_parameter.vault_pki_ca_cert.name
+    vault_pki_organization = var.vault_pki_organization
+    vault_pki_country      = var.vault_pki_country
 
-    # Vault install and service
-    script_vault_install = local.script_vault_install
-    script_vault_service = local.script_vault_service
-
-    # Vault configuration
-    script_vault_license = local.script_vault_license
-    script_vault_config  = local.script_vault_config
-
-    # Cluster initialization and Raft
-    script_vault_cluster = local.script_vault_cluster
-    script_vault_raft    = local.script_vault_raft
-
-    # PKI secrets engine
-    script_vault_pki = local.script_vault_pki
-
-    # AWS auth and audit
-    script_vault_auth  = local.script_vault_auth
-    script_vault_audit = local.script_vault_audit
-
-    # TLS rotation
-    script_vault_tls = local.script_vault_tls
+    # AWS Auth
+    vault_iam_role_arn = aws_iam_role.vault.arn
 
     # Vault Agent
-    script_agent_config  = local.script_agent_config
-    script_agent_service = local.script_agent_service
+    config_agent_hcl                     = local.config_agent_hcl
+    config_agent_server_tls_ctmpl        = local.config_agent_server_tls_ctmpl
+    config_agent_reload_vault_server_tls = local.config_agent_reload_vault_server_tls
+    config_agent_reload_rules            = local.config_agent_reload_rules
+    config_agent_service                 = local.config_agent_service
   }))
 
   block_device_mappings {
