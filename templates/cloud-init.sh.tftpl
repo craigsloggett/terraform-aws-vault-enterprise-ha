@@ -23,6 +23,7 @@ readonly VAULT_LIBEXEC_DIR="/usr/local/libexec/vault"
 readonly VAULT_TLS_DIR="$${VAULT_HOME_DIR}/tls"
 readonly VAULT_RAFT_DIR="$${VAULT_DATA_DIR}/data"
 readonly VAULT_AGENT_TEMPLATE_DIR="$${VAULT_CONFIG_DIR}/templates"
+readonly VAULT_POLICY_DIR="$${VAULT_CONFIG_DIR}/policies"
 
 # Vault File Paths
 readonly VAULT_LICENSE_FILE="$${VAULT_HOME_DIR}/vault.hclic"
@@ -459,6 +460,10 @@ configure_vault_directories() {
   mkdir -p "$${VAULT_RAFT_DIR}"
   chown vault:vault "$${VAULT_RAFT_DIR}"
   chmod 700 "$${VAULT_RAFT_DIR}"
+
+  mkdir -p "$${VAULT_POLICY_DIR}"
+  chown vault:vault "$${VAULT_POLICY_DIR}"
+  chmod 755 "$${VAULT_POLICY_DIR}"
 }
 
 write_vault_shell_env() {
@@ -785,11 +790,11 @@ configure_vault_server_pki_role() {
 write_vault_server_policy() {
   log_info "Writing vault-server policy"
 
-  vault policy write vault-server - <<EOF
-path "pki_vault/issue/vault-server" {
-  capabilities = ["create", "update"]
-}
+  cat >"$${VAULT_POLICY_DIR}/vault-server.hcl" <<'EOF'
+${config_vault_server_policy}
 EOF
+
+  vault policy write vault-server "$${VAULT_POLICY_DIR}/vault-server.hcl"
 
   log_info "vault-server policy written"
 }

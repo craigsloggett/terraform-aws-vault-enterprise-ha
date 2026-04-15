@@ -21,6 +21,7 @@ locals {
 
   config_vault_service          = file("${path.module}/files/vault/vault.service")
   config_vault_service_override = file("${path.module}/files/vault/vault.service.override.conf")
+  config_vault_server_policy    = file("${path.module}/files/policies/vault-server.hcl")
 
   config_vault_hcl = templatefile("${path.module}/templates/vault/vault.hcl.tftpl", {
     cluster_name            = var.project_name
