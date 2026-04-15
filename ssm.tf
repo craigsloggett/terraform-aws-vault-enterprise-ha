@@ -1,7 +1,7 @@
 resource "aws_ssm_parameter" "vault_tls_ca_bundle" {
   name        = "/${var.project_name}/vault/tls/ca-bundle"
   type        = "String"
-  value       = ""
+  value       = "Uninitialized"
   description = "Vault PKI Managed TLS CA Bundle"
 
   lifecycle {
