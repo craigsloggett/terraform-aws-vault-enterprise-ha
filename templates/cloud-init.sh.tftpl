@@ -47,10 +47,10 @@ readonly EBS_RAFT_DEVICE_NAME="${ebs_raft_device_name}"
 readonly EBS_AUDIT_DEVICE_NAME="${ebs_audit_device_name}"
 
 # Bootstrap Artifacts
-readonly VAULT_LICENSE_SECRET_ARN="${vault_license_secret_arn}"
+readonly VAULT_ENTERPRISE_LICENSE_SECRET_ARN="${vault_enterprise_license_secret_arn}"
 readonly BOOTSTRAP_TLS_CA_CERT_SECRET_ARN="${bootstrap_tls_ca_cert_secret_arn}"
-readonly BOOTSTRAP_TLS_SERVER_CERT_SECRET_ARN="${bootstrap_tls_server_cert_secret_arn}"
-readonly BOOTSTRAP_TLS_SERVER_KEY_SECRET_ARN="${bootstrap_tls_server_key_secret_arn}"
+readonly BOOTSTRAP_TLS_CERT_SECRET_ARN="${bootstrap_tls_cert_secret_arn}"
+readonly BOOTSTRAP_TLS_PRIVATE_KEY_SECRET_ARN="${bootstrap_tls_private_key_secret_arn}"
 
 # Cluster Coordination
 readonly VAULT_CLUSTER_TAG_KEY="${vault_cluster_tag_key}"
@@ -228,15 +228,15 @@ fetch_bootstrap_ca_cert() {
 }
 
 fetch_bootstrap_server_cert() {
-  fetch_secret "$${BOOTSTRAP_TLS_SERVER_CERT_SECRET_ARN}"
+  fetch_secret "$${BOOTSTRAP_TLS_CERT_SECRET_ARN}"
 }
 
 fetch_bootstrap_server_key() {
-  fetch_secret "$${BOOTSTRAP_TLS_SERVER_KEY_SECRET_ARN}"
+  fetch_secret "$${BOOTSTRAP_TLS_PRIVATE_KEY_SECRET_ARN}"
 }
 
 fetch_vault_license() {
-  fetch_secret "$${VAULT_LICENSE_SECRET_ARN}"
+  fetch_secret "$${VAULT_ENTERPRISE_LICENSE_SECRET_ARN}"
 }
 
 #######################################
@@ -647,8 +647,6 @@ configure_file_audit_device() {
   if ! vault audit list -format=json | jq -e '."file/"' >/dev/null 2>&1; then
     vault audit enable file file_path="$${VAULT_AUDIT_LOG_FILE}"
   fi
-
-  log_info "Vault file audit device configured"
 }
 
 configure_autopilot() {
@@ -658,8 +656,6 @@ configure_autopilot() {
     -cleanup-dead-servers=true \
     -dead-server-last-contact-threshold=10m \
     -min-quorum=$${VAULT_MINIMUM_QUORUM_SIZE}
-
-  log_info "Raft Autopilot configured"
 }
 
 configure_snapshots() {
@@ -668,8 +664,6 @@ configure_snapshots() {
   vault write sys/storage/raft/snapshot-auto/config/hourly \
     @"$${VAULT_SNAPSHOT_CONFIG_FILE}" \
     >/dev/null
-
-  log_info "Automated Raft snapshots configured"
 }
 
 write_vault_snapshot_config() {
@@ -694,9 +688,8 @@ configure_pki_root_secrets_engine() {
     vault secrets enable -path=pki_root pki
   fi
 
+  log_info "Configuring root PKI secrets engine max-lease-ttl"
   vault secrets tune -max-lease-ttl="$${VAULT_PKI_ROOT_MOUNT_MAX_TTL}" pki_root >/dev/null
-
-  log_info "Root PKI secrets engine enabled"
 }
 
 configure_pki_root_ca() {
@@ -718,8 +711,6 @@ configure_pki_root_ca() {
     key_type=ec \
     key_bits=384 \
     >/dev/null
-
-  log_info "PKI root CA configured"
 }
 
 configure_pki_vault_secrets_engine() {
@@ -739,6 +730,14 @@ configure_pki_vault_intermediate_ca() {
 
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "$${tmp_dir}"' EXIT
+
+  # Configure the pki_vault URLs first to embed the AIA
+  # fields into the root cert at generation time.
+  vault write pki_vault/config/urls \
+    issuing_certificates="https://$${VAULT_FQDN}:8200/v1/pki_vault/ca" \
+    crl_distribution_points="https://$${VAULT_FQDN}:8200/v1/pki_vault/crl" \
+    ocsp_servers="https://$${VAULT_FQDN}:8200/v1/pki_vault/ocsp" \
+    >/dev/null
 
   # Generate CSR from the intermediate mount
   vault write -format=json pki_vault/intermediate/generate/internal \
@@ -761,14 +760,7 @@ configure_pki_vault_intermediate_ca() {
     certificate=@"$${tmp_dir}/pki_vault_intermediate.crt"
 
   # Clean up CSR/cert from disk
-  rm /tmp/pki_vault_intermediate.csr /tmp/pki_vault_intermediate.crt
-
-  vault write pki_vault/config/urls \
-    issuing_certificates="https://$${VAULT_FQDN}:8200/v1/pki_vault/ca" \
-    crl_distribution_points="https://$${VAULT_FQDN}:8200/v1/pki_vault/crl" \
-    ocsp_servers="https://$${VAULT_FQDN}:8200/v1/pki_vault/ocsp"
-
-  log_info "Vault PKI intermediate CA configured"
+  rm "$${tmp_dir}/pki_vault_intermediate.csr" "$${tmp_dir}/pki_vault_intermediate.crt"
 }
 
 configure_vault_server_pki_role() {
@@ -1026,6 +1018,7 @@ main() {
   vault_node_role="$(get_vault_node_role)"
 
   if [ "$${vault_node_role}" = "bootstrap" ]; then
+    log_info "=== Bootstrap Node ==="
     initialize_vault_cluster
     VAULT_TOKEN="$(fetch_secret "$${VAULT_BOOTSTRAP_ROOT_TOKEN_SECRET_ARN}")"
     export VAULT_TOKEN
