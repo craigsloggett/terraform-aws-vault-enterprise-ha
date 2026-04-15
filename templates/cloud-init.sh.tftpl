@@ -742,8 +742,6 @@ configure_pki_vault_intermediate_ca() {
   # Generate CSR from the intermediate mount
   vault write -format=json pki_vault/intermediate/generate/internal \
     common_name="$${CLUSTER_NAME} Vault Intermediate CA" \
-    organization="$${VAULT_PKI_ORGANIZATION}" \
-    country="$${VAULT_PKI_COUNTRY}" \
     key_type=ec \
     key_bits=384 |
     jq -r '.data.csr' >"$${tmp_dir}/pki_vault_intermediate.csr"
@@ -848,9 +846,10 @@ issue_vault_server_certificate() {
   tmp_cert="$${VAULT_TLS_DIR}/server.crt.tmp"
   tmp_key="$${VAULT_TLS_DIR}/server.key.tmp"
 
-  printf '%s\n%s\n' \
+  printf '%s\n%s\n%s\n' \
     "$(printf '%s' "$${cert_json}" | jq -r '.data.certificate')" \
     "$(printf '%s' "$${cert_json}" | jq -r '.data.ca_chain[]')" \
+    "$(vault read -field=certificate pki_root/cert/ca)" \
     >"$${tmp_cert}"
   printf '%s\n' "$(printf '%s' "$${cert_json}" | jq -r '.data.private_key')" >"$${tmp_key}"
 
