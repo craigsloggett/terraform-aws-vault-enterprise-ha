@@ -79,6 +79,13 @@ readonly VAULT_IAM_ROLE_ARN="${vault_iam_role_arn}"
 readonly VAULT_AWS_AUTH_ROLE_MAX_TTL="24h"
 readonly VAULT_AWS_AUTH_ROLE_TTL="4h"
 
+# HCP Terraform JWT Auth
+readonly HCP_TERRAFORM_HOSTNAME="${hcp_terraform_hostname}"
+readonly HCP_TERRAFORM_ORG_NAME="${hcp_terraform_org_name}"
+readonly HCP_TERRAFORM_WORKSPACE_ID="${hcp_terraform_workspace_id}"
+readonly VAULT_JWT_AUTH_ROLE_TTL="1h"
+readonly VAULT_JWT_AUTH_ROLE_MAX_TTL="2h"
+
 #######################################
 #           Logging Helpers           #
 #######################################
@@ -934,6 +941,52 @@ bind_vault_server_iam_role() {
 }
 
 #######################################
+#   Configure JWT Auth Method (HCP)   #
+#######################################
+
+enable_jwt_auth_method() {
+  log_info "Enabling Vault JWT auth method"
+
+  if ! vault auth list -format=json | jq -e '."jwt/"' >/dev/null 2>&1; then
+    vault auth enable jwt
+  fi
+
+  log_info "Vault JWT auth method enabled"
+}
+
+configure_jwt_auth_method() {
+  log_info "Configuring JWT auth method for HCP Terraform"
+
+  vault write auth/jwt/config \
+    oidc_discovery_url="https://$${HCP_TERRAFORM_HOSTNAME}" \
+    bound_issuer="https://$${HCP_TERRAFORM_HOSTNAME}" \
+    >/dev/null
+
+  log_info "JWT auth method configured"
+}
+
+bind_admin_jwt_role() {
+  log_info "Binding terraform-admin JWT role"
+
+  vault write auth/jwt/role/terraform-admin \
+    role_type="jwt" \
+    bound_audiences="vault.workload.identity" \
+    bound_claims_type="string" \
+    bound_claims="{
+      \"terraform_organization_name\": \"$${HCP_TERRAFORM_ORG_NAME}\",
+      \"terraform_workspace_id\": \"$${HCP_TERRAFORM_WORKSPACE_ID}\"
+    }" \
+    user_claim="sub" \
+    policies="admin" \
+    token_type="service" \
+    ttl="$${VAULT_JWT_AUTH_ROLE_TTL}" \
+    max_ttl="$${VAULT_JWT_AUTH_ROLE_MAX_TTL}" \
+    >/dev/null
+
+  log_info "terraform-admin JWT role bound"
+}
+
+#######################################
 #  Install and Configure Vault Agent  #
 #######################################
 
@@ -1062,7 +1115,9 @@ main() {
     publish_tls_ca_bundle
     enable_aws_auth_method
     bind_vault_server_iam_role
-    bind_admin_iam_role
+    enable_jwt_auth_method
+    configure_jwt_auth_method
+    bind_admin_jwt_role
     configure_file_audit_device
     mark_pki_ready
   else

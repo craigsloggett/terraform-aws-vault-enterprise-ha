@@ -29,6 +29,22 @@ variable "ec2_key_pair_name" {
   description = "Name of an existing EC2 key pair for SSH access."
 }
 
+variable "hcp_terraform_hostname" {
+  type        = string
+  description = "Name of the HCP Terraform hostname that is bound to the jwt auth method for Terraform management."
+  default     = "app.terraform.io"
+}
+
+variable "hcp_terraform_org_name" {
+  type        = string
+  description = "Name of the HCP Terraform organization used to scope the JWT auth role for the Vault admin workspace."
+}
+
+variable "hcp_terraform_workspace_id" {
+  type        = string
+  description = "ID of the HCP Terraform workspace used to scope the JWT auth role for the Vault admin workspace."
+}
+
 # General
 
 variable "common_tags" {

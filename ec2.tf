@@ -83,6 +83,11 @@ resource "aws_launch_template" "vault" {
     # AWS Auth
     vault_iam_role_arn = aws_iam_role.vault.arn
 
+    # HCP Terraform JWT Auth
+    hcp_terraform_hostname     = var.hcp_terraform_hostname
+    hcp_terraform_org_name     = var.hcp_terraform_org_name
+    hcp_terraform_workspace_id = var.hcp_terraform_workspace_id
+
     # Vault Agent
     config_agent_hcl                     = local.config_agent_hcl
     config_agent_server_tls_ctmpl        = local.config_agent_server_tls_ctmpl
