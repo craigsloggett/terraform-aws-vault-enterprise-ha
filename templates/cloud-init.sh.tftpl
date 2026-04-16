@@ -289,6 +289,11 @@ fetch_vault_license() {
 initialize_vault_cluster() {
   log_info "Initializing Vault cluster"
 
+  if vault status -format=json 2>/dev/null | jq -e '.initialized == true' >/dev/null; then
+    log_warn "Cluster already initialized, skipping"
+    return 0
+  fi
+
   log_info "Running vault operator init"
   # KMS auto-unseal is configured, so recovery shares/threshold are used
   # in place of unseal shares/threshold.
@@ -317,16 +322,23 @@ initialize_vault_cluster() {
 join_cluster() {
   log_info "Joining the Vault cluster"
 
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  # 60 attempts x 10s = 10 minutes.
+  max_attempts=60
+  attempt=0
+  while [ "$${attempt}" -lt "$${max_attempts}" ]; do
+    attempt=$((attempt + 1))
+
     state="$(fetch_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}")" || true
     if [ "$${state}" = "Ready" ]; then
+      log_info "Cluster is ready, proceeding"
       return 0
     fi
-    log_info "Cluster is not initialized, waiting"
+
+    log_info "Cluster is not initialized (attempt $${attempt}/$${max_attempts}), waiting"
     sleep 5
   done
 
-  log_error "Unable to join the Vault cluster after $${attempt} attempts, failing bootstrap"
+  log_error "Unable to join the Vault cluster after $${max_attempts} attempts, failing bootstrap"
   return 1
 }
 
@@ -635,13 +647,19 @@ wait_for_vault_unsealed() {
 
   tmp_err="$(mktemp)"
 
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  # 60 attempts x 10s = 10 minutes.
+  max_attempts=60
+  attempt=0
+  while [ "$${attempt}" -lt "$${max_attempts}" ]; do
+    attempt=$((attempt + 1))
+
     vault_status_exit_code=0
     vault status -format=json >/dev/null 2>"$${tmp_err}" || vault_status_exit_code="$?"
 
     case "$${vault_status_exit_code}" in
       0)
         rm -f "$${tmp_err}"
+        log_info "Cluster is unsealed, proceeding"
         return 0
         ;;
       2)
@@ -652,11 +670,13 @@ wait_for_vault_unsealed() {
         log_warn "$(cat "$${tmp_err}")"
         ;;
     esac
-    sleep 20
+
+    log_info "Cluster is not unsealed (attempt $${attempt}/$${max_attempts}), waiting"
+    sleep 5
   done
 
   rm -f "$${tmp_err}"
-  log_error "Vault did not unseal after $${attempt} attempts, failing bootstrap"
+  log_error "Vault did not unseal after $${max_attempts} attempts, failing bootstrap"
   return 1
 }
 
@@ -946,16 +966,23 @@ reload_vault_listener() {
 wait_for_pki_ready() {
   log_info "Waiting for the bootstrap node to finish PKI setup"
 
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    state="$(fetch_parameter "$${VAULT_PKI_STATE_SSM_NAME}")" || true
+  # 60 attempts x 10s = 10 minutes.
+  max_attempts=60
+  attempt=0
+  while [ "$${attempt}" -lt "$${max_attempts}" ]; do
+    attempt=$((attempt + 1))
 
+    state="$(fetch_parameter "$${VAULT_PKI_STATE_SSM_NAME}")" || true
     if [ "$${state}" = "Ready" ]; then
+      log_info "PKI is ready, proceeding"
       return 0
     fi
+
+    log_info "PKI is not ready (attempt $${attempt}/$${max_attempts}), waiting"
     sleep 5
   done
 
-  log_error "Vault PKI was not ready after $${attempt} attempts, failing bootstrap"
+  log_error "PKI was not ready after $${max_attempts} attempts, failing bootstrap"
   return 1
 }
 
