@@ -30,7 +30,7 @@ variable "ec2_key_pair_name" {
 }
 
 variable "hcp_terraform" {
-  description = "HCP Terraform JWT auth configuration for Terraform-managed Vault administration. JWT is not configured if this is not provided."
+  description = "HCP Terraform JWT auth configuration for Terraform-managed Vault administration. JWT is not configured if organization_name is empty. When workspace_id is provided, the admin role is bound to that specific workspace; when omitted, the role binds to the entire organization."
   default     = {}
   type = object({
     hostname              = optional(string, "app.terraform.io")

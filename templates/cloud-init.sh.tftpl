@@ -1056,15 +1056,20 @@ configure_jwt_auth_method() {
 bind_admin_jwt_role() {
   log_info "Binding terraform-admin JWT role"
 
+  bound_claims="\"terraform_organization_name\": \"$${HCP_TERRAFORM_ORGANIZATION_NAME}\""
+  if [ -n "$${HCP_TERRAFORM_WORKSPACE_ID}" ]; then
+    bound_claims="$${bound_claims}, \"terraform_workspace_id\": \"$${HCP_TERRAFORM_WORKSPACE_ID}\""
+    log_info "Scoping JWT role to workspace $${HCP_TERRAFORM_WORKSPACE_ID}"
+  else
+    log_info "Scoping JWT role to organization $${HCP_TERRAFORM_ORGANIZATION_NAME} (all workspaces)"
+  fi
+
   vault write auth/jwt/role/terraform-admin - >/dev/null <<EOF
 {
   "role_type": "jwt",
   "bound_audiences": "vault.workload.identity",
   "bound_claims_type": "string",
-  "bound_claims": {
-    "terraform_organization_name": "$${HCP_TERRAFORM_ORGANIZATION_NAME}",
-    "terraform_workspace_id": "$${HCP_TERRAFORM_WORKSPACE_ID}"
-  },
+  "bound_claims": { $${bound_claims} },
   "user_claim": "sub",
   "policies": "admin",
   "token_type": "service",
