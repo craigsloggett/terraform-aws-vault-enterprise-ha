@@ -83,6 +83,7 @@ readonly VAULT_AWS_AUTH_ROLE_TTL="4h"
 readonly HCP_TERRAFORM_HOSTNAME="${hcp_terraform_hostname}"
 readonly HCP_TERRAFORM_ORG_NAME="${hcp_terraform_org_name}"
 readonly HCP_TERRAFORM_WORKSPACE_ID="${hcp_terraform_workspace_id}"
+readonly HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM="${hcp_terraform_oidc_discovery_ca_pem}"
 readonly VAULT_JWT_AUTH_ROLE_TTL="1h"
 readonly VAULT_JWT_AUTH_ROLE_MAX_TTL="2h"
 
@@ -953,10 +954,22 @@ enable_jwt_auth_method() {
 configure_jwt_auth_method() {
   log_info "Configuring JWT auth method for HCP Terraform"
 
+  # Handle the case when HCP Terraform Enterprise (TFE) uses a custom
+  # or self-signed CA certificate.
+  ca_pem_arg=""
+  if [ -n "$${HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM:-}" ]; then
+    tmp_ca_pem="$(mktemp)"
+    printf '%s' "$${HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM}" >"$${tmp_ca_pem}"
+    ca_pem_arg="oidc_discovery_ca_pem=@$${tmp_ca_pem}"
+  fi
+
   vault write auth/jwt/config \
     oidc_discovery_url="https://$${HCP_TERRAFORM_HOSTNAME}" \
     bound_issuer="https://$${HCP_TERRAFORM_HOSTNAME}" \
+    $${ca_pem_arg} \
     >/dev/null
+
+  [ -n "$${tmp_ca_pem:-}" ] && rm -f "$${tmp_ca_pem}"
 }
 
 bind_admin_jwt_role() {
