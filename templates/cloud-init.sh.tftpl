@@ -170,19 +170,10 @@ put_secret() {
 fetch_parameter() {
   parameter_name="$${1}"
 
-  for attempt in 1 2 3 4 5; do
-    if result=$(aws ssm get-parameter \
-      --name "$${parameter_name}" \
-      --query "Parameter.Value" \
-      --output text 2>/dev/null); then
-      printf '%s' "$${result}"
-      return 0
-    fi
-    sleep 5
-  done
-
-  log_error "Failed to retrieve parameter after $${attempt} attempts, failing bootstrap"
-  return 1
+  aws ssm get-parameter \
+    --name "$${parameter_name}" \
+    --query "Parameter.Value" \
+    --output text
 }
 
 put_parameter() {
@@ -200,10 +191,53 @@ put_parameter() {
 #   Vault Cluster Discovery Helpers   #
 #######################################
 
+write_vault_bootstrap_tls_materials() {
+  cluster_state="$(fetch_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}" 2>/dev/null)" || cluster_state=""
+  pki_state="$(fetch_parameter "$${VAULT_PKI_STATE_SSM_NAME}" 2>/dev/null)" || pki_state=""
+
+  case "$${cluster_state}" in
+    "" | Uninitialized)
+      if [ "$${pki_state}" = "Ready" ]; then
+        log_error "Corrupt SSM state: pki/state=Ready but cluster/state=Uninitialized"
+        exit 1
+      fi
+      log_info "Writing bootstrap TLS CA file"
+      printf '%s\n' "$(fetch_bootstrap_ca_cert)" >"$${VAULT_TLS_CA_FILE}"
+      ;;
+    Ready)
+      if [ "$${pki_state}" = "Ready" ]; then
+        log_info "PKI state is Ready: Writing combined PKI and bootstrap TLS CA bundle"
+        # PKI CA for outbound connections to existing nodes, bootstrap CA for local
+        # vault CLI calls until reload_vault_listener replaces the bootstrap cert
+        # with a PKI-signed one.
+        printf '%s\n%s\n' \
+          "$(fetch_tls_ca_bundle)" \
+          "$(fetch_bootstrap_ca_cert)" \
+          >"$${VAULT_TLS_CA_FILE}"
+      else
+        log_info "Writing bootstrap TLS CA file"
+        printf '%s\n' "$(fetch_bootstrap_ca_cert)" >"$${VAULT_TLS_CA_FILE}"
+      fi
+      ;;
+    *)
+      log_error "Unsupported cluster state: '$${cluster_state}'"
+      exit 1
+      ;;
+  esac
+
+  log_info "Writing bootstrap TLS certificate and private key"
+  printf '%s\n' "$(fetch_bootstrap_tls_cert)" >"$${VAULT_TLS_CERT_FILE}"
+  printf '%s\n' "$(fetch_bootstrap_tls_private_key)" >"$${VAULT_TLS_KEY_FILE}"
+
+  chown vault:vault "$${VAULT_TLS_CA_FILE}" "$${VAULT_TLS_CERT_FILE}" "$${VAULT_TLS_KEY_FILE}"
+  chmod 0644 "$${VAULT_TLS_CA_FILE}"
+  chmod 0640 "$${VAULT_TLS_CERT_FILE}" "$${VAULT_TLS_KEY_FILE}"
+}
+
 get_vault_node_role() {
   cluster_state="$(fetch_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}" 2>/dev/null)" || cluster_state=""
 
-  if [ "$${cluster_state}" = "ready" ]; then
+  if [ "$${cluster_state}" = "Ready" ]; then
     printf 'follower'
   else
     if is_bootstrap_node; then
@@ -255,6 +289,11 @@ fetch_vault_license() {
 initialize_vault_cluster() {
   log_info "Initializing Vault cluster"
 
+  if vault status -format=json 2>/dev/null | jq -e '.initialized == true' >/dev/null; then
+    log_warn "Cluster already initialized, skipping"
+    return 0
+  fi
+
   log_info "Running vault operator init"
   # KMS auto-unseal is configured, so recovery shares/threshold are used
   # in place of unseal shares/threshold.
@@ -274,24 +313,32 @@ initialize_vault_cluster() {
   log_info "Storing recovery keys in Secrets Manager"
   put_secret "$${VAULT_RECOVERY_KEYS_SECRET_ARN}" "$${recovery_keys}"
 
-  log_info "Writing cluster state: ready"
-  put_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}" "ready"
+  log_info "Writing cluster state: Ready"
+  put_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}" "Ready"
 
   log_info "Cluster initialization complete"
 }
 
 join_cluster() {
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    state="$(fetch_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}")" || true
+  log_info "Joining the Vault cluster"
 
-    if [ "$${state}" = "ready" ]; then
+  # 60 attempts x 10s = 10 minutes.
+  max_attempts=60
+  attempt=0
+  while [ "$${attempt}" -lt "$${max_attempts}" ]; do
+    attempt=$((attempt + 1))
+
+    state="$(fetch_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}")" || true
+    if [ "$${state}" = "Ready" ]; then
+      log_info "Cluster is ready, proceeding"
       return 0
     fi
 
+    log_info "Cluster is not initialized (attempt $${attempt}/$${max_attempts}), waiting"
     sleep 5
   done
 
-  log_error "Unable to join the Vault cluster after $${attempt} attempts, failing bootstrap"
+  log_error "Unable to join the Vault cluster after $${max_attempts} attempts, failing bootstrap"
   return 1
 }
 
@@ -305,9 +352,9 @@ publish_tls_ca_bundle() {
 }
 
 mark_pki_ready() {
-  log_info "Writing PKI state: ready"
+  log_info "Writing PKI state: Ready"
 
-  put_parameter "$${VAULT_PKI_STATE_SSM_NAME}" "ready"
+  put_parameter "$${VAULT_PKI_STATE_SSM_NAME}" "Ready"
 }
 
 #######################################
@@ -574,11 +621,11 @@ start_vault() {
 
   systemctl daemon-reload
   systemctl enable --now vault
-
-  log_info "Vault started"
 }
 
 wait_for_vault_api() {
+  log_info "Waiting for the Vault API to be ready"
+
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
     status="$(
       curl -sk -o /dev/null -w '%%{http_code}' \
@@ -596,15 +643,40 @@ wait_for_vault_api() {
 }
 
 wait_for_vault_unsealed() {
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    sealed="$(vault status -format=json 2>/dev/null | jq -r '.sealed')" || true
-    if [ "$${sealed}" = "false" ]; then
-      return 0
-    fi
-    sleep 20
+  log_info "Waiting for the Vault cluster to be unsealed"
+
+  tmp_err="$(mktemp)"
+
+  # 60 attempts x 10s = 10 minutes.
+  max_attempts=60
+  attempt=0
+  while [ "$${attempt}" -lt "$${max_attempts}" ]; do
+    attempt=$((attempt + 1))
+
+    vault_status_exit_code=0
+    vault status -format=json >/dev/null 2>"$${tmp_err}" || vault_status_exit_code="$?"
+
+    case "$${vault_status_exit_code}" in
+      0)
+        rm -f "$${tmp_err}"
+        log_info "Cluster is unsealed, proceeding"
+        return 0
+        ;;
+      2)
+        : # Sealed, keep waiting
+        ;;
+      *)
+        log_warn "Vault returned an error when querying status:"
+        log_warn "$(cat "$${tmp_err}")"
+        ;;
+    esac
+
+    log_info "Cluster is not unsealed (attempt $${attempt}/$${max_attempts}), waiting"
+    sleep 5
   done
 
-  log_error "Vault did not unseal after $${attempt} attempts, failing bootstrap"
+  rm -f "$${tmp_err}"
+  log_error "Vault did not unseal after $${max_attempts} attempts, failing bootstrap"
   return 1
 }
 
@@ -630,22 +702,6 @@ EOF
 
   chown vault:vault "$${VAULT_CONFIG_FILE}"
   chmod 0640 "$${VAULT_CONFIG_FILE}"
-}
-
-write_bootstrap_tls_materials() {
-  bootstrap_ca_cert="$(fetch_bootstrap_ca_cert)"
-  bootstrap_tls_cert="$(fetch_bootstrap_tls_cert)"
-  bootstrap_tls_private_key="$(fetch_bootstrap_tls_private_key)"
-
-  log_info "Writing bootstrap TLS materials"
-
-  printf '%s\n' "$${bootstrap_ca_cert}" >"$${VAULT_TLS_CA_FILE}"
-  printf '%s\n' "$${bootstrap_tls_cert}" >"$${VAULT_TLS_CERT_FILE}"
-  printf '%s\n' "$${bootstrap_tls_private_key}" >"$${VAULT_TLS_KEY_FILE}"
-
-  chown vault:vault "$${VAULT_TLS_CA_FILE}" "$${VAULT_TLS_CERT_FILE}" "$${VAULT_TLS_KEY_FILE}"
-  chmod 0644 "$${VAULT_TLS_CA_FILE}"
-  chmod 0640 "$${VAULT_TLS_CERT_FILE}" "$${VAULT_TLS_KEY_FILE}"
 }
 
 #######################################
@@ -827,7 +883,7 @@ EOF
   log_info "admin policy written"
 }
 
-write_cluster_ca_certificate() {
+write_vault_pki_ca_bundle() {
   cluster_tls_ca_bundle="$(fetch_tls_ca_bundle)"
 
   log_info "Replacing bootstrap CA cert with PKI managed TLS CA bundle"
@@ -843,10 +899,10 @@ write_cluster_ca_certificate() {
   fi
 }
 
-issue_vault_server_certificate() {
-  log_info "Issuing PKI-signed TLS certificate for this node"
+issue_vault_pki_tls_certificate_and_key() {
+  log_info "Issuing PKI TLS certificate and private key for this node"
 
-  # Follower nodes need to fetch the new CA cert from SSM and authenticate
+  # Follower nodes need to fetch the new CA bundle from SSM and authenticate
   # via the AWS IAM auth method.
   if [ -z "$${VAULT_TOKEN:-}" ]; then
     new_ca_cert="$(fetch_tls_ca_bundle)"
@@ -895,7 +951,8 @@ EOF
   mv "$${tmp_cert}" "$${VAULT_TLS_CERT_FILE}"
   mv "$${tmp_key}" "$${VAULT_TLS_KEY_FILE}"
 
-  log_info "PKI-signed certificate written to $${VAULT_TLS_CERT_FILE}"
+  log_info "PKI TLS certificate written to $${VAULT_TLS_CERT_FILE}"
+  log_info "PKI TLS private key written to $${VAULT_TLS_KEY_FILE}"
 }
 
 reload_vault_listener() {
@@ -907,16 +964,25 @@ reload_vault_listener() {
 }
 
 wait_for_pki_ready() {
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    state="$(fetch_parameter "$${VAULT_PKI_STATE_SSM_NAME}")" || true
+  log_info "Waiting for the bootstrap node to finish PKI setup"
 
-    if [ "$${state}" = "ready" ]; then
+  # 60 attempts x 10s = 10 minutes.
+  max_attempts=60
+  attempt=0
+  while [ "$${attempt}" -lt "$${max_attempts}" ]; do
+    attempt=$((attempt + 1))
+
+    state="$(fetch_parameter "$${VAULT_PKI_STATE_SSM_NAME}")" || true
+    if [ "$${state}" = "Ready" ]; then
+      log_info "PKI is ready, proceeding"
       return 0
     fi
+
+    log_info "PKI is not ready (attempt $${attempt}/$${max_attempts}), waiting"
     sleep 5
   done
 
-  log_error "Vault PKI was not ready after $${attempt} attempts, failing bootstrap"
+  log_error "PKI was not ready after $${max_attempts} attempts, failing bootstrap"
   return 1
 }
 
@@ -1099,16 +1165,16 @@ main() {
 
   # Render Bootstrap Artifacts
   write_vault_license
-  write_bootstrap_tls_materials
   write_vault_config
   write_vault_snapshot_config
+  write_vault_bootstrap_tls_materials
+
+  # Identify Bootstrap Node
+  vault_node_role="$(get_vault_node_role)"
 
   # Start Vault
   start_vault
   wait_for_vault_api
-
-  # Setup Vault Cluster
-  vault_node_role="$(get_vault_node_role)"
 
   if [ "$${vault_node_role}" = "bootstrap" ]; then
     log_info "=== Bootstrap Node ==="
@@ -1146,9 +1212,9 @@ main() {
     wait_for_pki_ready
   fi
 
-  issue_vault_server_certificate
+  issue_vault_pki_tls_certificate_and_key
   reload_vault_listener
-  write_cluster_ca_certificate
+  write_vault_pki_ca_bundle
 
   # Enable Vault Agent TLS Rotation
   configure_vault_agent_directories

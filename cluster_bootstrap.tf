@@ -133,8 +133,8 @@ resource "aws_secretsmanager_secret" "vault_bootstrap_root_token" {
 resource "aws_ssm_parameter" "vault_cluster_state" {
   name        = "/${var.project_name}/vault/bootstrap/cluster/state"
   type        = "String"
-  value       = "uninitialized"
-  description = "Bootstrap Initialization State Flag (uninitialized | ready)"
+  value       = "Uninitialized"
+  description = "Bootstrap Initialization State Flag (Uninitialized | Ready)"
 
   lifecycle {
     ignore_changes = [value]
@@ -146,8 +146,8 @@ resource "aws_ssm_parameter" "vault_cluster_state" {
 resource "aws_ssm_parameter" "vault_pki_state" {
   name        = "/${var.project_name}/vault/bootstrap/pki/state"
   type        = "String"
-  value       = "uninitialized"
-  description = "Bootstrap PKI State Flag (uninitialized | ready)"
+  value       = "Uninitialized"
+  description = "Bootstrap PKI State Flag (Uninitialized | Ready)"
 
   lifecycle {
     ignore_changes = [value]
