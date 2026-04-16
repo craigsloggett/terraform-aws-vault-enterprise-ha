@@ -170,19 +170,10 @@ put_secret() {
 fetch_parameter() {
   parameter_name="$${1}"
 
-  for attempt in 1 2 3 4 5; do
-    if result=$(aws ssm get-parameter \
-      --name "$${parameter_name}" \
-      --query "Parameter.Value" \
-      --output text 2>/dev/null); then
-      printf '%s' "$${result}"
-      return 0
-    fi
-    sleep 5
-  done
-
-  log_error "Failed to retrieve parameter after $${attempt} attempts, failing bootstrap"
-  return 1
+  aws ssm get-parameter \
+    --name "$${parameter_name}" \
+    --query "Parameter.Value" \
+    --output text
 }
 
 put_parameter() {
@@ -199,6 +190,43 @@ put_parameter() {
 #######################################
 #   Vault Cluster Discovery Helpers   #
 #######################################
+
+write_vault_bootstrap_tls_materials() {
+  cluster_state="$(fetch_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}" 2>/dev/null)" || cluster_state=""
+  pki_state="$(fetch_parameter "$${VAULT_PKI_STATE_SSM_NAME}" 2>/dev/null)" || pki_state=""
+
+  case "$${cluster_state}" in
+    "" | Uninitialized)
+      if [ "$${pki_state}" = "Ready" ]; then
+        log_error "Corrupt SSM state: pki/state=Ready but cluster/state=Uninitialized"
+        exit 1
+      fi
+      log_info "Writing bootstrap TLS CA file"
+      printf '%s\n' "$(fetch_bootstrap_ca_cert)" >"$${VAULT_TLS_CA_FILE}"
+      ;;
+    Ready)
+      if [ "$${pki_state}" = "Ready" ]; then
+        log_info "PKI state is Ready: Writing PKI TLS CA file"
+        printf '%s\n' "$(fetch_tls_ca_bundle)" >"$${VAULT_TLS_CA_FILE}"
+      else
+        log_info "Writing bootstrap TLS CA file"
+        printf '%s\n' "$(fetch_bootstrap_ca_cert)" >"$${VAULT_TLS_CA_FILE}"
+      fi
+      ;;
+    *)
+      log_error "Unsupported cluster state: '$${cluster_state}'"
+      exit 1
+      ;;
+  esac
+
+  log_info "Writing bootstrap TLS certificate and private key"
+  printf '%s\n' "$(fetch_bootstrap_tls_cert)" >"$${VAULT_TLS_CERT_FILE}"
+  printf '%s\n' "$(fetch_bootstrap_tls_private_key)" >"$${VAULT_TLS_KEY_FILE}"
+
+  chown vault:vault "$${VAULT_TLS_CA_FILE}" "$${VAULT_TLS_CERT_FILE}" "$${VAULT_TLS_KEY_FILE}"
+  chmod 0644 "$${VAULT_TLS_CA_FILE}"
+  chmod 0640 "$${VAULT_TLS_CERT_FILE}" "$${VAULT_TLS_KEY_FILE}"
+}
 
 get_vault_node_role() {
   cluster_state="$(fetch_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}" 2>/dev/null)" || cluster_state=""
@@ -579,6 +607,11 @@ start_vault() {
 }
 
 wait_for_vault_api() {
+  # Uses curl -k to skip TLS verification to handle the case
+  # when PKI was configured prior to this node coming online
+  # and the CA bundle on disk is the PKI CA bundle, not the
+  # bootstrap CA certificate (but the TLS certificate and
+  # private key are still the bootstrap materials).
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
     status="$(
       curl -sk -o /dev/null -w '%%{http_code}' \
@@ -630,22 +663,6 @@ EOF
 
   chown vault:vault "$${VAULT_CONFIG_FILE}"
   chmod 0640 "$${VAULT_CONFIG_FILE}"
-}
-
-write_bootstrap_tls_materials() {
-  bootstrap_ca_cert="$(fetch_bootstrap_ca_cert)"
-  bootstrap_tls_cert="$(fetch_bootstrap_tls_cert)"
-  bootstrap_tls_private_key="$(fetch_bootstrap_tls_private_key)"
-
-  log_info "Writing bootstrap TLS materials"
-
-  printf '%s\n' "$${bootstrap_ca_cert}" >"$${VAULT_TLS_CA_FILE}"
-  printf '%s\n' "$${bootstrap_tls_cert}" >"$${VAULT_TLS_CERT_FILE}"
-  printf '%s\n' "$${bootstrap_tls_private_key}" >"$${VAULT_TLS_KEY_FILE}"
-
-  chown vault:vault "$${VAULT_TLS_CA_FILE}" "$${VAULT_TLS_CERT_FILE}" "$${VAULT_TLS_KEY_FILE}"
-  chmod 0644 "$${VAULT_TLS_CA_FILE}"
-  chmod 0640 "$${VAULT_TLS_CERT_FILE}" "$${VAULT_TLS_KEY_FILE}"
 }
 
 #######################################
@@ -827,7 +844,7 @@ EOF
   log_info "admin policy written"
 }
 
-write_cluster_ca_certificate() {
+write_vault_pki_ca_bundle() {
   cluster_tls_ca_bundle="$(fetch_tls_ca_bundle)"
 
   log_info "Replacing bootstrap CA cert with PKI managed TLS CA bundle"
@@ -843,10 +860,10 @@ write_cluster_ca_certificate() {
   fi
 }
 
-issue_vault_server_certificate() {
-  log_info "Issuing PKI-signed TLS certificate for this node"
+issue_vault_pki_tls_certificate_and_key() {
+  log_info "Issuing PKI TLS certificate and private key for this node"
 
-  # Follower nodes need to fetch the new CA cert from SSM and authenticate
+  # Follower nodes need to fetch the new CA bundle from SSM and authenticate
   # via the AWS IAM auth method.
   if [ -z "$${VAULT_TOKEN:-}" ]; then
     new_ca_cert="$(fetch_tls_ca_bundle)"
@@ -895,7 +912,8 @@ EOF
   mv "$${tmp_cert}" "$${VAULT_TLS_CERT_FILE}"
   mv "$${tmp_key}" "$${VAULT_TLS_KEY_FILE}"
 
-  log_info "PKI-signed certificate written to $${VAULT_TLS_CERT_FILE}"
+  log_info "PKI TLS certificate written to $${VAULT_TLS_CERT_FILE}"
+  log_info "PKI TLS private key written to $${VAULT_TLS_CERT_FILE}"
 }
 
 reload_vault_listener() {
@@ -1099,16 +1117,16 @@ main() {
 
   # Render Bootstrap Artifacts
   write_vault_license
-  write_bootstrap_tls_materials
   write_vault_config
   write_vault_snapshot_config
+  write_vault_bootstrap_tls_materials
+
+  # Identify Bootstrap Node
+  vault_node_role="$(get_vault_node_role)"
 
   # Start Vault
   start_vault
   wait_for_vault_api
-
-  # Setup Vault Cluster
-  vault_node_role="$(get_vault_node_role)"
 
   if [ "$${vault_node_role}" = "bootstrap" ]; then
     log_info "=== Bootstrap Node ==="
@@ -1146,9 +1164,9 @@ main() {
     wait_for_pki_ready
   fi
 
-  issue_vault_server_certificate
+  issue_vault_pki_tls_certificate_and_key
   reload_vault_listener
-  write_cluster_ca_certificate
+  write_vault_pki_ca_bundle
 
   # Enable Vault Agent TLS Rotation
   configure_vault_agent_directories
