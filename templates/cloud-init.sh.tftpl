@@ -636,10 +636,8 @@ wait_for_vault_unsealed() {
   tmp_err="$(mktemp)"
 
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
-    vault status -format=json 2>"$${tmp_err}"
-
-    vault_status_exit_code="$?"
-    vault_status_error_message="$(cat "$${tmp_err}")"
+    vault_status_exit_code=0
+    vault status -format=json >/dev/null 2>"$${tmp_err}" || vault_status_exit_code="$?"
 
     case "$${vault_status_exit_code}" in
       0)
@@ -651,12 +649,13 @@ wait_for_vault_unsealed() {
         ;;
       *)
         log_warn "Vault returned an error when querying status:"
-        log_warn "$${vault_status_error_message}"
+        log_warn "$(cat "$${tmp_err}")"
         ;;
     esac
     sleep 20
   done
 
+  rm -f "$${tmp_err}"
   log_error "Vault did not unseal after $${attempt} attempts, failing bootstrap"
   return 1
 }
@@ -933,7 +932,7 @@ EOF
   mv "$${tmp_key}" "$${VAULT_TLS_KEY_FILE}"
 
   log_info "PKI TLS certificate written to $${VAULT_TLS_CERT_FILE}"
-  log_info "PKI TLS private key written to $${VAULT_TLS_CERT_FILE}"
+  log_info "PKI TLS private key written to $${VAULT_TLS_KEY_FILE}"
 }
 
 reload_vault_listener() {
