@@ -14,8 +14,7 @@ listener "tcp" {
   cluster_address          = "0.0.0.0:8201"
   tls_cert_file            = "/opt/vault/tls/server.crt"
   tls_key_file             = "/opt/vault/tls/server.key"
-  tls_min_version          = "tls12"
-  tls_cipher_suites        = "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"
+  tls_min_version          = "tls13"
   tls_disable_client_certs = true
 }
 
