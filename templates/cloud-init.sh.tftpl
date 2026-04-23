@@ -187,6 +187,7 @@ put_parameter() {
   aws ssm put-parameter \
     --name "$${parameter_name}" \
     --value "$${parameter_value}" \
+    --type String \
     --overwrite \
     >/dev/null
 }
