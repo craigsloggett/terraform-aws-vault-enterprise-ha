@@ -15,8 +15,6 @@ locals {
   ebs_raft_device_name    = "/dev/xvdf"
   ebs_audit_device_name   = "/dev/xvdg"
 
-  intermediate_csr_ssm_name = "/${var.project_name}/vault/pki/intermediate-csr"
-
   # ---------------------------------------------------------------------------
   # Vault cluster configuration content
   # ---------------------------------------------------------------------------

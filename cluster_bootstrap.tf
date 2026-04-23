@@ -155,3 +155,16 @@ resource "aws_ssm_parameter" "vault_pki_state" {
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-pki-state" })
 }
+
+resource "aws_ssm_parameter" "vault_pki_intermediate_ca_csr" {
+  name        = "/${var.project_name}/vault/pki/intermediate-csr"
+  type        = "String"
+  value       = "Uninitialized"
+  description = "Bootstrap PKI Intermediate CA CSR"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-pki-intermediate-ca-csr" })
+}

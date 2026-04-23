@@ -58,9 +58,9 @@ output "vault_jwt_auth_role_name" {
   value       = var.hcp_terraform.jwt_auth_role_name
 }
 
-output "intermediate_csr_ssm_parameter_name" {
-  description = "SSM parameter name where the intermediate CSR is published."
-  value       = local.intermediate_csr_ssm_name
+output "vault_pki_intermediate_ca_csr_ssm_parameter_name" {
+  description = "SSM parameter name where the intermediate CA CSR is published."
+  value       = aws_ssm_parameter.vault_pki_intermediate_ca_csr.name
 }
 
 output "intermediate_ca_secret_arn" {

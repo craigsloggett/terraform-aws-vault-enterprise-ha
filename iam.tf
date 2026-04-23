@@ -145,7 +145,7 @@ data "aws_iam_policy_document" "vault_ssm" {
       aws_ssm_parameter.vault_cluster_state.arn,
       aws_ssm_parameter.vault_pki_state.arn,
       aws_ssm_parameter.vault_tls_ca_bundle.arn,
-      "arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter${local.intermediate_csr_ssm_name}",
+      aws_ssm_parameter.vault_pki_intermediate_ca_csr.arn,
     ]
   }
 }

@@ -78,10 +78,10 @@ resource "aws_launch_template" "vault" {
     vault_pki_state_ssm_name                 = aws_ssm_parameter.vault_pki_state.name
     vault_tls_ca_bundle_ssm_name             = aws_ssm_parameter.vault_tls_ca_bundle.name
     intermediate_ca_secret_arn               = aws_secretsmanager_secret.vault_intermediate_ca.arn
-    intermediate_ca_common_name              = "${title(var.project_name)} ${var.vault_pki_intermediate_ca.common_name}"
-    intermediate_ca_key_type                 = var.vault_pki_intermediate_ca.key_type
-    intermediate_ca_key_bits                 = var.vault_pki_intermediate_ca.key_bits
-    csr_ssm_parameter_name                   = local.intermediate_csr_ssm_name
+    vault_pki_intermediate_ca_common_name    = "${title(var.project_name)} ${var.vault_pki_intermediate_ca.common_name}"
+    vault_pki_intermediate_ca_key_type       = var.vault_pki_intermediate_ca.key_type
+    vault_pki_intermediate_ca_key_bits       = var.vault_pki_intermediate_ca.key_bits
+    vault_pki_intermediate_ca_csr_ssm_name   = aws_ssm_parameter.vault_pki_intermediate_ca_csr.name
     signed_intermediate_wait_timeout_seconds = var.signed_intermediate_wait_timeout_seconds
 
     # AWS Auth

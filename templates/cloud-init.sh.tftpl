@@ -70,10 +70,10 @@ readonly VAULT_PKI_SERVER_CERT_TTL="24h"
 readonly VAULT_PKI_STATE_SSM_NAME="${vault_pki_state_ssm_name}"
 readonly VAULT_TLS_CA_BUNDLE_SSM_NAME="${vault_tls_ca_bundle_ssm_name}"
 readonly VAULT_INTERMEDIATE_CA_SECRET_ARN="${intermediate_ca_secret_arn}"
-readonly VAULT_INTERMEDIATE_CA_COMMON_NAME="${intermediate_ca_common_name}"
-readonly VAULT_INTERMEDIATE_CA_KEY_TYPE="${intermediate_ca_key_type}"
-readonly VAULT_INTERMEDIATE_CA_KEY_BITS="${intermediate_ca_key_bits}"
-readonly VAULT_INTERMEDIATE_CSR_SSM_NAME="${csr_ssm_parameter_name}"
+readonly VAULT_INTERMEDIATE_CA_COMMON_NAME="${vault_pki_intermediate_ca_common_name}"
+readonly VAULT_INTERMEDIATE_CA_KEY_TYPE="${vault_pki_intermediate_ca_key_type}"
+readonly VAULT_INTERMEDIATE_CA_KEY_BITS="${vault_pki_intermediate_ca_key_bits}"
+readonly VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_NAME="${vault_pki_intermediate_ca_csr_ssm_name}"
 readonly VAULT_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS="${signed_intermediate_wait_timeout_seconds}"
 
 # AWS Auth
@@ -791,8 +791,8 @@ EOF
   )"
 
   # Publish the CSR to SSM for the Terraform external data source to read
-  log_info "Publishing intermediate CSR to $${VAULT_INTERMEDIATE_CSR_SSM_NAME}"
-  put_parameter "$${VAULT_INTERMEDIATE_CSR_SSM_NAME}" "$${csr_pem}"
+  log_info "Publishing intermediate CSR to $${VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_NAME}"
+  put_parameter "$${VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_NAME}" "$${csr_pem}"
 
   # Wait for the externally signed certificate to appear in Secrets Manager
   log_info "Waiting for externally signed intermediate certificate"
