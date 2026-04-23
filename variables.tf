@@ -236,8 +236,8 @@ variable "vault_pki_intermediate_ca" {
   default     = {}
   type = object({
     common_name = optional(string, "Vault Intermediate CA")
-    key_type    = optional(string, "ec")
-    key_bits    = optional(number, 384)
+    key_type    = optional(string, "rsa")
+    key_bits    = optional(number, 2048)
   })
 
   validation {
@@ -246,13 +246,13 @@ variable "vault_pki_intermediate_ca" {
   }
 
   validation {
-    condition     = var.vault_pki_intermediate_ca.key_type != "ec" || contains([384, 521], var.vault_pki_intermediate_ca.key_bits)
-    error_message = "key_bits for ec must be 384 or 521."
+    condition     = var.vault_pki_intermediate_ca.key_type != "ec" || contains([224, 256, 384, 521], var.vault_pki_intermediate_ca.key_bits)
+    error_message = "key_bits for ec must be 224, 256, 384, or 521."
   }
 
   validation {
-    condition     = var.vault_pki_intermediate_ca.key_type != "rsa" || contains([4096, 8192], var.vault_pki_intermediate_ca.key_bits)
-    error_message = "key_bits for rsa must be 4096 or 8192."
+    condition     = var.vault_pki_intermediate_ca.key_type != "rsa" || contains([2048, 3072, 4096, 8192], var.vault_pki_intermediate_ca.key_bits)
+    error_message = "key_bits for rsa must be 2048, 3072, 4096, or 8192."
   }
 }
 
