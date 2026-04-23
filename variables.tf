@@ -37,6 +37,8 @@ variable "hcp_terraform" {
     organization_name     = optional(string, "")
     workspace_id          = optional(string, "")
     oidc_discovery_ca_pem = optional(string, "")
+    jwt_auth_path         = optional(string, "app-terraform-io")
+    jwt_auth_role_name    = optional(string, "terraform-admin")
   })
 }
 

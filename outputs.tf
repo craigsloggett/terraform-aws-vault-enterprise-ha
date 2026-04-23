@@ -47,3 +47,13 @@ output "vault_iam_role_name" {
   description = "Name of the Vault server IAM role."
   value       = aws_iam_role.vault.name
 }
+
+output "vault_jwt_auth_path" {
+  description = "Vault JWT auth method path for HCP Terraform (TFC_VAULT_AUTH_PATH)."
+  value       = var.hcp_terraform.jwt_auth_path
+}
+
+output "vault_jwt_auth_role_name" {
+  description = "Vault JWT auth role name for HCP Terraform (TFC_VAULT_RUN_ROLE)."
+  value       = var.hcp_terraform.jwt_auth_role_name
+}

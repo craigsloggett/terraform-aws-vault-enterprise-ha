@@ -84,6 +84,8 @@ readonly HCP_TERRAFORM_HOSTNAME="${hcp_terraform_hostname}"
 readonly HCP_TERRAFORM_ORGANIZATION_NAME="${hcp_terraform_organization_name}"
 readonly HCP_TERRAFORM_WORKSPACE_ID="${hcp_terraform_workspace_id}"
 readonly HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM="${hcp_terraform_oidc_discovery_ca_pem}"
+readonly HCP_TERRAFORM_JWT_AUTH_PATH="${hcp_terraform_jwt_auth_path}"
+readonly HCP_TERRAFORM_JWT_AUTH_ROLE_NAME="${hcp_terraform_jwt_auth_role_name}"
 readonly VAULT_JWT_AUTH_ROLE_TTL="1h"
 readonly VAULT_JWT_AUTH_ROLE_MAX_TTL="2h"
 
@@ -1025,8 +1027,8 @@ EOF
 enable_jwt_auth_method() {
   log_info "Enabling Vault JWT auth method"
 
-  if ! vault auth list -format=json | jq -e '."jwt/"' >/dev/null 2>&1; then
-    vault auth enable jwt
+  if ! vault auth list -format=json | jq -e ".\"$${HCP_TERRAFORM_JWT_AUTH_PATH}/\"" >/dev/null 2>&1; then
+    vault auth enable -path="$${HCP_TERRAFORM_JWT_AUTH_PATH}" jwt
   fi
 }
 
@@ -1042,7 +1044,7 @@ configure_jwt_auth_method() {
     ca_pem_arg="oidc_discovery_ca_pem=@$${tmp_ca_pem}"
   fi
 
-  vault write auth/jwt/config \
+  vault write "auth/$${HCP_TERRAFORM_JWT_AUTH_PATH}/config" \
     oidc_discovery_url="https://$${HCP_TERRAFORM_HOSTNAME}" \
     bound_issuer="https://$${HCP_TERRAFORM_HOSTNAME}" \
     $${ca_pem_arg} \
@@ -1054,7 +1056,7 @@ configure_jwt_auth_method() {
 }
 
 bind_admin_jwt_role() {
-  log_info "Binding terraform-admin JWT role"
+  log_info "Binding $${HCP_TERRAFORM_JWT_AUTH_ROLE_NAME} JWT role"
 
   bound_claims="\"terraform_organization_name\": \"$${HCP_TERRAFORM_ORGANIZATION_NAME}\""
   if [ -n "$${HCP_TERRAFORM_WORKSPACE_ID}" ]; then
@@ -1064,7 +1066,7 @@ bind_admin_jwt_role() {
     log_info "Scoping JWT role to organization $${HCP_TERRAFORM_ORGANIZATION_NAME} (all workspaces)"
   fi
 
-  vault write auth/jwt/role/terraform-admin - >/dev/null <<EOF
+  vault write "auth/$${HCP_TERRAFORM_JWT_AUTH_PATH}/role/$${HCP_TERRAFORM_JWT_AUTH_ROLE_NAME}" - >/dev/null <<EOF
 {
   "role_type": "jwt",
   "bound_audiences": "vault.workload.identity",
