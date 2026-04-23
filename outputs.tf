@@ -61,13 +61,6 @@ output "vault_jwt_auth_role_name" {
 output "intermediate_csr_ssm_parameter_name" {
   description = "SSM parameter name where the intermediate CSR is published."
   value       = local.intermediate_csr_ssm_name
-  depends_on  = [data.external.intermediate_csr]
-}
-
-output "intermediate_csr_pem" {
-  description = "PEM-encoded intermediate CA CSR."
-  value       = data.external.intermediate_csr.result.csr_pem
-  depends_on  = [data.external.intermediate_csr]
 }
 
 output "intermediate_ca_secret_arn" {

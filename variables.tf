@@ -252,12 +252,6 @@ variable "intermediate_ca_secret_kms_key_arn" {
   }
 }
 
-variable "csr_emission_timeout_seconds" {
-  type        = number
-  description = "Maximum seconds Terraform waits for the intermediate CSR to appear in SSM after the ASG launches."
-  default     = 1800
-}
-
 variable "signed_intermediate_wait_timeout_seconds" {
   type        = number
   description = "Maximum seconds the bootstrap node waits for the signed intermediate certificate to appear in Secrets Manager."
