@@ -999,7 +999,6 @@ fetch_signed_intermediate() {
       return 0
     fi
 
-    log_info "Signed intermediate not yet available (attempt $${attempt}/$${max_attempts}), waiting"
     sleep "$${interval}"
   done
 
