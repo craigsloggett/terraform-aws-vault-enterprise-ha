@@ -206,7 +206,7 @@ write_vault_bootstrap_tls_materials() {
         exit 1
       fi
       log_info "Writing bootstrap TLS CA file"
-      printf '%s\n' "$(fetch_bootstrap_ca_cert)" >"$${VAULT_TLS_CA_FILE}"
+      fetch_bootstrap_ca_cert >"$${VAULT_TLS_CA_FILE}"
       ;;
     Ready)
       if [ "$${pki_state}" = "Ready" ]; then
@@ -214,13 +214,13 @@ write_vault_bootstrap_tls_materials() {
         # PKI CA for outbound connections to existing nodes, bootstrap CA for local
         # vault CLI calls until reload_vault_listener replaces the bootstrap cert
         # with a PKI-signed one.
-        printf '%s\n%s\n' \
-          "$(fetch_tls_ca_bundle)" \
-          "$(fetch_bootstrap_ca_cert)" \
-          >"$${VAULT_TLS_CA_FILE}"
+        {
+          fetch_tls_ca_bundle
+          fetch_bootstrap_ca_cert
+        } >"$${VAULT_TLS_CA_FILE}"
       else
         log_info "Writing bootstrap TLS CA file"
-        printf '%s\n' "$(fetch_bootstrap_ca_cert)" >"$${VAULT_TLS_CA_FILE}"
+        fetch_bootstrap_ca_cert >"$${VAULT_TLS_CA_FILE}"
       fi
       ;;
     *)
@@ -230,8 +230,8 @@ write_vault_bootstrap_tls_materials() {
   esac
 
   log_info "Writing bootstrap TLS certificate and private key"
-  printf '%s\n' "$(fetch_bootstrap_tls_cert)" >"$${VAULT_TLS_CERT_FILE}"
-  printf '%s\n' "$(fetch_bootstrap_tls_private_key)" >"$${VAULT_TLS_KEY_FILE}"
+  fetch_bootstrap_tls_cert >"$${VAULT_TLS_CERT_FILE}"
+  fetch_bootstrap_tls_private_key >"$${VAULT_TLS_KEY_FILE}"
 
   chown vault:vault "$${VAULT_TLS_CA_FILE}" "$${VAULT_TLS_CERT_FILE}" "$${VAULT_TLS_KEY_FILE}"
   chmod 0644 "$${VAULT_TLS_CA_FILE}"
@@ -930,11 +930,11 @@ EOF
   tmp_cert="$${VAULT_TLS_DIR}/server.crt.tmp"
   tmp_key="$${VAULT_TLS_DIR}/server.key.tmp"
 
-  printf '%s\n%s\n' \
-    "$(printf '%s' "$${cert_json}" | jq -r '.data.certificate')" \
-    "$(printf '%s' "$${cert_json}" | jq -r '.data.ca_chain[]')" \
-    >"$${tmp_cert}"
-  printf '%s\n' "$(printf '%s' "$${cert_json}" | jq -r '.data.private_key')" >"$${tmp_key}"
+  {
+    printf '%s' "$${cert_json}" | jq -r '.data.certificate'
+    printf '%s' "$${cert_json}" | jq -r '.data.ca_chain[]'
+  } >"$${tmp_cert}"
+  printf '%s' "$${cert_json}" | jq -r '.data.private_key' >"$${tmp_key}"
 
   chown vault:vault "$${tmp_cert}" "$${tmp_key}"
   chmod 0640 "$${tmp_cert}" "$${tmp_key}"
