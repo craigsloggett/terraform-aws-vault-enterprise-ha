@@ -3,6 +3,3 @@
 {{ .Cert }}
 {{ range .CAChain }}{{ . }}{{ end }}
 {{- end -}}
-{{- with secret "pki_root/cert/ca" -}}
-{{ .Data.certificate }}
-{{- end -}}

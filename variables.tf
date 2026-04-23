@@ -180,18 +180,6 @@ variable "vault_subdomain" {
   default     = "vault"
 }
 
-variable "vault_pki_organization" {
-  type        = string
-  description = "Organization name for the PKI root CA."
-  default     = "HashiCorp"
-}
-
-variable "vault_pki_country" {
-  type        = string
-  description = "Country code for the PKI root CA."
-  default     = "US"
-}
-
 variable "vault_version" {
   type        = string
   description = "Vault Enterprise release version (e.g., 1.21.4+ent)."
@@ -239,4 +227,39 @@ variable "vault_snapshot_retain" {
     condition     = var.vault_snapshot_retain >= 1
     error_message = "Must retain at least 1 snapshot."
   }
+}
+
+# PKI
+
+variable "intermediate_ca_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret where the external signer writes the signed intermediate CA certificate and chain as JSON: {\"certificate\": \"<PEM>\", \"ca_chain\": \"<PEM>\"}."
+
+  validation {
+    condition     = can(regex("^arn:aws[a-zA-Z-]*:secretsmanager:", var.intermediate_ca_secret_arn))
+    error_message = "Must be a valid Secrets Manager secret ARN."
+  }
+}
+
+variable "intermediate_ca_secret_kms_key_arn" {
+  type        = string
+  description = "ARN of the KMS key used to encrypt the intermediate CA Secrets Manager secret. Required only when the secret uses a customer-managed KMS key."
+  default     = null
+
+  validation {
+    condition     = var.intermediate_ca_secret_kms_key_arn == null || can(regex("^arn:aws[a-zA-Z-]*:kms:", var.intermediate_ca_secret_kms_key_arn))
+    error_message = "Must be a valid KMS key ARN."
+  }
+}
+
+variable "csr_emission_timeout_seconds" {
+  type        = number
+  description = "Maximum seconds Terraform waits for the intermediate CSR to appear in SSM after the ASG launches."
+  default     = 1800
+}
+
+variable "signed_intermediate_wait_timeout_seconds" {
+  type        = number
+  description = "Maximum seconds the bootstrap node waits for the signed intermediate certificate to appear in Secrets Manager."
+  default     = 1800
 }

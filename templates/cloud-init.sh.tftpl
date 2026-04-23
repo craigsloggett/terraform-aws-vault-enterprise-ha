@@ -63,16 +63,15 @@ readonly VAULT_MINIMUM_QUORUM_SIZE="${vault_minimum_quorum_size}"
 
 # PKI and TLS
 readonly CLUSTER_NAME="${cluster_name}"
-readonly VAULT_PKI_ORGANIZATION="${vault_pki_organization}"
-readonly VAULT_PKI_COUNTRY="${vault_pki_country}"
-readonly VAULT_PKI_ROOT_MOUNT_MAX_TTL="87600h"
-readonly VAULT_PKI_ROOT_CA_TTL="87600h"
 readonly VAULT_PKI_VAULT_MOUNT_MAX_TTL="26280h"
 readonly VAULT_PKI_VAULT_CA_TTL="26280h"
 readonly VAULT_PKI_VAULT_SERVER_ROLE_MAX_TTL="24h"
 readonly VAULT_PKI_SERVER_CERT_TTL="24h"
 readonly VAULT_PKI_STATE_SSM_NAME="${vault_pki_state_ssm_name}"
 readonly VAULT_TLS_CA_BUNDLE_SSM_NAME="${vault_tls_ca_bundle_ssm_name}"
+readonly VAULT_INTERMEDIATE_CA_SECRET_ARN="${intermediate_ca_secret_arn}"
+readonly VAULT_INTERMEDIATE_CSR_SSM_NAME="${csr_ssm_parameter_name}"
+readonly VAULT_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS="${signed_intermediate_wait_timeout_seconds}"
 
 # AWS Auth
 readonly VAULT_IAM_ROLE_ARN="${vault_iam_role_arn}"
@@ -347,9 +346,8 @@ join_cluster() {
 publish_tls_ca_bundle() {
   log_info "Publishing PKI managed TLS CA bundle to SSM"
 
-  root_ca_cert="$(vault read -field=certificate pki_root/cert/ca)"
   vault_intermediate_ca_cert="$(vault read -field=certificate pki_vault/cert/ca)"
-  tls_ca_bundle="$(printf '%s\n%s\n' "$${root_ca_cert}" "$${vault_intermediate_ca_cert}")"
+  tls_ca_bundle="$(printf '%s\n%s\n' "$${vault_intermediate_ca_cert}" "$${VAULT_INTERMEDIATE_CA_CHAIN}")"
   put_parameter "$${VAULT_TLS_CA_BUNDLE_SSM_NAME}" "$${tls_ca_bundle}"
 }
 
@@ -750,42 +748,6 @@ EOF
 #        Configure PKI Engine         #
 #######################################
 
-configure_pki_root_secrets_engine() {
-  log_info "Enabling root PKI secrets engine"
-
-  if ! vault secrets list -format=json | jq -e '."pki_root/"' >/dev/null 2>&1; then
-    vault secrets enable -path=pki_root pki
-  fi
-
-  log_info "Configuring root PKI secrets engine max-lease-ttl"
-  vault secrets tune -max-lease-ttl="$${VAULT_PKI_ROOT_MOUNT_MAX_TTL}" pki_root >/dev/null
-}
-
-configure_pki_root_ca() {
-  log_info "Configuring PKI root CA"
-
-  # Configure the pki_root URLs first to embed the AIA
-  # fields into the root cert at generation time.
-  vault write pki_root/config/urls - >/dev/null <<EOF
-{
-  "issuing_certificates": "https://$${VAULT_FQDN}:8200/v1/pki_root/ca",
-  "crl_distribution_points": "https://$${VAULT_FQDN}:8200/v1/pki_root/crl",
-  "ocsp_servers": "https://$${VAULT_FQDN}:8200/v1/pki_root/ocsp"
-}
-EOF
-
-  vault write pki_root/root/generate/internal - >/dev/null <<EOF
-{
-  "common_name": "$${CLUSTER_NAME} Root CA",
-  "organization": "$${VAULT_PKI_ORGANIZATION}",
-  "country": "$${VAULT_PKI_COUNTRY}",
-  "ttl": "$${VAULT_PKI_ROOT_CA_TTL}",
-  "key_type": "ec",
-  "key_bits": 384
-}
-EOF
-}
-
 configure_pki_vault_secrets_engine() {
   log_info "Enabling Vault PKI secrets engine"
 
@@ -804,8 +766,6 @@ configure_pki_vault_intermediate_ca() {
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "$${tmp_dir}"' EXIT
 
-  # Configure the pki_vault URLs first to embed the AIA
-  # fields into the root cert at generation time.
   vault write pki_vault/config/urls - >/dev/null <<EOF
 {
   "issuing_certificates": "https://$${VAULT_FQDN}:8200/v1/pki_vault/ca",
@@ -814,31 +774,57 @@ configure_pki_vault_intermediate_ca() {
 }
 EOF
 
-  # Generate CSR from the intermediate mount
-  vault write -format=json pki_vault/intermediate/generate/internal - <<EOF | jq -r '.data.csr' >"$${tmp_dir}/pki_vault_intermediate.csr"
+  # Generate the intermediate CSR inside Vault (private key never leaves)
+  log_info "Generating intermediate CSR"
+  csr_pem="$(vault write -format=json pki_vault/intermediate/generate/internal - <<EOF | jq -r '.data.csr'
 {
   "common_name": "$${CLUSTER_NAME} Vault Intermediate CA",
   "key_type": "ec",
   "key_bits": 384
 }
 EOF
+  )"
 
-  # Sign the CSR with the root CA
-  vault write -format=json pki_root/root/sign-intermediate \
-    csr=@"$${tmp_dir}/pki_vault_intermediate.csr" \
-    common_name="$${CLUSTER_NAME} Vault Intermediate CA" \
-    organization="$${VAULT_PKI_ORGANIZATION}" \
-    country="$${VAULT_PKI_COUNTRY}" \
-    ttl="$${VAULT_PKI_VAULT_CA_TTL}" |
-    jq -r '.data.certificate' >"$${tmp_dir}/pki_vault_intermediate.crt"
+  # Publish the CSR to SSM for the Terraform external data source to read
+  log_info "Publishing intermediate CSR to $${VAULT_INTERMEDIATE_CSR_SSM_NAME}"
+  put_parameter "$${VAULT_INTERMEDIATE_CSR_SSM_NAME}" "$${csr_pem}"
 
-  # Import the signed cert back into the intermediate mount
+  # Wait for the externally signed certificate to appear in Secrets Manager
+  log_info "Waiting for externally signed intermediate certificate"
+  signed_json="$(fetch_signed_intermediate)"
+
+  # Validate the signed material payload
+  if printf '%s' "$${signed_json}" | jq -e '.private_key // empty' >/dev/null 2>&1; then
+    log_error "Signed intermediate payload contains a private_key field — this is a contract violation, aborting"
+    return 1
+  fi
+
+  signed_cert="$(printf '%s' "$${signed_json}" | jq -r '.certificate // empty')"
+  ca_chain="$(printf '%s' "$${signed_json}" | jq -r '.ca_chain // empty')"
+
+  if [ -z "$${signed_cert}" ]; then
+    log_error "Signed intermediate payload is missing the certificate field"
+    return 1
+  fi
+
+  if [ -z "$${ca_chain}" ]; then
+    log_error "Signed intermediate payload is missing the ca_chain field"
+    return 1
+  fi
+
+  # Cache the CA chain for publish_tls_ca_bundle
+  VAULT_INTERMEDIATE_CA_CHAIN="$${ca_chain}"
+
+  # Import the signed certificate and full chain into the intermediate mount
+  printf '%s\n%s\n' "$${signed_cert}" "$${ca_chain}" >"$${tmp_dir}/pki_vault_intermediate_bundle.pem"
   vault write pki_vault/intermediate/set-signed \
-    certificate=@"$${tmp_dir}/pki_vault_intermediate.crt" \
+    certificate=@"$${tmp_dir}/pki_vault_intermediate_bundle.pem" \
     >/dev/null
 
-  # Clean up CSR/cert from disk
-  rm "$${tmp_dir}/pki_vault_intermediate.csr" "$${tmp_dir}/pki_vault_intermediate.crt"
+  rm -rf "$${tmp_dir}"
+  trap - EXIT
+
+  log_info "Intermediate CA signed and imported"
 }
 
 configure_vault_server_pki_role() {
@@ -940,10 +926,9 @@ EOF
   tmp_cert="$${VAULT_TLS_DIR}/server.crt.tmp"
   tmp_key="$${VAULT_TLS_DIR}/server.key.tmp"
 
-  printf '%s\n%s\n%s\n' \
+  printf '%s\n%s\n' \
     "$(printf '%s' "$${cert_json}" | jq -r '.data.certificate')" \
     "$(printf '%s' "$${cert_json}" | jq -r '.data.ca_chain[]')" \
-    "$(vault read -field=certificate pki_root/cert/ca)" \
     >"$${tmp_cert}"
   printf '%s\n' "$(printf '%s' "$${cert_json}" | jq -r '.data.private_key')" >"$${tmp_key}"
 
@@ -990,6 +975,31 @@ wait_for_pki_ready() {
 
 fetch_tls_ca_bundle() {
   fetch_parameter "$${VAULT_TLS_CA_BUNDLE_SSM_NAME}"
+}
+
+fetch_signed_intermediate() {
+  interval=10
+  max_attempts=$((VAULT_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS / interval))
+  attempt=0
+
+  while [ "$${attempt}" -lt "$${max_attempts}" ]; do
+    attempt=$((attempt + 1))
+
+    secret_value="$(aws secretsmanager get-secret-value \
+      --secret-id "$${VAULT_INTERMEDIATE_CA_SECRET_ARN}" \
+      --query SecretString --output text 2>/dev/null)" || secret_value=""
+
+    if [ -n "$${secret_value}" ] && printf '%s' "$${secret_value}" | jq -e '.certificate' >/dev/null 2>&1; then
+      printf '%s' "$${secret_value}"
+      return 0
+    fi
+
+    log_info "Signed intermediate not yet available (attempt $${attempt}/$${max_attempts}), waiting"
+    sleep "$${interval}"
+  done
+
+  log_error "Timed out after $${VAULT_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS}s waiting for signed intermediate at $${VAULT_INTERMEDIATE_CA_SECRET_ARN}"
+  return 1
 }
 
 #######################################
@@ -1154,6 +1164,8 @@ main() {
   export VAULT_TLS_SERVER_NAME="$${VAULT_FQDN}"
   export VAULT_CACERT="$${VAULT_TLS_CA_FILE}"
 
+  VAULT_INTERMEDIATE_CA_CHAIN=""
+
   # Prepare System
   wait_for_network
   prepare_system
@@ -1198,8 +1210,6 @@ main() {
 
   # Enable PKI and TLS
   if [ "$${vault_node_role}" = "bootstrap" ]; then
-    configure_pki_root_secrets_engine
-    configure_pki_root_ca
     configure_pki_vault_secrets_engine
     configure_pki_vault_intermediate_ca
     configure_vault_server_pki_role

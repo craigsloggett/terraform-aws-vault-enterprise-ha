@@ -57,3 +57,20 @@ output "vault_jwt_auth_role_name" {
   description = "Vault JWT auth role name for HCP Terraform (TFC_VAULT_RUN_ROLE)."
   value       = var.hcp_terraform.jwt_auth_role_name
 }
+
+output "intermediate_csr_ssm_parameter_name" {
+  description = "SSM parameter name where the intermediate CSR is published."
+  value       = local.intermediate_csr_ssm_name
+  depends_on  = [data.external.intermediate_csr]
+}
+
+output "intermediate_csr_pem" {
+  description = "PEM-encoded intermediate CA CSR."
+  value       = data.external.intermediate_csr.result.csr_pem
+  depends_on  = [data.external.intermediate_csr]
+}
+
+output "intermediate_ca_secret_arn" {
+  description = "Secrets Manager ARN for the signed intermediate CA certificate."
+  value       = var.intermediate_ca_secret_arn
+}

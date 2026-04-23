@@ -145,6 +145,7 @@ data "aws_iam_policy_document" "vault_ssm" {
       aws_ssm_parameter.vault_cluster_state.arn,
       aws_ssm_parameter.vault_pki_state.arn,
       aws_ssm_parameter.vault_tls_ca_bundle.arn,
+      "arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter${local.intermediate_csr_ssm_name}",
     ]
   }
 }
@@ -153,6 +154,43 @@ resource "aws_iam_role_policy" "vault_ssm" {
   name_prefix = "${var.project_name}-ssm-"
   role        = aws_iam_role.vault.id
   policy      = data.aws_iam_policy_document.vault_ssm.json
+}
+
+data "aws_iam_policy_document" "vault_intermediate_ca" {
+  statement {
+    sid    = "IntermediateCARead"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret",
+    ]
+    resources = [var.intermediate_ca_secret_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "vault_intermediate_ca" {
+  name_prefix = "${var.project_name}-intermediate-ca-"
+  role        = aws_iam_role.vault.id
+  policy      = data.aws_iam_policy_document.vault_intermediate_ca.json
+}
+
+data "aws_iam_policy_document" "vault_intermediate_ca_kms" {
+  count = var.intermediate_ca_secret_kms_key_arn != null ? 1 : 0
+
+  statement {
+    sid       = "IntermediateCAKMSDecrypt"
+    effect    = "Allow"
+    actions   = ["kms:Decrypt"]
+    resources = [var.intermediate_ca_secret_kms_key_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "vault_intermediate_ca_kms" {
+  count = var.intermediate_ca_secret_kms_key_arn != null ? 1 : 0
+
+  name_prefix = "${var.project_name}-intermediate-ca-kms-"
+  role        = aws_iam_role.vault.id
+  policy      = data.aws_iam_policy_document.vault_intermediate_ca_kms[0].json
 }
 
 data "aws_iam_policy_document" "vault_iam_read" {
