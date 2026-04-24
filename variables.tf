@@ -29,16 +29,24 @@ variable "ec2_key_pair_name" {
   description = "Name of an existing EC2 key pair for SSH access."
 }
 
-variable "hcp_terraform" {
-  description = "HCP Terraform JWT auth configuration for Terraform-managed Vault administration. JWT is not configured if organization_name is empty. When workspace_id is provided, the admin role is bound to that specific workspace; when omitted, the role binds to the entire organization."
+variable "hcp_terraform_jwt_auth" {
+  description = <<-EOT
+    Configuration for the HCP Terraform JWT auth method that provides
+    dynamic, short-lived Vault credentials to HCP Terraform workspaces.
+    When `organization_name` and `workspace_id` are set, a JWT auth method
+    is mounted at `mount_path` in the root namespace and configured to
+    verify tokens against `hostname` via OIDC discovery. A role named
+    `role_name` is created against that mount with `bound_claims`
+    restricting authentication to the declared organization and workspace.
+  EOT
   default     = {}
   type = object({
     hostname              = optional(string, "app.terraform.io")
     organization_name     = optional(string, "")
     workspace_id          = optional(string, "")
     oidc_discovery_ca_pem = optional(string, "")
-    jwt_auth_path         = optional(string, "app-terraform-io")
-    jwt_auth_role_name    = optional(string, "terraform-admin")
+    mount_path            = optional(string, "app-terraform-io")
+    role_name             = optional(string, "terraform-admin")
   })
 }
 

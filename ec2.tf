@@ -90,12 +90,12 @@ resource "aws_launch_template" "vault" {
     vault_iam_role_arn = aws_iam_role.vault.arn
 
     # HCP Terraform JWT Auth
-    hcp_terraform_hostname              = var.hcp_terraform.hostname
-    hcp_terraform_organization_name     = var.hcp_terraform.organization_name
-    hcp_terraform_workspace_id          = var.hcp_terraform.workspace_id
-    hcp_terraform_oidc_discovery_ca_pem = var.hcp_terraform.oidc_discovery_ca_pem
-    hcp_terraform_jwt_auth_path         = var.hcp_terraform.jwt_auth_path
-    hcp_terraform_jwt_auth_role_name    = var.hcp_terraform.jwt_auth_role_name
+    hcp_terraform_jwt_auth_hostname              = var.hcp_terraform_jwt_auth.hostname
+    hcp_terraform_jwt_auth_organization_name     = var.hcp_terraform_jwt_auth.organization_name
+    hcp_terraform_jwt_auth_workspace_id          = var.hcp_terraform_jwt_auth.workspace_id
+    hcp_terraform_jwt_auth_oidc_discovery_ca_pem = var.hcp_terraform_jwt_auth.oidc_discovery_ca_pem
+    hcp_terraform_jwt_auth_mount_path            = var.hcp_terraform_jwt_auth.mount_path
+    hcp_terraform_jwt_auth_role_name             = var.hcp_terraform_jwt_auth.role_name
 
     # Vault Agent
     config_agent_hcl                     = local.config_agent_hcl
