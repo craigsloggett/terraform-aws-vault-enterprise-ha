@@ -49,7 +49,7 @@ readonly EBS_AUDIT_DEVICE_NAME="${ebs_audit_device_name}"
 
 # Bootstrap Artifacts
 readonly VAULT_ENTERPRISE_LICENSE_SECRET_ARN="${vault_enterprise_license_secret_arn}"
-readonly BOOTSTRAP_TLS_CA_CERT_SECRET_ARN="${bootstrap_tls_ca_cert_secret_arn}"
+readonly BOOTSTRAP_TLS_CA_SECRET_ARN="${bootstrap_tls_ca_secret_arn}"
 readonly BOOTSTRAP_TLS_CERT_SECRET_ARN="${bootstrap_tls_cert_secret_arn}"
 readonly BOOTSTRAP_TLS_PRIVATE_KEY_SECRET_ARN="${bootstrap_tls_private_key_secret_arn}"
 
@@ -209,7 +209,7 @@ write_vault_bootstrap_tls_materials() {
         exit 1
       fi
       log_info "Writing bootstrap TLS CA file"
-      fetch_bootstrap_ca_cert >"$${VAULT_TLS_CA_FILE}"
+      fetch_bootstrap_ca >"$${VAULT_TLS_CA_FILE}"
       ;;
     Ready)
       if [ "$${pki_state}" = "Ready" ]; then
@@ -219,11 +219,11 @@ write_vault_bootstrap_tls_materials() {
         # with a PKI-signed one.
         {
           fetch_tls_ca_bundle
-          fetch_bootstrap_ca_cert
+          fetch_bootstrap_ca
         } >"$${VAULT_TLS_CA_FILE}"
       else
         log_info "Writing bootstrap TLS CA file"
-        fetch_bootstrap_ca_cert >"$${VAULT_TLS_CA_FILE}"
+        fetch_bootstrap_ca >"$${VAULT_TLS_CA_FILE}"
       fi
       ;;
     *)
@@ -273,8 +273,8 @@ is_bootstrap_node() {
   [ "$${instance_id}" = "$${lowest_id}" ]
 }
 
-fetch_bootstrap_ca_cert() {
-  fetch_secret "$${BOOTSTRAP_TLS_CA_CERT_SECRET_ARN}"
+fetch_bootstrap_ca() {
+  fetch_secret "$${BOOTSTRAP_TLS_CA_SECRET_ARN}"
 }
 
 fetch_bootstrap_tls_cert() {

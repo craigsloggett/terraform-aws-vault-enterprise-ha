@@ -7,7 +7,7 @@ resource "tls_private_key" "vault_bootstrap_tls_ca_private_key" {
   ecdsa_curve = "P384"
 }
 
-resource "tls_self_signed_cert" "vault_bootstrap_tls_ca_cert" {
+resource "tls_self_signed_cert" "vault_bootstrap_tls_ca" {
   private_key_pem = tls_private_key.vault_bootstrap_tls_ca_private_key.private_key_pem
 
   subject {
@@ -50,7 +50,7 @@ resource "tls_cert_request" "vault_bootstrap_tls_cert_request" {
 resource "tls_locally_signed_cert" "vault_bootstrap_tls_cert" {
   cert_request_pem   = tls_cert_request.vault_bootstrap_tls_cert_request.cert_request_pem
   ca_private_key_pem = tls_private_key.vault_bootstrap_tls_ca_private_key.private_key_pem
-  ca_cert_pem        = tls_self_signed_cert.vault_bootstrap_tls_ca_cert.cert_pem
+  ca_cert_pem        = tls_self_signed_cert.vault_bootstrap_tls_ca.cert_pem
 
   validity_period_hours = 24
 
@@ -63,16 +63,16 @@ resource "tls_locally_signed_cert" "vault_bootstrap_tls_cert" {
 
 # Secrets Manager
 
-resource "aws_secretsmanager_secret" "vault_bootstrap_tls_ca_cert" {
-  name_prefix = "${var.project_name}-vault-bootstrap-tls-ca-cert-"
-  description = "Bootstrap TLS CA Certificate"
+resource "aws_secretsmanager_secret" "vault_bootstrap_tls_ca" {
+  name_prefix = "${var.project_name}-vault-bootstrap-tls-ca-"
+  description = "Vault Bootstrap TLS CA"
 
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-ca-cert" })
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-ca" })
 }
 
-resource "aws_secretsmanager_secret_version" "vault_bootstrap_tls_ca_cert" {
-  secret_id     = aws_secretsmanager_secret.vault_bootstrap_tls_ca_cert.id
-  secret_string = tls_self_signed_cert.vault_bootstrap_tls_ca_cert.cert_pem
+resource "aws_secretsmanager_secret_version" "vault_bootstrap_tls_ca" {
+  secret_id     = aws_secretsmanager_secret.vault_bootstrap_tls_ca.id
+  secret_string = tls_self_signed_cert.vault_bootstrap_tls_ca.cert_pem
 }
 
 resource "aws_secretsmanager_secret" "vault_bootstrap_tls_cert" {

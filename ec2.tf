@@ -60,7 +60,7 @@ resource "aws_launch_template" "vault" {
 
     # Bootstrap Artifacts
     vault_enterprise_license_secret_arn  = aws_secretsmanager_secret.vault_enterprise_license.arn
-    bootstrap_tls_ca_cert_secret_arn     = aws_secretsmanager_secret.vault_bootstrap_tls_ca_cert.arn
+    bootstrap_tls_ca_secret_arn          = aws_secretsmanager_secret.vault_bootstrap_tls_ca.arn
     bootstrap_tls_cert_secret_arn        = aws_secretsmanager_secret.vault_bootstrap_tls_cert.arn
     bootstrap_tls_private_key_secret_arn = aws_secretsmanager_secret.vault_bootstrap_tls_private_key.arn
     config_vault_snapshot_json           = local.config_vault_snapshot_json
