@@ -77,11 +77,11 @@ resource "aws_launch_template" "vault" {
     cluster_name                                       = title(var.project_name)
     vault_pki_state_ssm_name                           = aws_ssm_parameter.vault_pki_state.name
     vault_tls_ca_bundle_ssm_name                       = aws_ssm_parameter.vault_tls_ca_bundle.name
-    vault_pki_intermediate_ca_common_name              = local.vault_pki_intermediate_ca.common_name
-    vault_pki_intermediate_ca_country                  = local.vault_pki_intermediate_ca.country
-    vault_pki_intermediate_ca_organization             = local.vault_pki_intermediate_ca.organization
-    vault_pki_intermediate_ca_key_type                 = local.vault_pki_intermediate_ca.key_type
-    vault_pki_intermediate_ca_key_bits                 = local.vault_pki_intermediate_ca.key_bits
+    vault_pki_intermediate_ca_common_name              = var.vault_pki_intermediate_ca.common_name
+    vault_pki_intermediate_ca_country                  = var.vault_pki_intermediate_ca.country
+    vault_pki_intermediate_ca_organization             = var.vault_pki_intermediate_ca.organization
+    vault_pki_intermediate_ca_key_type                 = var.vault_pki_intermediate_ca.key_type
+    vault_pki_intermediate_ca_key_bits                 = var.vault_pki_intermediate_ca.key_bits
     vault_pki_intermediate_ca_csr_ssm_name             = aws_ssm_parameter.vault_pki_intermediate_ca_csr.name
     vault_pki_signed_intermediate_wait_timeout_seconds = var.vault_pki_signed_intermediate_wait_timeout_seconds
     vault_pki_intermediate_ca_signed_csr_secret_arn    = aws_secretsmanager_secret.vault_pki_intermediate_ca_signed_csr.arn
