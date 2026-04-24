@@ -1,17 +1,24 @@
 # HashiCorp Vault Enterprise Terraform Module
 
-Terraform module which deploys a 3-node Vault Enterprise cluster on AWS with Raft integrated storage.
+Terraform module which deploys a Vault Enterprise cluster on AWS with Raft integrated storage and Vault PKI-managed TLS.
 
 ## Architecture
 
-- 3 Vault nodes across separate availability zones, each with a dedicated EBS volume for Raft storage
+- 3 (or 5) Vault nodes across separate availability zones, each with dedicated EBS volumes for Raft storage and audit logs
 - AWS KMS auto-unseal
 - Raft auto-join via EC2 tag discovery
+- Automated cluster initialization with root token and recovery keys stored in Secrets Manager
+- PKI intermediate CA with externally signed CSR
+- Vault generates the CSR, an external CA signs it, and the signed certificate is imported automatically
+- Vault Agent for automated TLS certificate rotation using PKI-signed certificates
 - NLB with TCP passthrough (TLS terminates on the Vault nodes), internal by default
 - Route 53 DNS alias to the NLB
-- TLS certificates and license stored in AWS Secrets Manager
+- Bootstrap TLS certificates and Vault Enterprise license stored in AWS Secrets Manager
+- SSM Parameter Store for cluster and PKI state coordination
 - Bastion host for SSH access to the private Vault nodes
 - VPC endpoints for EC2, KMS, Secrets Manager, and S3
+- AWS IAM auth method for Vault Agent authentication
+- Optional HCP Terraform JWT auth method for Terraform-managed Vault administration
 
 ## Prerequisites
 
@@ -19,27 +26,64 @@ Terraform module which deploys a 3-node Vault Enterprise cluster on AWS with Raf
 - A Vault Enterprise license
 - An EC2 key pair
 - An Ubuntu or Debian-based AMI
+- An external CA capable of signing the Vault PKI intermediate CSR (see [PKI intermediate CA](#pki-intermediate-ca))
 
 ## Post-deployment
 
-After `terraform apply`, the Vault service starts automatically but the cluster
-is not yet initialized. Run `vault operator init` against any node to initialize
-the cluster. The remaining nodes will auto-join via Raft and auto-unseal via KMS.
+After `terraform apply`, the cluster bootstraps automatically:
 
-See [`examples/basic/`](examples/basic/) for operational scripts that automate
-validation, initialization, and smoke testing.
+1. The bootstrap node initializes the cluster (`vault operator init`), stores the root token and recovery keys in Secrets Manager, and marks the cluster as ready in SSM.
+2. Remaining nodes auto-join via Raft and auto-unseal via KMS.
+3. The bootstrap node enables the Vault PKI secrets engine, generates an intermediate CA CSR, and publishes it to SSM. It then waits for an external process to sign the CSR and store the signed certificate in Secrets Manager.
+4. Once the signed certificate is available, all nodes issue PKI-signed server certificates and Vault Agent begins automated TLS rotation.
+
+Retrieve the root token after deployment (the secret name is prefixed with
+`<project-name>-vault-bootstrap-root-token-`):
+
+```bash
+aws secretsmanager list-secrets \
+  --filter Key=name,Values=<project-name>-vault-bootstrap-root-token \
+  --query "SecretList[0].ARN" --output text \
+| xargs -I{} aws secretsmanager get-secret-value \
+  --secret-id {} --query SecretString --output text
+```
+
+## PKI intermediate CA
+
+This module uses a signed CSR pattern for the Vault PKI intermediate CA. During bootstrap, Vault generates a CSR internally (the private key never leaves Vault) and publishes it to SSM. An external process must sign the CSR and store the result in Secrets Manager before the cluster can complete its PKI setup.
+
+The workflow:
+
+1. Vault publishes the intermediate CA CSR to the SSM parameter named in the `vault_pki_intermediate_ca_csr_ssm_parameter_name` output.
+2. An external process reads the CSR, signs it with a root or intermediate CA, and writes the signed certificate to the Secrets Manager secret identified by the `vault_pki_intermediate_ca_signed_csr_secret_arn` output. The secret value must be a JSON object:
+
+   ```json
+   {
+     "certificate": "<signed-intermediate-cert-pem>",
+     "ca_chain": "<root-and-intermediate-ca-chain-pem>"
+   }
+   ```
+
+3. Vault imports the signed certificate, publishes the CA bundle to SSM, issues PKI-signed server certificates, and starts Vault Agent for ongoing TLS rotation.
+
+The bootstrap node waits up to `vault_pki_signed_intermediate_wait_timeout_seconds` (default 1800) for the signed certificate to appear.
+
+See [`examples/basic/`](examples/basic/) for a reference implementation that uses a Terraform-managed root CA to sign the CSR automatically.
 
 ## Cluster access
 
-The CA certificate for TLS verification is available as a Terraform output:
+After the PKI bootstrap completes, the TLS CA bundle is published to SSM. Retrieve it using the parameter name from the `vault_tls_ca_bundle_ssm_parameter_name` output:
 
 ```bash
-terraform output -raw vault_ca_cert > vault-ca.crt
+aws ssm get-parameter \
+  --name "$(terraform output -raw vault_tls_ca_bundle_ssm_parameter_name)" \
+  --query "Parameter.Value" --output text > vault-ca.crt
 
-export VAULT_ADDR="https://vault.<your-domain>:8200"
+export VAULT_ADDR="$(terraform output -raw vault_url)"
 export VAULT_CACERT=vault-ca.crt
 vault status
 ```
+
 ## Network access
 
 By default, the NLB is internal and the Vault API is only reachable from within
@@ -62,21 +106,53 @@ specified CIDRs. The Vault nodes remain in private subnets, only the NLB is
 internet-facing. Restrict `vault_api_allowed_cidrs` to known ranges where
 possible.
 
-## Security considerations
+## Security Considerations
 
-The Terraform `tls` provider stores private key material (CA and server keys) in
-state as plaintext. Ensure your state backend is encrypted (e.g., S3 with SSE).
+The Terraform `tls` provider stores bootstrap private key material (CA and
+server keys) in state as plaintext. These bootstrap certificates are short-lived
+(minutes) and are replaced by Vault PKI-signed certificates during the bootstrap
+process. Ensure your state backend is encrypted (e.g., S3 with SSE).
 
-All three Vault nodes share a single server certificate. This works because the
+All nodes share a single bootstrap server certificate. This works because the
 certificate's `dns_names` includes the cluster FQDN, which Raft uses for
-`leader_tls_servername` during auto-join.
+`leader_tls_servername` during auto-join. After PKI bootstrap, each node
+receives its own PKI-signed certificate rotated automatically by Vault Agent.
 
 <!-- BEGIN_TF_DOCS -->
 ## Usage
 
 ### main.tf
 ```hcl
-data "aws_route53_zone" "selected" {
+data "aws_vpc" "selected" {
+  filter {
+    name   = "tag:Name"
+    values = [var.vpc_name]
+  }
+}
+
+data "aws_subnets" "private" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.selected.id]
+  }
+  filter {
+    name   = "tag:Name"
+    values = ["${var.vpc_name}-private-*"]
+  }
+}
+
+data "aws_subnets" "public" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.selected.id]
+  }
+  filter {
+    name   = "tag:Name"
+    values = ["${var.vpc_name}-public-*"]
+  }
+}
+
+data "aws_route53_zone" "vault" {
   name = var.route53_zone_name
 }
 
@@ -95,13 +171,30 @@ module "vault" {
   source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise"
 
   project_name             = var.project_name
-  route53_zone             = data.aws_route53_zone.selected
+  route53_zone             = data.aws_route53_zone.vault
   vault_enterprise_license = var.vault_enterprise_license
   ec2_key_pair_name        = var.ec2_key_pair_name
   ec2_ami                  = data.aws_ami.selected
 
-  nlb_internal            = var.nlb_internal
-  vault_api_allowed_cidrs = var.vault_api_allowed_cidrs
+  existing_vpc = {
+    vpc_id             = data.aws_vpc.selected.id
+    private_subnet_ids = data.aws_subnets.private.ids
+    public_subnet_ids  = data.aws_subnets.public.ids
+  }
+
+  vault_pki_intermediate_ca = {
+    key_type = local.pki_key_type
+    key_bits = local.pki_key_bits
+  }
+
+  nlb_internal               = true
+  vault_api_allowed_cidrs    = ["0.0.0.0/0"]
+  vault_server_instance_type = "t3.medium"
+
+  hcp_terraform = {
+    hostname          = "app.terraform.io"
+    organization_name = var.hcp_terraform_organization_name
+  }
 }
 ```
 
@@ -140,8 +233,8 @@ module "vault" {
 | <a name="input_vault_data_disk"></a> [vault\_data\_disk](#input\_vault\_data\_disk) | EBS configuration for the Vault Raft Data storage volume (/dev/xvdf). | <pre>object({<br/>    volume_type = optional(string, "gp3")<br/>    volume_size = optional(number, 50)<br/>    iops        = optional(number, 3000)<br/>    throughput  = optional(number, 125)<br/>  })</pre> | <pre>{<br/>  "iops": 3000,<br/>  "throughput": 125,<br/>  "volume_size": 50,<br/>  "volume_type": "gp3"<br/>}</pre> | no |
 | <a name="input_vault_enterprise_license"></a> [vault\_enterprise\_license](#input\_vault\_enterprise\_license) | Vault Enterprise license string. | `string` | n/a | yes |
 | <a name="input_vault_node_count"></a> [vault\_node\_count](#input\_vault\_node\_count) | Number of Vault nodes in the cluster. Must be 3 or 5 for Raft quorum. | `number` | `3` | no |
-| <a name="input_vault_pki_country"></a> [vault\_pki\_country](#input\_vault\_pki\_country) | Country code for the PKI root CA. | `string` | `"US"` | no |
-| <a name="input_vault_pki_organization"></a> [vault\_pki\_organization](#input\_vault\_pki\_organization) | Organization name for the PKI root CA. | `string` | `"HashiCorp"` | no |
+| <a name="input_vault_pki_intermediate_ca"></a> [vault\_pki\_intermediate\_ca](#input\_vault\_pki\_intermediate\_ca) | Configuration for the Vault PKI intermediate CA certificate. | <pre>object({<br/>    common_name = optional(string, "Vault Intermediate CA")<br/>    key_type    = optional(string, "rsa")<br/>    key_bits    = optional(number, 2048)<br/>  })</pre> | `{}` | no |
+| <a name="input_vault_pki_signed_intermediate_wait_timeout_seconds"></a> [vault\_pki\_signed\_intermediate\_wait\_timeout\_seconds](#input\_vault\_pki\_signed\_intermediate\_wait\_timeout\_seconds) | Maximum seconds the bootstrap node waits for the signed intermediate certificate to appear in Secrets Manager. | `number` | `1800` | no |
 | <a name="input_vault_server_instance_type"></a> [vault\_server\_instance\_type](#input\_vault\_server\_instance\_type) | EC2 instance type for Vault server nodes. | `string` | `"m5.large"` | no |
 | <a name="input_vault_snapshot_interval"></a> [vault\_snapshot\_interval](#input\_vault\_snapshot\_interval) | Seconds between automated Raft snapshots. | `number` | `3600` | no |
 | <a name="input_vault_snapshot_retain"></a> [vault\_snapshot\_retain](#input\_vault\_snapshot\_retain) | Number of automated Raft snapshots to retain in S3. | `number` | `72` | no |
@@ -162,6 +255,7 @@ module "vault" {
 | [aws_iam_role_policy.vault_ec2_describe](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.vault_iam_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.vault_kms](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
+| [aws_iam_role_policy.vault_pki_intermediate_ca_signed_csr](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.vault_recovery_keys](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.vault_s3](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
 | [aws_iam_role_policy.vault_secrets_manager](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role_policy) | resource |
@@ -185,6 +279,7 @@ module "vault" {
 | [aws_secretsmanager_secret.vault_bootstrap_tls_cert](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
 | [aws_secretsmanager_secret.vault_bootstrap_tls_private_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
 | [aws_secretsmanager_secret.vault_enterprise_license](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
+| [aws_secretsmanager_secret.vault_pki_intermediate_ca_signed_csr](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
 | [aws_secretsmanager_secret.vault_recovery_keys](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret) | resource |
 | [aws_secretsmanager_secret_policy.vault_bootstrap_tls_private_key](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_policy) | resource |
 | [aws_secretsmanager_secret_version.vault_bootstrap_tls_ca_cert](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret_version) | resource |
@@ -195,6 +290,7 @@ module "vault" {
 | [aws_security_group.vault](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [aws_security_group.vpc_endpoints](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [aws_ssm_parameter.vault_cluster_state](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
+| [aws_ssm_parameter.vault_pki_intermediate_ca_csr](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.vault_pki_state](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.vault_tls_ca_bundle](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_vpc_endpoint.ec2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) | resource |
@@ -222,6 +318,7 @@ module "vault" {
 | [aws_iam_policy_document.vault_ec2_describe](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.vault_iam_read](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.vault_kms](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
+| [aws_iam_policy_document.vault_pki_intermediate_ca_signed_csr](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.vault_recovery_keys](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.vault_s3](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.vault_secrets_manager](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
@@ -241,6 +338,8 @@ module "vault" {
 | <a name="output_vault_jwt_auth_path"></a> [vault\_jwt\_auth\_path](#output\_vault\_jwt\_auth\_path) | Vault JWT auth method path for HCP Terraform (TFC\_VAULT\_AUTH\_PATH). |
 | <a name="output_vault_jwt_auth_role_name"></a> [vault\_jwt\_auth\_role\_name](#output\_vault\_jwt\_auth\_role\_name) | Vault JWT auth role name for HCP Terraform (TFC\_VAULT\_RUN\_ROLE). |
 | <a name="output_vault_kms_key_id"></a> [vault\_kms\_key\_id](#output\_vault\_kms\_key\_id) | KMS key ID used for Vault auto-unseal. |
+| <a name="output_vault_pki_intermediate_ca_csr_ssm_parameter_name"></a> [vault\_pki\_intermediate\_ca\_csr\_ssm\_parameter\_name](#output\_vault\_pki\_intermediate\_ca\_csr\_ssm\_parameter\_name) | SSM parameter name where the intermediate CA CSR is published. |
+| <a name="output_vault_pki_intermediate_ca_signed_csr_secret_arn"></a> [vault\_pki\_intermediate\_ca\_signed\_csr\_secret\_arn](#output\_vault\_pki\_intermediate\_ca\_signed\_csr\_secret\_arn) | Secrets Manager ARN for the signed intermediate CA certificate. |
 | <a name="output_vault_snapshots_bucket"></a> [vault\_snapshots\_bucket](#output\_vault\_snapshots\_bucket) | S3 bucket for Vault snapshots. |
 | <a name="output_vault_target_group_arn"></a> [vault\_target\_group\_arn](#output\_vault\_target\_group\_arn) | ARN of the Vault NLB target group. |
 | <a name="output_vault_tls_ca_bundle_ssm_parameter_name"></a> [vault\_tls\_ca\_bundle\_ssm\_parameter\_name](#output\_vault\_tls\_ca\_bundle\_ssm\_parameter\_name) | SSM Parameter for the Vault PKI managed TLS CA bundle. |

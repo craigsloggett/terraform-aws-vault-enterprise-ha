@@ -57,3 +57,13 @@ output "vault_jwt_auth_role_name" {
   description = "Vault JWT auth role name for HCP Terraform (TFC_VAULT_RUN_ROLE)."
   value       = var.hcp_terraform.jwt_auth_role_name
 }
+
+output "vault_pki_intermediate_ca_csr_ssm_parameter_name" {
+  description = "SSM parameter name where the intermediate CA CSR is published."
+  value       = aws_ssm_parameter.vault_pki_intermediate_ca_csr.name
+}
+
+output "vault_pki_intermediate_ca_signed_csr_secret_arn" {
+  description = "Secrets Manager ARN for the signed intermediate CA certificate."
+  value       = aws_secretsmanager_secret.vault_pki_intermediate_ca_signed_csr.arn
+}

@@ -65,7 +65,7 @@ resource "tls_locally_signed_cert" "vault_bootstrap_tls_cert" {
 
 resource "aws_secretsmanager_secret" "vault_bootstrap_tls_ca_cert" {
   name_prefix = "${var.project_name}-vault-bootstrap-tls-ca-cert-"
-  description = "Bootstrap TLS CA certificate"
+  description = "Bootstrap TLS CA Certificate"
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-ca-cert" })
 }
@@ -154,4 +154,17 @@ resource "aws_ssm_parameter" "vault_pki_state" {
   }
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-pki-state" })
+}
+
+resource "aws_ssm_parameter" "vault_pki_intermediate_ca_csr" {
+  name        = "/${var.project_name}/vault/bootstrap/pki/intermediate-csr"
+  type        = "String"
+  value       = "Uninitialized"
+  description = "Bootstrap PKI Intermediate CA CSR"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+
+  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-pki-intermediate-ca-csr" })
 }

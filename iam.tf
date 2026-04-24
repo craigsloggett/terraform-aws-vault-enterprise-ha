@@ -145,6 +145,7 @@ data "aws_iam_policy_document" "vault_ssm" {
       aws_ssm_parameter.vault_cluster_state.arn,
       aws_ssm_parameter.vault_pki_state.arn,
       aws_ssm_parameter.vault_tls_ca_bundle.arn,
+      aws_ssm_parameter.vault_pki_intermediate_ca_csr.arn,
     ]
   }
 }
@@ -153,6 +154,24 @@ resource "aws_iam_role_policy" "vault_ssm" {
   name_prefix = "${var.project_name}-ssm-"
   role        = aws_iam_role.vault.id
   policy      = data.aws_iam_policy_document.vault_ssm.json
+}
+
+data "aws_iam_policy_document" "vault_pki_intermediate_ca_signed_csr" {
+  statement {
+    sid    = "IntermediateCARead"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret",
+    ]
+    resources = [aws_secretsmanager_secret.vault_pki_intermediate_ca_signed_csr.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "vault_pki_intermediate_ca_signed_csr" {
+  name_prefix = "${var.project_name}-pki-intermediate-ca-signed-csr-"
+  role        = aws_iam_role.vault.id
+  policy      = data.aws_iam_policy_document.vault_pki_intermediate_ca_signed_csr.json
 }
 
 data "aws_iam_policy_document" "vault_iam_read" {

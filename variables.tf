@@ -180,18 +180,6 @@ variable "vault_subdomain" {
   default     = "vault"
 }
 
-variable "vault_pki_organization" {
-  type        = string
-  description = "Organization name for the PKI root CA."
-  default     = "HashiCorp"
-}
-
-variable "vault_pki_country" {
-  type        = string
-  description = "Country code for the PKI root CA."
-  default     = "US"
-}
-
 variable "vault_version" {
   type        = string
   description = "Vault Enterprise release version (e.g., 1.21.4+ent)."
@@ -239,4 +227,37 @@ variable "vault_snapshot_retain" {
     condition     = var.vault_snapshot_retain >= 1
     error_message = "Must retain at least 1 snapshot."
   }
+}
+
+# PKI
+
+variable "vault_pki_intermediate_ca" {
+  description = "Configuration for the Vault PKI intermediate CA certificate."
+  default     = {}
+  type = object({
+    common_name = optional(string, "Vault Intermediate CA")
+    key_type    = optional(string, "rsa")
+    key_bits    = optional(number, 2048)
+  })
+
+  validation {
+    condition     = contains(["ec", "rsa"], var.vault_pki_intermediate_ca.key_type)
+    error_message = "key_type must be \"ec\" or \"rsa\"."
+  }
+
+  validation {
+    condition     = var.vault_pki_intermediate_ca.key_type != "ec" || contains([224, 256, 384, 521], var.vault_pki_intermediate_ca.key_bits)
+    error_message = "key_bits for ec must be 224, 256, 384, or 521."
+  }
+
+  validation {
+    condition     = var.vault_pki_intermediate_ca.key_type != "rsa" || contains([2048, 3072, 4096, 8192], var.vault_pki_intermediate_ca.key_bits)
+    error_message = "key_bits for rsa must be 2048, 3072, 4096, or 8192."
+  }
+}
+
+variable "vault_pki_signed_intermediate_wait_timeout_seconds" {
+  type        = number
+  description = "Maximum seconds the bootstrap node waits for the signed intermediate certificate to appear in Secrets Manager."
+  default     = 1800
 }
