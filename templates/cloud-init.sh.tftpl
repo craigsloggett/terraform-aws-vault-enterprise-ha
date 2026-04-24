@@ -69,10 +69,10 @@ readonly VAULT_PKI_VAULT_SERVER_ROLE_MAX_TTL="24h"
 readonly VAULT_PKI_SERVER_CERT_TTL="24h"
 readonly VAULT_PKI_STATE_SSM_NAME="${vault_pki_state_ssm_name}"
 readonly VAULT_TLS_CA_BUNDLE_SSM_NAME="${vault_tls_ca_bundle_ssm_name}"
-readonly VAULT_INTERMEDIATE_CA_SECRET_ARN="${intermediate_ca_secret_arn}"
-readonly VAULT_INTERMEDIATE_CA_COMMON_NAME="${vault_pki_intermediate_ca_common_name}"
-readonly VAULT_INTERMEDIATE_CA_KEY_TYPE="${vault_pki_intermediate_ca_key_type}"
-readonly VAULT_INTERMEDIATE_CA_KEY_BITS="${vault_pki_intermediate_ca_key_bits}"
+readonly VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN="${vault_pki_intermediate_ca_signed_csr_secret_arn}"
+readonly VAULT_PKI_INTERMEDIATE_CA_COMMON_NAME="${vault_pki_intermediate_ca_common_name}"
+readonly VAULT_PKI_INTERMEDIATE_CA_KEY_TYPE="${vault_pki_intermediate_ca_key_type}"
+readonly VAULT_PKI_INTERMEDIATE_CA_KEY_BITS="${vault_pki_intermediate_ca_key_bits}"
 readonly VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_NAME="${vault_pki_intermediate_ca_csr_ssm_name}"
 readonly VAULT_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS="${signed_intermediate_wait_timeout_seconds}"
 
@@ -350,8 +350,8 @@ join_cluster() {
 publish_tls_ca_bundle() {
   log_info "Publishing PKI managed TLS CA bundle to SSM"
 
-  vault_intermediate_ca_cert="$(vault read -field=certificate pki_vault/cert/ca)"
-  tls_ca_bundle="$(printf '%s\n%s\n' "$${vault_intermediate_ca_cert}" "$${VAULT_INTERMEDIATE_CA_CHAIN}")"
+  vault_pki_intermediate_ca_cert="$(vault read -field=certificate pki_vault/cert/ca)"
+  tls_ca_bundle="$(printf '%s\n%s\n' "$${vault_pki_intermediate_ca_cert}" "$${VAULT_PKI_INTERMEDIATE_CA_CHAIN}")"
   put_parameter "$${VAULT_TLS_CA_BUNDLE_SSM_NAME}" "$${tls_ca_bundle}"
 }
 
@@ -783,9 +783,9 @@ EOF
   csr_pem="$(
     vault write -format=json pki_vault/intermediate/generate/internal - <<EOF | jq -r '.data.csr'
 {
-  "common_name": "$${VAULT_INTERMEDIATE_CA_COMMON_NAME}",
-  "key_type": "$${VAULT_INTERMEDIATE_CA_KEY_TYPE}",
-  "key_bits": $${VAULT_INTERMEDIATE_CA_KEY_BITS}
+  "common_name": "$${VAULT_PKI_INTERMEDIATE_CA_COMMON_NAME}",
+  "key_type": "$${VAULT_PKI_INTERMEDIATE_CA_KEY_TYPE}",
+  "key_bits": $${VAULT_PKI_INTERMEDIATE_CA_KEY_BITS}
 }
 EOF
   )"
@@ -818,7 +818,7 @@ EOF
   fi
 
   # Cache the CA chain for publish_tls_ca_bundle
-  VAULT_INTERMEDIATE_CA_CHAIN="$${ca_chain}"
+  VAULT_PKI_INTERMEDIATE_CA_CHAIN="$${ca_chain}"
 
   # Import only the signed intermediate certificate (not the full chain).
   # Including the root CA in the bundle prevents Vault from linking the
@@ -1000,7 +1000,7 @@ fetch_signed_intermediate() {
     attempt=$((attempt + 1))
 
     secret_value="$(aws secretsmanager get-secret-value \
-      --secret-id "$${VAULT_INTERMEDIATE_CA_SECRET_ARN}" \
+      --secret-id "$${VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN}" \
       --query SecretString --output text 2>/dev/null)" || secret_value=""
 
     if [ -n "$${secret_value}" ] && printf '%s' "$${secret_value}" | jq -e '.certificate' >/dev/null 2>&1; then
@@ -1011,7 +1011,7 @@ fetch_signed_intermediate() {
     sleep "$${interval}"
   done
 
-  log_error "Timed out after $${VAULT_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS}s waiting for signed intermediate at $${VAULT_INTERMEDIATE_CA_SECRET_ARN}"
+  log_error "Timed out after $${VAULT_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS}s waiting for signed intermediate at $${VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN}"
   return 1
 }
 
@@ -1177,7 +1177,7 @@ main() {
   export VAULT_TLS_SERVER_NAME="$${VAULT_FQDN}"
   export VAULT_CACERT="$${VAULT_TLS_CA_FILE}"
 
-  VAULT_INTERMEDIATE_CA_CHAIN=""
+  VAULT_PKI_INTERMEDIATE_CA_CHAIN=""
 
   # Prepare System
   wait_for_network

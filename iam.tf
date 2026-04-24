@@ -156,7 +156,7 @@ resource "aws_iam_role_policy" "vault_ssm" {
   policy      = data.aws_iam_policy_document.vault_ssm.json
 }
 
-data "aws_iam_policy_document" "vault_intermediate_ca" {
+data "aws_iam_policy_document" "vault_pki_intermediate_ca_signed_csr" {
   statement {
     sid    = "IntermediateCARead"
     effect = "Allow"
@@ -164,14 +164,14 @@ data "aws_iam_policy_document" "vault_intermediate_ca" {
       "secretsmanager:GetSecretValue",
       "secretsmanager:DescribeSecret",
     ]
-    resources = [aws_secretsmanager_secret.vault_intermediate_ca.arn]
+    resources = [aws_secretsmanager_secret.vault_pki_intermediate_ca_signed_csr.arn]
   }
 }
 
-resource "aws_iam_role_policy" "vault_intermediate_ca" {
-  name_prefix = "${var.project_name}-intermediate-ca-"
+resource "aws_iam_role_policy" "vault_pki_intermediate_ca_signed_csr" {
+  name_prefix = "${var.project_name}-pki-intermediate-ca-signed-csr-"
   role        = aws_iam_role.vault.id
-  policy      = data.aws_iam_policy_document.vault_intermediate_ca.json
+  policy      = data.aws_iam_policy_document.vault_pki_intermediate_ca_signed_csr.json
 }
 
 data "aws_iam_policy_document" "vault_iam_read" {
