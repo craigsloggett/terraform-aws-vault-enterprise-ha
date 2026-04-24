@@ -826,8 +826,8 @@ EOF
   printf '%s\n' "$${signed_cert}" >"$${tmp_dir}/pki_vault_intermediate.pem"
   imported_issuer_id="$(
     vault write -format=json pki_vault/intermediate/set-signed \
-      certificate=@"$${tmp_dir}/pki_vault_intermediate.pem" \
-    | jq -r '.data.mapping | to_entries[] | select(.value != "") | .key'
+      certificate=@"$${tmp_dir}/pki_vault_intermediate.pem" |
+      jq -r '.data.mapping | to_entries[] | select(.value != "") | .key'
   )"
 
   rm -rf "$${tmp_dir}"
@@ -851,10 +851,11 @@ configure_vault_server_pki_role() {
   "allow_subdomains": false,
   "allow_localhost": false,
   "allow_ip_sans": false,
-  "max_ttl": "$${VAULT_PKI_VAULT_SERVER_ROLE_MAX_TTL}",
+  "ext_key_usage": ["serverAuth"],
   "key_type": "ec",
   "key_bits": 384,
-  "ext_key_usage": ["serverAuth"]
+  "max_ttl": "$${VAULT_PKI_VAULT_SERVER_ROLE_MAX_TTL}",
+  "not_before_duration": "0s"
 }
 EOF
 
