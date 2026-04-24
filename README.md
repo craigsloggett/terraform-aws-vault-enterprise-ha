@@ -8,7 +8,8 @@ Terraform module which deploys a Vault Enterprise cluster on AWS with Raft integ
 - AWS KMS auto-unseal
 - Raft auto-join via EC2 tag discovery
 - Automated cluster initialization with root token and recovery keys stored in Secrets Manager
-- PKI intermediate CA with externally signed CSR — Vault generates the CSR, an external CA signs it, and the signed certificate is imported automatically
+- PKI intermediate CA with externally signed CSR
+- Vault generates the CSR, an external CA signs it, and the signed certificate is imported automatically
 - Vault Agent for automated TLS certificate rotation using PKI-signed certificates
 - NLB with TCP passthrough (TLS terminates on the Vault nodes), internal by default
 - Route 53 DNS alias to the NLB
@@ -105,12 +106,12 @@ specified CIDRs. The Vault nodes remain in private subnets, only the NLB is
 internet-facing. Restrict `vault_api_allowed_cidrs` to known ranges where
 possible.
 
-## Security considerations
+## Security Considerations
 
 The Terraform `tls` provider stores bootstrap private key material (CA and
 server keys) in state as plaintext. These bootstrap certificates are short-lived
-(24 hours) and are replaced by Vault PKI-signed certificates during the
-bootstrap process. Ensure your state backend is encrypted (e.g., S3 with SSE).
+(minutes) and are replaced by Vault PKI-signed certificates during the bootstrap
+process. Ensure your state backend is encrypted (e.g., S3 with SSE).
 
 All nodes share a single bootstrap server certificate. This works because the
 certificate's `dns_names` includes the cluster FQDN, which Raft uses for
