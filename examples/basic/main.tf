@@ -66,7 +66,7 @@ module "vault" {
   vault_api_allowed_cidrs    = ["0.0.0.0/0"]
   vault_server_instance_type = "t3.medium"
 
-  hcp_terraform = {
+  hcp_terraform_jwt_auth = {
     hostname          = "app.terraform.io"
     organization_name = var.hcp_terraform_organization_name
   }

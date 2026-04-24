@@ -191,7 +191,7 @@ module "vault" {
   vault_api_allowed_cidrs    = ["0.0.0.0/0"]
   vault_server_instance_type = "t3.medium"
 
-  hcp_terraform = {
+  hcp_terraform_jwt_auth = {
     hostname          = "app.terraform.io"
     organization_name = var.hcp_terraform_organization_name
   }
@@ -223,7 +223,7 @@ module "vault" {
 | <a name="input_ec2_ami"></a> [ec2\_ami](#input\_ec2\_ami) | AMI to use for EC2 instances. Must be Ubuntu or Debian-based. | <pre>object({<br/>    id   = string<br/>    name = string<br/>  })</pre> | n/a | yes |
 | <a name="input_ec2_key_pair_name"></a> [ec2\_key\_pair\_name](#input\_ec2\_key\_pair\_name) | Name of an existing EC2 key pair for SSH access. | `string` | n/a | yes |
 | <a name="input_existing_vpc"></a> [existing\_vpc](#input\_existing\_vpc) | Existing VPC to deploy into. When null (default), a new VPC is created.<br/>The existing VPC must already have the required VPC endpoints:<br/>Secrets Manager, KMS, and EC2 (Interface), S3 (Gateway). | <pre>object({<br/>    vpc_id             = string<br/>    private_subnet_ids = list(string)<br/>    public_subnet_ids  = list(string)<br/>  })</pre> | `null` | no |
-| <a name="input_hcp_terraform"></a> [hcp\_terraform](#input\_hcp\_terraform) | HCP Terraform JWT auth configuration for Terraform-managed Vault administration. JWT is not configured if organization\_name is empty. When workspace\_id is provided, the admin role is bound to that specific workspace; when omitted, the role binds to the entire organization. | <pre>object({<br/>    hostname              = optional(string, "app.terraform.io")<br/>    organization_name     = optional(string, "")<br/>    workspace_id          = optional(string, "")<br/>    oidc_discovery_ca_pem = optional(string, "")<br/>    jwt_auth_path         = optional(string, "app-terraform-io")<br/>    jwt_auth_role_name    = optional(string, "terraform-admin")<br/>  })</pre> | `{}` | no |
+| <a name="input_hcp_terraform_jwt_auth"></a> [hcp\_terraform\_jwt\_auth](#input\_hcp\_terraform\_jwt\_auth) | Configuration for the HCP Terraform JWT auth method that provides<br/>dynamic, short-lived Vault credentials to HCP Terraform workspaces.<br/>When `organization_name` and `workspace_id` are set, a JWT auth method<br/>is mounted at `mount_path` in the root namespace and configured to<br/>verify tokens against `hostname` via OIDC discovery. A role named<br/>`role_name` is created against that mount with `bound_claims`<br/>restricting authentication to the declared organization and workspace. | <pre>object({<br/>    hostname              = optional(string, "app.terraform.io")<br/>    organization_name     = optional(string, "")<br/>    workspace_id          = optional(string, "")<br/>    oidc_discovery_ca_pem = optional(string, "")<br/>    mount_path            = optional(string, "app-terraform-io")<br/>    role_name             = optional(string, "terraform-admin")<br/>  })</pre> | `{}` | no |
 | <a name="input_nlb_internal"></a> [nlb\_internal](#input\_nlb\_internal) | Whether the NLB is internal. | `bool` | `true` | no |
 | <a name="input_project_name"></a> [project\_name](#input\_project\_name) | Name prefix for all resources. | `string` | n/a | yes |
 | <a name="input_root_volume_size"></a> [root\_volume\_size](#input\_root\_volume\_size) | Size in GiB of the root EBS volume for Vault nodes. | `number` | `50` | no |

@@ -50,12 +50,12 @@ output "vault_iam_role_name" {
 
 output "vault_jwt_auth_path" {
   description = "Vault JWT auth method path for HCP Terraform (TFC_VAULT_AUTH_PATH)."
-  value       = var.hcp_terraform.jwt_auth_path
+  value       = var.hcp_terraform_jwt_auth.mount_path
 }
 
 output "vault_jwt_auth_role_name" {
   description = "Vault JWT auth role name for HCP Terraform (TFC_VAULT_RUN_ROLE)."
-  value       = var.hcp_terraform.jwt_auth_role_name
+  value       = var.hcp_terraform_jwt_auth.role_name
 }
 
 output "vault_pki_intermediate_ca_csr_ssm_parameter_name" {
