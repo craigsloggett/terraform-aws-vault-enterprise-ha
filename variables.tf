@@ -235,9 +235,11 @@ variable "vault_pki_intermediate_ca" {
   description = "Configuration for the Vault PKI intermediate CA certificate."
   default     = {}
   type = object({
-    common_name = optional(string, "Vault Intermediate CA")
-    key_type    = optional(string, "rsa")
-    key_bits    = optional(number, 2048)
+    common_name  = optional(string, "Vault Intermediate CA")
+    country      = optional(string, "")
+    organization = optional(string, "")
+    key_type     = optional(string, "rsa")
+    key_bits     = optional(number, 2048)
   })
 
   validation {

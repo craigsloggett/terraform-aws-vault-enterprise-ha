@@ -71,6 +71,8 @@ readonly VAULT_PKI_STATE_SSM_NAME="${vault_pki_state_ssm_name}"
 readonly VAULT_TLS_CA_BUNDLE_SSM_NAME="${vault_tls_ca_bundle_ssm_name}"
 readonly VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN="${vault_pki_intermediate_ca_signed_csr_secret_arn}"
 readonly VAULT_PKI_INTERMEDIATE_CA_COMMON_NAME="${vault_pki_intermediate_ca_common_name}"
+readonly VAULT_PKI_INTERMEDIATE_CA_COUNTRY="${vault_pki_intermediate_ca_country}"
+readonly VAULT_PKI_INTERMEDIATE_CA_ORGANIZATION="${vault_pki_intermediate_ca_organization}"
 readonly VAULT_PKI_INTERMEDIATE_CA_KEY_TYPE="${vault_pki_intermediate_ca_key_type}"
 readonly VAULT_PKI_INTERMEDIATE_CA_KEY_BITS="${vault_pki_intermediate_ca_key_bits}"
 readonly VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_NAME="${vault_pki_intermediate_ca_csr_ssm_name}"
@@ -784,6 +786,8 @@ EOF
     vault write -format=json pki_vault/intermediate/generate/internal - <<EOF | jq -r '.data.csr'
 {
   "common_name": "$${VAULT_PKI_INTERMEDIATE_CA_COMMON_NAME}",
+  "country": "$${VAULT_PKI_INTERMEDIATE_CA_COUNTRY}",
+  "organization": "$${VAULT_PKI_INTERMEDIATE_CA_ORGANIZATION}",
   "key_type": "$${VAULT_PKI_INTERMEDIATE_CA_KEY_TYPE}",
   "key_bits": $${VAULT_PKI_INTERMEDIATE_CA_KEY_BITS}
 }
@@ -851,6 +855,8 @@ configure_vault_server_pki_role() {
   "allow_subdomains": false,
   "allow_localhost": false,
   "allow_ip_sans": false,
+  "country": ["$${VAULT_PKI_INTERMEDIATE_CA_COUNTRY}"],
+  "organization": ["$${VAULT_PKI_INTERMEDIATE_CA_ORGANIZATION}"],
   "ext_key_usage": ["serverAuth"],
   "key_type": "ec",
   "key_bits": 384,

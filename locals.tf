@@ -15,6 +15,14 @@ locals {
   ebs_raft_device_name    = "/dev/xvdf"
   ebs_audit_device_name   = "/dev/xvdg"
 
+  vault_pki_intermediate_ca = {
+    common_name  = "${title(var.project_name)} ${var.vault_pki_intermediate_ca.common_name}"
+    country      = var.vault_pki_intermediate_ca.country
+    organization = var.vault_pki_intermediate_ca.organization
+    key_type     = var.vault_pki_intermediate_ca.key_type
+    key_bits     = var.vault_pki_intermediate_ca.key_bits
+  }
+
   # ---------------------------------------------------------------------------
   # Vault cluster configuration content
   # ---------------------------------------------------------------------------
