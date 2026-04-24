@@ -157,7 +157,7 @@ resource "aws_ssm_parameter" "vault_pki_state" {
 }
 
 resource "aws_ssm_parameter" "vault_pki_intermediate_ca_csr" {
-  name        = "/${var.project_name}/vault/pki/intermediate-csr"
+  name        = "/${var.project_name}/vault/bootstrap/pki/intermediate-csr"
   type        = "String"
   value       = "Uninitialized"
   description = "Bootstrap PKI Intermediate CA CSR"

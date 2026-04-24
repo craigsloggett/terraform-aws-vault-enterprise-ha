@@ -74,7 +74,7 @@ readonly VAULT_PKI_INTERMEDIATE_CA_COMMON_NAME="${vault_pki_intermediate_ca_comm
 readonly VAULT_PKI_INTERMEDIATE_CA_KEY_TYPE="${vault_pki_intermediate_ca_key_type}"
 readonly VAULT_PKI_INTERMEDIATE_CA_KEY_BITS="${vault_pki_intermediate_ca_key_bits}"
 readonly VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_NAME="${vault_pki_intermediate_ca_csr_ssm_name}"
-readonly VAULT_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS="${signed_intermediate_wait_timeout_seconds}"
+readonly VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS="${vault_pki_signed_intermediate_wait_timeout_seconds}"
 
 # AWS Auth
 readonly VAULT_IAM_ROLE_ARN="${vault_iam_role_arn}"
@@ -790,7 +790,7 @@ EOF
 EOF
   )"
 
-  # Publish the CSR to SSM for the Terraform external data source to read
+  # Publish the CSR to SSM for an external process to sign
   log_info "Publishing intermediate CSR to $${VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_NAME}"
   put_parameter "$${VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_NAME}" "$${csr_pem}"
 
@@ -994,7 +994,7 @@ fetch_tls_ca_bundle() {
 
 fetch_signed_intermediate() {
   interval=10
-  max_attempts=$((VAULT_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS / interval))
+  max_attempts=$((VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS / interval))
   attempt=0
 
   while [ "$${attempt}" -lt "$${max_attempts}" ]; do
@@ -1012,7 +1012,7 @@ fetch_signed_intermediate() {
     sleep "$${interval}"
   done
 
-  log_error "Timed out after $${VAULT_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS}s waiting for signed intermediate at $${VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN}"
+  log_error "Timed out after $${VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS}s waiting for signed intermediate at $${VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN}"
   return 1
 }
 

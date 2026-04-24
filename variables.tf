@@ -256,7 +256,7 @@ variable "vault_pki_intermediate_ca" {
   }
 }
 
-variable "signed_intermediate_wait_timeout_seconds" {
+variable "vault_pki_signed_intermediate_wait_timeout_seconds" {
   type        = number
   description = "Maximum seconds the bootstrap node waits for the signed intermediate certificate to appear in Secrets Manager."
   default     = 1800
