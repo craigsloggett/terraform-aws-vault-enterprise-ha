@@ -77,7 +77,7 @@ resource "aws_secretsmanager_secret_version" "vault_bootstrap_tls_ca_cert" {
 
 resource "aws_secretsmanager_secret" "vault_bootstrap_tls_cert" {
   name_prefix = "${var.project_name}-vault-bootstrap-tls-cert-"
-  description = "Bootstrap TLS Certificate"
+  description = "Vault Bootstrap TLS Certificate"
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-cert" })
 }
@@ -89,7 +89,7 @@ resource "aws_secretsmanager_secret_version" "vault_bootstrap_tls_cert" {
 
 resource "aws_secretsmanager_secret" "vault_bootstrap_tls_private_key" {
   name_prefix = "${var.project_name}-vault-bootstrap-tls-private-key-"
-  description = "Bootstrap TLS Private Key"
+  description = "Vault Bootstrap TLS Private Key"
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-private-key" })
 }
@@ -123,7 +123,7 @@ data "aws_iam_policy_document" "vault_bootstrap_tls_private_key" {
 
 resource "aws_secretsmanager_secret" "vault_bootstrap_root_token" {
   name_prefix = "${var.project_name}-vault-bootstrap-root-token-"
-  description = "Bootstrap Root Token"
+  description = "Vault Bootstrap Root Token"
 
   tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-root-token" })
 }
