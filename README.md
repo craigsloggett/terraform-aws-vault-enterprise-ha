@@ -1,17 +1,23 @@
 # HashiCorp Vault Enterprise Terraform Module
 
-Terraform module which deploys a 3-node Vault Enterprise cluster on AWS with Raft integrated storage.
+Terraform module which deploys a Vault Enterprise cluster on AWS with Raft integrated storage and Vault PKI-managed TLS.
 
 ## Architecture
 
-- 3 Vault nodes across separate availability zones, each with a dedicated EBS volume for Raft storage
+- 3 (or 5) Vault nodes across separate availability zones, each with dedicated EBS volumes for Raft storage and audit logs
 - AWS KMS auto-unseal
 - Raft auto-join via EC2 tag discovery
+- Automated cluster initialization with root token and recovery keys stored in Secrets Manager
+- PKI intermediate CA with externally signed CSR — Vault generates the CSR, an external CA signs it, and the signed certificate is imported automatically
+- Vault Agent for automated TLS certificate rotation using PKI-signed certificates
 - NLB with TCP passthrough (TLS terminates on the Vault nodes), internal by default
 - Route 53 DNS alias to the NLB
-- TLS certificates and license stored in AWS Secrets Manager
+- Bootstrap TLS certificates and Vault Enterprise license stored in AWS Secrets Manager
+- SSM Parameter Store for cluster and PKI state coordination
 - Bastion host for SSH access to the private Vault nodes
 - VPC endpoints for EC2, KMS, Secrets Manager, and S3
+- AWS IAM auth method for Vault Agent authentication
+- Optional HCP Terraform JWT auth method for Terraform-managed Vault administration
 
 ## Prerequisites
 
@@ -19,27 +25,64 @@ Terraform module which deploys a 3-node Vault Enterprise cluster on AWS with Raf
 - A Vault Enterprise license
 - An EC2 key pair
 - An Ubuntu or Debian-based AMI
+- An external CA capable of signing the Vault PKI intermediate CSR (see [PKI intermediate CA](#pki-intermediate-ca))
 
 ## Post-deployment
 
-After `terraform apply`, the Vault service starts automatically but the cluster
-is not yet initialized. Run `vault operator init` against any node to initialize
-the cluster. The remaining nodes will auto-join via Raft and auto-unseal via KMS.
+After `terraform apply`, the cluster bootstraps automatically:
 
-See [`examples/basic/`](examples/basic/) for operational scripts that automate
-validation, initialization, and smoke testing.
+1. The bootstrap node initializes the cluster (`vault operator init`), stores the root token and recovery keys in Secrets Manager, and marks the cluster as ready in SSM.
+2. Remaining nodes auto-join via Raft and auto-unseal via KMS.
+3. The bootstrap node enables the Vault PKI secrets engine, generates an intermediate CA CSR, and publishes it to SSM. It then waits for an external process to sign the CSR and store the signed certificate in Secrets Manager.
+4. Once the signed certificate is available, all nodes issue PKI-signed server certificates and Vault Agent begins automated TLS rotation.
+
+Retrieve the root token after deployment (the secret name is prefixed with
+`<project-name>-vault-bootstrap-root-token-`):
+
+```bash
+aws secretsmanager list-secrets \
+  --filter Key=name,Values=<project-name>-vault-bootstrap-root-token \
+  --query "SecretList[0].ARN" --output text \
+| xargs -I{} aws secretsmanager get-secret-value \
+  --secret-id {} --query SecretString --output text
+```
+
+## PKI intermediate CA
+
+This module uses a signed CSR pattern for the Vault PKI intermediate CA. During bootstrap, Vault generates a CSR internally (the private key never leaves Vault) and publishes it to SSM. An external process must sign the CSR and store the result in Secrets Manager before the cluster can complete its PKI setup.
+
+The workflow:
+
+1. Vault publishes the intermediate CA CSR to the SSM parameter named in the `vault_pki_intermediate_ca_csr_ssm_parameter_name` output.
+2. An external process reads the CSR, signs it with a root or intermediate CA, and writes the signed certificate to the Secrets Manager secret identified by the `vault_pki_intermediate_ca_signed_csr_secret_arn` output. The secret value must be a JSON object:
+
+   ```json
+   {
+     "certificate": "<signed-intermediate-cert-pem>",
+     "ca_chain": "<root-and-intermediate-ca-chain-pem>"
+   }
+   ```
+
+3. Vault imports the signed certificate, publishes the CA bundle to SSM, issues PKI-signed server certificates, and starts Vault Agent for ongoing TLS rotation.
+
+The bootstrap node waits up to `vault_pki_signed_intermediate_wait_timeout_seconds` (default 1800) for the signed certificate to appear.
+
+See [`examples/basic/`](examples/basic/) for a reference implementation that uses a Terraform-managed root CA to sign the CSR automatically.
 
 ## Cluster access
 
-The CA certificate for TLS verification is available as a Terraform output:
+After the PKI bootstrap completes, the TLS CA bundle is published to SSM. Retrieve it using the parameter name from the `vault_tls_ca_bundle_ssm_parameter_name` output:
 
 ```bash
-terraform output -raw vault_ca_cert > vault-ca.crt
+aws ssm get-parameter \
+  --name "$(terraform output -raw vault_tls_ca_bundle_ssm_parameter_name)" \
+  --query "Parameter.Value" --output text > vault-ca.crt
 
-export VAULT_ADDR="https://vault.<your-domain>:8200"
+export VAULT_ADDR="$(terraform output -raw vault_url)"
 export VAULT_CACERT=vault-ca.crt
 vault status
 ```
+
 ## Network access
 
 By default, the NLB is internal and the Vault API is only reachable from within
@@ -64,12 +107,15 @@ possible.
 
 ## Security considerations
 
-The Terraform `tls` provider stores private key material (CA and server keys) in
-state as plaintext. Ensure your state backend is encrypted (e.g., S3 with SSE).
+The Terraform `tls` provider stores bootstrap private key material (CA and
+server keys) in state as plaintext. These bootstrap certificates are short-lived
+(24 hours) and are replaced by Vault PKI-signed certificates during the
+bootstrap process. Ensure your state backend is encrypted (e.g., S3 with SSE).
 
-All three Vault nodes share a single server certificate. This works because the
+All nodes share a single bootstrap server certificate. This works because the
 certificate's `dns_names` includes the cluster FQDN, which Raft uses for
-`leader_tls_servername` during auto-join.
+`leader_tls_servername` during auto-join. After PKI bootstrap, each node
+receives its own PKI-signed certificate rotated automatically by Vault Agent.
 
 <!-- BEGIN_TF_DOCS -->
 ## Usage
