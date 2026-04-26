@@ -772,6 +772,10 @@ configure_pki_vault_secrets_engine() {
 }
 
 configure_pki_vault_intermediate_ca() (
+  set -euf
+  tmp_dir=$(mktemp -d -p "$${TMPDIR_SESSION}") || return 1
+  trap 'rm -rf "${tmp_dir}"' EXIT INT TERM HUP
+
   log_info "Configuring Vault PKI intermediate CA"
 
   vault write pki_vault/config/urls - >/dev/null <<EOF
@@ -829,10 +833,10 @@ EOF
   # Import the signed intermediate certificate with the full CA chain so
   # that Vault includes the root CA in issued certificate chains. The jq
   # filter below selects the intermediate issuer by its non-empty key_id.
-  printf '%s\n%s\n' "$${signed_cert}" "$${ca_chain}" >"$${TMPDIR_SESSION}/pki_vault_intermediate.pem"
+  printf '%s\n%s\n' "$${signed_cert}" "$${ca_chain}" >"$${tmp_dir}/pki_vault_intermediate.pem"
   imported_issuer_id="$(
     vault write -format=json pki_vault/intermediate/set-signed \
-      certificate=@"$${TMPDIR_SESSION}/pki_vault_intermediate.pem" |
+      certificate=@"$${tmp_dir}/pki_vault_intermediate.pem" |
       jq -r '.data.mapping | to_entries[] | select(.value != "") | .key'
   )"
 
