@@ -15,9 +15,9 @@
 set -euf
 
 # Session-scoped temporary directory.
-TMPDIR_SESSION=$(mktemp -d) || exit 1
+TMPDIR_SESSION="$(mktemp -d)" || exit 1
 readonly TMPDIR_SESSION
-trap 'rm -rf "$TMPDIR_SESSION"' EXIT INT TERM HUP
+trap 'rm -rf "$${TMPDIR_SESSION}"' EXIT INT TERM HUP
 
 # Vault Directories
 readonly VAULT_HOME_DIR="/opt/vault"
@@ -774,7 +774,7 @@ configure_pki_vault_secrets_engine() {
 configure_pki_vault_intermediate_ca() (
   set -euf
   tmp_dir=$(mktemp -d -p "$${TMPDIR_SESSION}") || return 1
-  trap 'rm -rf "${tmp_dir}"' EXIT INT TERM HUP
+  trap 'rm -rf "$${tmp_dir}"' EXIT INT TERM HUP
 
   log_info "Configuring Vault PKI intermediate CA"
 
