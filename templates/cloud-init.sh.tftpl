@@ -694,8 +694,8 @@ wait_for_vault_api() (
 
 wait_for_vault_unsealed() (
   set -euf
-  tmp_err=$(mktemp -p "$${TMPDIR_SESSION}") || return 1
-  trap 'rm -f "$${tmp_err}"' EXIT INT TERM HUP
+  tmp_file=$(mktemp -p "$${TMPDIR_SESSION}") || return 1
+  trap 'rm -f "$${tmp_file}"' EXIT INT TERM HUP
 
   log_info "Waiting for the Vault cluster to be unsealed"
 
@@ -706,7 +706,7 @@ wait_for_vault_unsealed() (
     attempt=$((attempt + 1))
 
     vault_status_exit_code=0
-    vault status -format=json >/dev/null 2>"$${tmp_err}" || vault_status_exit_code="$?"
+    vault status -format=json >/dev/null 2>"$${tmp_file}" || vault_status_exit_code="$?"
 
     case "$${vault_status_exit_code}" in
       0)
@@ -718,7 +718,7 @@ wait_for_vault_unsealed() (
         ;;
       *)
         log_warn "Vault returned an error when querying status:"
-        log_warn "$(cat "$${tmp_err}")"
+        log_warn "$(cat "$${tmp_file}")"
         ;;
     esac
 
@@ -1128,10 +1128,11 @@ configure_jwt_auth_method() (
   # or self-signed CA certificate.
   ca_pem_arg=""
   if [ -n "$${HCP_TERRAFORM_JWT_AUTH_OIDC_DISCOVERY_CA_PEM:-}" ]; then
-    tmp_ca_pem=$(mktemp -p "$${TMPDIR_SESSION}") || return 1
-    trap 'rm -f "$${tmp_ca_pem}"' EXIT INT TERM HUP
-    printf '%s' "$${HCP_TERRAFORM_JWT_AUTH_OIDC_DISCOVERY_CA_PEM}" >"$${tmp_ca_pem}"
-    ca_pem_arg="oidc_discovery_ca_pem=@$${tmp_ca_pem}"
+    tmp_file=$(mktemp -p "$${TMPDIR_SESSION}") || return 1
+    trap 'rm -f "$${tmp_file}"' EXIT INT TERM HUP
+
+    printf '%s' "$${HCP_TERRAFORM_JWT_AUTH_OIDC_DISCOVERY_CA_PEM}" >"$${tmp_file}"
+    ca_pem_arg="oidc_discovery_ca_pem=@$${tmp_file}"
   fi
 
   vault write "auth/$${HCP_TERRAFORM_JWT_AUTH_MOUNT_PATH}/config" \
