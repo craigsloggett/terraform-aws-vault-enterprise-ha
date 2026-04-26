@@ -12,7 +12,12 @@
 
 # shellcheck disable=SC1083,SC2034,SC2086,SC2154,SC2157,SC2170,SC2193,SC2195,SC2269,SC2288
 
-set -ef
+set -euf
+
+# Session-scoped temporary directory.
+TMPDIR_SESSION=$(mktemp -d) || exit 1
+readonly TMPDIR_SESSION
+trap 'rm -rf "$TMPDIR_SESSION"' EXIT INT TERM HUP
 
 # Vault Directories
 readonly VAULT_HOME_DIR="/opt/vault"
@@ -766,11 +771,11 @@ configure_pki_vault_secrets_engine() {
   log_info "Vault PKI secrets engine enabled"
 }
 
-configure_pki_vault_intermediate_ca() {
-  log_info "Configuring Vault PKI intermediate CA"
+configure_pki_vault_intermediate_ca() (
+  tmp=$(mktemp -p "$${TMPDIR_SESSION}") || return 1
+  trap 'rm -rf "$${tmp}"' EXIT
 
-  tmp_dir="$(mktemp -d)"
-  trap 'rm -rf "$${tmp_dir}"' EXIT
+  log_info "Configuring Vault PKI intermediate CA"
 
   vault write pki_vault/config/urls - >/dev/null <<EOF
 {
@@ -827,15 +832,12 @@ EOF
   # Import the signed intermediate certificate with the full CA chain so
   # that Vault includes the root CA in issued certificate chains. The jq
   # filter below selects the intermediate issuer by its non-empty key_id.
-  printf '%s\n%s\n' "$${signed_cert}" "$${ca_chain}" >"$${tmp_dir}/pki_vault_intermediate.pem"
+  printf '%s\n%s\n' "$${signed_cert}" "$${ca_chain}" >"$${tmp}/pki_vault_intermediate.pem"
   imported_issuer_id="$(
     vault write -format=json pki_vault/intermediate/set-signed \
-      certificate=@"$${tmp_dir}/pki_vault_intermediate.pem" |
+      certificate=@"$${tmp}/pki_vault_intermediate.pem" |
       jq -r '.data.mapping | to_entries[] | select(.value != "") | .key'
   )"
-
-  rm -rf "$${tmp_dir}"
-  trap - EXIT
 
   # Set the imported issuer as the default so cert/ca and issue endpoints work
   vault write pki_vault/config/issuers \
@@ -843,7 +845,7 @@ EOF
     >/dev/null
 
   log_info "Intermediate CA signed and imported"
-}
+)
 
 configure_vault_server_pki_role() {
   log_info "Creating vault-server PKI role"
