@@ -400,11 +400,6 @@ prepare_disk() (
   mount_point="$${2}"
   fs_label="$${3}"
 
-  if ! command -v ebsnvme-id >/dev/null 2>&1; then
-    log_error "ebsnvme-id not found, ensure amazon-ec2-utils is installed in the AMI"
-    return 1
-  fi
-
   for attempt in 1 2 3 4 5; do
     if device="$(resolve_ebs_nvme_device "$${device_attachment_name}")"; then
       break
@@ -445,6 +440,23 @@ prepare_disk() (
 #######################################
 #        Configure Host System        #
 #######################################
+
+verify_prerequisites() (
+  set -euf
+  log_info "Verifying AMI-provided prerequisites"
+
+  missing=""
+  for cmd in mkfs.xfs blkid mountpoint mount curl getent groupadd useradd systemctl timedatectl apt-get; do
+    if ! command -v "$${cmd}" >/dev/null 2>&1; then
+      missing="$${missing} $${cmd}"
+    fi
+  done
+
+  if [ -n "$${missing}" ]; then
+    log_error "AMI is missing required binaries:$${missing}"
+    return 1
+  fi
+)
 
 wait_for_network() (
   for attempt in 1 2 3 4 5; do
@@ -1193,6 +1205,10 @@ EOF
 )
 
 main() {
+  # Verify AMI-provided utilities are available.
+  verify_prerequisites
+
+  # Export Vault CLI environment variables early.
   export VAULT_ADDR="https://127.0.0.1:8200"
   export VAULT_TLS_SERVER_NAME="$${VAULT_FQDN}"
   export VAULT_CACERT="$${VAULT_TLS_CA_FILE}"
