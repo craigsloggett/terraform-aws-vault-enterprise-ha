@@ -46,7 +46,6 @@ readonly VAULT_AGENT_RELOAD_RULES_FILE="/etc/polkit-1/rules.d/10-vault-agent-rel
 # Environment
 readonly VAULT_VERSION="${vault_version}"
 readonly VAULT_FQDN="${vault_fqdn}"
-readonly AWS_REGION="${aws_region}"
 
 # EBS Volumes
 readonly EBS_RAFT_DEVICE_NAME="${ebs_raft_device_name}"
@@ -67,11 +66,9 @@ readonly VAULT_RECOVERY_KEYS_SECRET_ARN="${vault_recovery_keys_secret_arn}"
 readonly VAULT_MINIMUM_QUORUM_SIZE="${vault_minimum_quorum_size}"
 
 # PKI and TLS
-readonly CLUSTER_NAME="${cluster_name}"
-readonly VAULT_PKI_VAULT_MOUNT_MAX_TTL="26280h"
-readonly VAULT_PKI_VAULT_CA_TTL="26280h"
-readonly VAULT_PKI_VAULT_SERVER_ROLE_MAX_TTL="24h"
-readonly VAULT_PKI_SERVER_CERT_TTL="24h"
+readonly VAULT_PKI_VAULT_MOUNT_MAX_TTL="${vault_pki_vault_mount_max_ttl}"
+readonly VAULT_PKI_VAULT_SERVER_ROLE_MAX_TTL="${vault_pki_vault_server_role_max_ttl}"
+readonly VAULT_PKI_SERVER_CERT_TTL="${vault_pki_server_cert_ttl}"
 readonly VAULT_PKI_STATE_SSM_NAME="${vault_pki_state_ssm_name}"
 readonly VAULT_TLS_CA_BUNDLE_SSM_NAME="${vault_tls_ca_bundle_ssm_name}"
 readonly VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN="${vault_pki_intermediate_ca_signed_csr_secret_arn}"
@@ -85,8 +82,8 @@ readonly VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS="${vault_pki_signed_
 
 # AWS Auth
 readonly VAULT_IAM_ROLE_ARN="${vault_iam_role_arn}"
-readonly VAULT_AWS_AUTH_ROLE_MAX_TTL="24h"
-readonly VAULT_AWS_AUTH_ROLE_TTL="4h"
+readonly VAULT_AWS_AUTH_ROLE_MAX_TTL="${vault_aws_auth_role_max_ttl}"
+readonly VAULT_AWS_AUTH_ROLE_TTL="${vault_aws_auth_role_ttl}"
 
 # HCP Terraform JWT Auth
 readonly HCP_TERRAFORM_JWT_AUTH_HOSTNAME="${hcp_terraform_jwt_auth_hostname}"
@@ -95,25 +92,22 @@ readonly HCP_TERRAFORM_JWT_AUTH_WORKSPACE_ID="${hcp_terraform_jwt_auth_workspace
 readonly HCP_TERRAFORM_JWT_AUTH_OIDC_DISCOVERY_CA_PEM="${hcp_terraform_jwt_auth_oidc_discovery_ca_pem}"
 readonly HCP_TERRAFORM_JWT_AUTH_MOUNT_PATH="${hcp_terraform_jwt_auth_mount_path}"
 readonly HCP_TERRAFORM_JWT_AUTH_ROLE_NAME="${hcp_terraform_jwt_auth_role_name}"
-readonly VAULT_JWT_AUTH_ROLE_TTL="1h"
-readonly VAULT_JWT_AUTH_ROLE_MAX_TTL="2h"
+readonly VAULT_JWT_AUTH_ROLE_MAX_TTL="${vault_jwt_auth_role_max_ttl}"
+readonly VAULT_JWT_AUTH_ROLE_TTL="${vault_jwt_auth_role_ttl}"
 
 #######################################
 #           Logging Helpers           #
 #######################################
 
 log_info() (
-  set -euf
-  printf '[INFO]  %s\n' "$${1}"
+  printf '[INFO]  %s\n' "$${1}" >&2
 )
 
 log_warn() (
-  set -euf
   printf '[WARN]  %s\n' "$${1}" >&2
 )
 
 log_error() (
-  set -euf
   printf '[ERROR] %s\n' "$${1}" >&2
 )
 
@@ -122,14 +116,12 @@ log_error() (
 #######################################
 
 get_imds_token() (
-  set -euf
   curl -s -X PUT \
     -H "X-aws-ec2-metadata-token-ttl-seconds: 3600" \
     "http://169.254.169.254/latest/api/token"
 )
 
 get_imds_metadata() (
-  set -euf
   path="$${1}"
   token="$(get_imds_token)"
   curl -s -H "X-aws-ec2-metadata-token: $${token}" \
@@ -137,17 +129,14 @@ get_imds_metadata() (
 )
 
 get_private_ip() (
-  set -euf
   get_imds_metadata "local-ipv4"
 )
 
 get_instance_id() (
-  set -euf
   get_imds_metadata "instance-id"
 )
 
 get_availability_zone() (
-  set -euf
   get_imds_metadata "placement/availability-zone"
 )
 
@@ -156,7 +145,6 @@ get_availability_zone() (
 #######################################
 
 fetch_secret() (
-  set -euf
   secret_arn="$${1}"
 
   for attempt in 1 2 3 4 5; do
@@ -174,7 +162,6 @@ fetch_secret() (
 )
 
 put_secret() (
-  set -euf
   secret_arn="$${1}"
   secret_value="$${2}"
 
@@ -189,7 +176,6 @@ put_secret() (
 #######################################
 
 fetch_parameter() (
-  set -euf
   parameter_name="$${1}"
 
   aws ssm get-parameter \
@@ -199,7 +185,6 @@ fetch_parameter() (
 )
 
 put_parameter() (
-  set -euf
   parameter_name="$${1}"
   parameter_value="$${2}"
 
@@ -216,7 +201,6 @@ put_parameter() (
 #######################################
 
 write_vault_bootstrap_tls_materials() (
-  set -euf
   cluster_state="$(fetch_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}" 2>/dev/null)" || cluster_state=""
   pki_state="$(fetch_parameter "$${VAULT_PKI_STATE_SSM_NAME}" 2>/dev/null)" || pki_state=""
 
@@ -260,7 +244,6 @@ write_vault_bootstrap_tls_materials() (
 )
 
 get_vault_node_role() (
-  set -euf
   cluster_state="$(fetch_parameter "$${VAULT_CLUSTER_STATE_SSM_NAME}" 2>/dev/null)" || cluster_state=""
 
   if [ "$${cluster_state}" = "Ready" ]; then
@@ -274,42 +257,48 @@ get_vault_node_role() (
   fi
 )
 
+list_cluster_instance_ids() (
+  for attempt in 1 2 3 4 5; do
+    if result="$(
+      aws ec2 describe-instances \
+        --filters \
+          "Name=tag:$${VAULT_CLUSTER_TAG_KEY},Values=$${VAULT_CLUSTER_TAG_VALUE}" \
+          "Name=instance-state-name,Values=running" \
+        --query "Reservations[].Instances[].InstanceId" \
+        --output text 2>/dev/null
+    )"; then
+      printf '%s' "$${result}"
+      return 0
+    fi
+    sleep 5
+  done
+
+  log_error "Failed to list cluster instances after $${attempt} attempts, failing bootstrap"
+  return 1
+)
+
 is_bootstrap_node() (
-  set -euf
   instance_id="$(get_instance_id)"
 
-  # Fetch all running instance IDs in this cluster by tag.
-  all_ids="$(
-    aws ec2 describe-instances \
-      --filters \
-      "Name=tag:$${VAULT_CLUSTER_TAG_KEY},Values=$${VAULT_CLUSTER_TAG_VALUE}" \
-      "Name=instance-state-name,Values=running" \
-      --query "Reservations[].Instances[].InstanceId" \
-      --output text
-  )"
-
+  all_ids="$(list_cluster_instance_ids)"
   lowest_id="$(printf '%s' "$${all_ids}" | tr '\t' '\n' | sort | head -1)"
 
   [ "$${instance_id}" = "$${lowest_id}" ]
 )
 
 fetch_bootstrap_ca() (
-  set -euf
   fetch_secret "$${BOOTSTRAP_TLS_CA_SECRET_ARN}"
 )
 
 fetch_bootstrap_tls_cert() (
-  set -euf
   fetch_secret "$${BOOTSTRAP_TLS_CERT_SECRET_ARN}"
 )
 
 fetch_bootstrap_tls_private_key() (
-  set -euf
   fetch_secret "$${BOOTSTRAP_TLS_PRIVATE_KEY_SECRET_ARN}"
 )
 
 fetch_vault_license() (
-  set -euf
   fetch_secret "$${VAULT_ENTERPRISE_LICENSE_SECRET_ARN}"
 )
 
@@ -318,7 +307,6 @@ fetch_vault_license() (
 #######################################
 
 initialize_vault_cluster() (
-  set -euf
   log_info "Initializing Vault cluster"
 
   if vault status -format=json 2>/dev/null | jq -e '.initialized == true' >/dev/null; then
@@ -352,7 +340,6 @@ initialize_vault_cluster() (
 )
 
 join_cluster() (
-  set -euf
   log_info "Joining the Vault cluster"
 
   # 60 attempts x 10s = 10 minutes.
@@ -376,16 +363,16 @@ join_cluster() (
 )
 
 publish_tls_ca_bundle() (
-  set -euf
   log_info "Publishing PKI managed TLS CA bundle to SSM"
 
-  vault_pki_intermediate_ca_cert="$(vault read -field=certificate pki_vault/cert/ca)"
-  tls_ca_bundle="$(printf '%s\n%s\n' "$${vault_pki_intermediate_ca_cert}" "$${VAULT_PKI_INTERMEDIATE_CA_CHAIN}")"
+  ca_bundle_response_file="$${TMPDIR_SESSION}/issuer_default_response.json"
+  vault read -format=json pki_vault/issuer/default/json >"$${ca_bundle_response_file}"
+  tls_ca_bundle="$(jq -r '.data.ca_chain[]' <"$${ca_bundle_response_file}")"
+
   put_parameter "$${VAULT_TLS_CA_BUNDLE_SSM_NAME}" "$${tls_ca_bundle}"
 )
 
 mark_pki_ready() (
-  set -euf
   log_info "Writing PKI state: Ready"
 
   put_parameter "$${VAULT_PKI_STATE_SSM_NAME}" "Ready"
@@ -395,8 +382,7 @@ mark_pki_ready() (
 #     Configure Host EBS Volumes      #
 #######################################
 
-resolve_ebs_nvme_device() (
-  set -euf
+get_ebs_nvme_device() (
   target_name="$${1}"
 
   target_short="$${target_name#/dev/}"
@@ -420,28 +406,31 @@ resolve_ebs_nvme_device() (
   return 1
 )
 
-prepare_disk() (
-  set -euf
+wait_for_ebs_nvme_device() (
   device_attachment_name="$${1}"
-  mount_point="$${2}"
-  fs_label="$${3}"
 
-  if ! command -v ebsnvme-id >/dev/null 2>&1; then
-    log_error "ebsnvme-id not found, ensure amazon-ec2-utils is installed in the AMI"
-    return 1
-  fi
+  log_info "Waiting for NVMe device for attachment $${device_attachment_name}"
 
-  for attempt in 1 2 3 4 5; do
-    if device="$(resolve_ebs_nvme_device "$${device_attachment_name}")"; then
-      break
+  interval=5
+  max_attempts=5
+  attempt=0
+
+  while [ "$${attempt}" -lt "$${max_attempts}" ]; do
+    attempt=$((attempt + 1))
+    if get_ebs_nvme_device "$${device_attachment_name}" >/dev/null 2>&1; then
+      return 0
     fi
-    sleep 5
+    sleep "$${interval}"
   done
 
-  if [ -z "$${device}" ]; then
-    log_error "NVMe device was not found after $${attempt} attempts, failing bootstrap"
-    return 1
-  fi
+  log_error "NVMe device for attachment $${device_attachment_name} did not appear after $${max_attempts} attempts"
+  return 1
+)
+
+prepare_disk() (
+  device="$${1}"
+  mount_point="$${2}"
+  fs_label="$${3}"
 
   if [ "$${#fs_label}" -gt 12 ]; then
     log_error "XFS labels must be 12 characters or fewer: $${fs_label}"
@@ -455,12 +444,16 @@ prepare_disk() (
     log_info "Filesystem already present on $${device}, skipping format"
   fi
 
-  log_info "Mounting $${device} at $${mount_point}"
-  mkdir -p "$${mount_point}"
-  mount -t xfs "$${device}" "$${mount_point}"
+  if ! mountpoint -q "$${mount_point}"; then
+    log_info "Mounting $${device} at $${mount_point}"
+    mkdir -p "$${mount_point}"
+    mount -t xfs "$${device}" "$${mount_point}"
+  else
+    log_info "$${mount_point} already mounted, skipping"
+  fi
 
   uuid="$(blkid -s UUID -o value "$${device}")"
-  if ! grep -q "$${uuid}" /etc/fstab; then
+  if ! grep -qE "^UUID=$${uuid}[[:blank:]]" /etc/fstab; then
     printf 'UUID=%s  %s  xfs  defaults,nofail  0  2\n' \
       "$${uuid}" "$${mount_point}" \
       >>/etc/fstab
@@ -472,8 +465,23 @@ prepare_disk() (
 #        Configure Host System        #
 #######################################
 
+verify_prerequisites() (
+  log_info "Verifying AMI-provided prerequisites"
+
+  missing=""
+  for cmd in mkfs.xfs blkid mountpoint mount curl getent groupadd useradd systemctl timedatectl apt-get; do
+    if ! command -v "$${cmd}" >/dev/null 2>&1; then
+      missing="$${missing} $${cmd}"
+    fi
+  done
+
+  if [ -n "$${missing}" ]; then
+    log_error "AMI is missing required binaries:$${missing}"
+    return 1
+  fi
+)
+
 wait_for_network() (
-  set -euf
   for attempt in 1 2 3 4 5; do
     if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
       return 0
@@ -486,7 +494,6 @@ wait_for_network() (
 )
 
 prepare_system() (
-  set -euf
   log_info "Preparing system packages"
 
   export DEBIAN_FRONTEND=noninteractive
@@ -497,7 +504,6 @@ prepare_system() (
 )
 
 configure_system_time() (
-  set -euf
   log_info "Configuring system time"
 
   timedatectl set-timezone UTC
@@ -513,7 +519,6 @@ configure_system_time() (
 #######################################
 
 create_vault_user() (
-  set -euf
   log_info "Creating vault system user"
 
   if ! getent group vault >/dev/null 2>&1; then
@@ -526,7 +531,6 @@ create_vault_user() (
 )
 
 configure_vault_directories() (
-  set -euf
   log_info "Configuring Vault directory tree"
 
   mkdir -p "$${VAULT_HOME_DIR}"
@@ -563,7 +567,6 @@ configure_vault_directories() (
 )
 
 write_vault_shell_env() (
-  set -euf
   log_info "Writing Vault CLI environment to /etc/profile.d/99-vault-cli-config.sh"
 
   cat >/etc/profile.d/99-vault-cli-config.sh <<EOF
@@ -574,7 +577,6 @@ EOF
 )
 
 detect_system_architecture() (
-  set -euf
   machine="$(uname -m)"
   case "$${machine}" in
     x86_64) printf 'amd64' ;;
@@ -587,7 +589,6 @@ detect_system_architecture() (
 )
 
 download_and_verify_vault() (
-  set -euf
   version="$${1}"
   arch="$${2}"
   tmp_dir="$${3}"
@@ -621,7 +622,6 @@ download_and_verify_vault() (
 )
 
 install_vault() (
-  set -euf
   tmp_dir=$(mktemp -d -p "$${TMPDIR_SESSION}") || return 1
   trap 'rm -rf "$${tmp_dir}"' EXIT INT TERM HUP
 
@@ -642,7 +642,6 @@ install_vault() (
 )
 
 write_vault_service_unit() (
-  set -euf
   log_info "Writing Vault systemd unit"
 
   cat >/etc/systemd/system/vault.service <<'EOF'
@@ -651,7 +650,6 @@ EOF
 )
 
 write_vault_service_override() (
-  set -euf
   log_info "Writing Vault systemd override"
 
   mkdir -p /etc/systemd/system/vault.service.d
@@ -665,7 +663,6 @@ EOF
 )
 
 start_vault() (
-  set -euf
   log_info "Starting Vault"
 
   systemctl daemon-reload
@@ -673,7 +670,6 @@ start_vault() (
 )
 
 wait_for_vault_api() (
-  set -euf
   log_info "Waiting for the Vault API to be ready"
 
   for attempt in 1 2 3 4 5 6 7 8 9 10; do
@@ -693,7 +689,6 @@ wait_for_vault_api() (
 )
 
 wait_for_vault_unsealed() (
-  set -euf
   log_info "Waiting for the Vault cluster to be unsealed"
 
   # 60 attempts x 10s = 10 minutes.
@@ -729,7 +724,6 @@ wait_for_vault_unsealed() (
 )
 
 write_vault_license() (
-  set -euf
   vault_license="$(fetch_vault_license)"
 
   log_info "Writing the Vault license"
@@ -739,7 +733,6 @@ write_vault_license() (
 )
 
 write_vault_config() (
-  set -euf
   private_ip="$(get_private_ip)"
   instance_id="$(get_instance_id)"
   availability_zone="$(get_availability_zone)"
@@ -759,7 +752,6 @@ EOF
 #######################################
 
 configure_file_audit_device() (
-  set -euf
   log_info "Configuring Vault file audit device"
 
   if ! vault audit list -format=json | jq -e '."file/"' >/dev/null 2>&1; then
@@ -768,7 +760,6 @@ configure_file_audit_device() (
 )
 
 configure_autopilot() (
-  set -euf
   log_info "Configuring Raft Autopilot"
 
   vault operator raft autopilot set-config \
@@ -778,7 +769,6 @@ configure_autopilot() (
 )
 
 configure_snapshots() (
-  set -euf
   log_info "Configuring automated Raft snapshots"
 
   vault write sys/storage/raft/snapshot-auto/config/hourly \
@@ -787,7 +777,6 @@ configure_snapshots() (
 )
 
 write_vault_snapshot_config() (
-  set -euf
   log_info "Writing Vault snapshot configuration"
 
   cat >"$${VAULT_SNAPSHOT_CONFIG_FILE}" <<'EOF'
@@ -803,7 +792,6 @@ EOF
 #######################################
 
 configure_pki_vault_secrets_engine() (
-  set -euf
   log_info "Enabling Vault PKI secrets engine"
 
   if ! vault secrets list -format=json | jq -e '."pki_vault/"' >/dev/null 2>&1; then
@@ -815,10 +803,12 @@ configure_pki_vault_secrets_engine() (
   log_info "Vault PKI secrets engine enabled"
 )
 
-configure_pki_vault_intermediate_ca() {
-  tmp_dir=$(mktemp -d -p "$${TMPDIR_SESSION}") || return 1
+#######################################
+#     Bootstrap PKI Intermediate      #
+#######################################
 
-  log_info "Configuring Vault PKI intermediate CA"
+generate_pki_intermediate_csr() (
+  log_info "Configuring intermediate URLs"
 
   vault write pki_vault/config/urls - >/dev/null <<EOF
 {
@@ -828,29 +818,66 @@ configure_pki_vault_intermediate_ca() {
 }
 EOF
 
-  # Generate the intermediate CSR inside Vault (private key never leaves)
   log_info "Generating intermediate CSR"
-  csr_pem="$(
-    vault write -format=json pki_vault/intermediate/generate/internal - <<EOF | jq -r '.data.csr'
-{
-  "common_name": "$${VAULT_PKI_INTERMEDIATE_CA_COMMON_NAME}",
-  "country": "$${VAULT_PKI_INTERMEDIATE_CA_COUNTRY}",
-  "organization": "$${VAULT_PKI_INTERMEDIATE_CA_ORGANIZATION}",
-  "key_type": "$${VAULT_PKI_INTERMEDIATE_CA_KEY_TYPE}",
-  "key_bits": $${VAULT_PKI_INTERMEDIATE_CA_KEY_BITS}
-}
-EOF
+  csr_payload="$(
+    jq -nc \
+      --arg common_name "$${VAULT_PKI_INTERMEDIATE_CA_COMMON_NAME}" \
+      --arg country "$${VAULT_PKI_INTERMEDIATE_CA_COUNTRY}" \
+      --arg organization "$${VAULT_PKI_INTERMEDIATE_CA_ORGANIZATION}" \
+      --arg key_type "$${VAULT_PKI_INTERMEDIATE_CA_KEY_TYPE}" \
+      --argjson key_bits "$${VAULT_PKI_INTERMEDIATE_CA_KEY_BITS}" \
+      '{common_name: $common_name, country: $country, organization: $organization, key_type: $key_type, key_bits: $key_bits}'
   )"
 
-  # Publish the CSR to SSM for an external process to sign
+  csr_response_file="$${TMPDIR_SESSION}/intermediate_csr_response.json"
+  vault write -format=json pki_vault/intermediate/generate/internal - >"$${csr_response_file}" <<EOF
+$${csr_payload}
+EOF
+
+  jq -r '.data.csr' <"$${csr_response_file}"
+)
+
+publish_pki_intermediate_csr() (
+  csr_pem="$${1}"
+
   log_info "Publishing intermediate CSR to $${VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_NAME}"
   put_parameter "$${VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_NAME}" "$${csr_pem}"
+)
 
-  # Wait for the externally signed certificate to appear in Secrets Manager
-  log_info "Waiting for externally signed intermediate certificate"
-  signed_json="$(fetch_signed_intermediate)"
+wait_for_signed_pki_intermediate() (
+  log_info "Waiting for the externally signed intermediate certificate"
 
-  # Validate the signed material payload
+  interval=10
+  max_attempts=$((VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS / interval))
+  attempt=0
+
+  while [ "$${attempt}" -lt "$${max_attempts}" ]; do
+    attempt=$((attempt + 1))
+
+    secret_value="$(aws secretsmanager get-secret-value \
+      --secret-id "$${VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN}" \
+      --query SecretString --output text 2>/dev/null)" || secret_value=""
+
+    if [ -n "$${secret_value}" ] && printf '%s' "$${secret_value}" | jq -e '.certificate' >/dev/null 2>&1; then
+      return 0
+    fi
+
+    sleep "$${interval}"
+  done
+
+  log_error "Timed out after $${VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS}s waiting for signed intermediate at $${VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN}"
+  return 1
+)
+
+fetch_signed_pki_intermediate() (
+  fetch_secret "$${VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN}"
+)
+
+import_signed_pki_intermediate() (
+  signed_json="$${1}"
+
+  log_info "Importing externally signed intermediate certificate"
+
   if printf '%s' "$${signed_json}" | jq -e '.private_key // empty' >/dev/null 2>&1; then
     log_error "Signed intermediate payload contains a private_key field — this is a contract violation, aborting"
     return 1
@@ -869,29 +896,28 @@ EOF
     return 1
   fi
 
-  # Cache the CA chain for publish_tls_ca_bundle
-  VAULT_PKI_INTERMEDIATE_CA_CHAIN="$${ca_chain}"
-
-  # Import the signed intermediate certificate with the full CA chain so
-  # that Vault includes the root CA in issued certificate chains. The jq
-  # filter below selects the intermediate issuer by its non-empty key_id.
-  printf '%s\n%s\n' "$${signed_cert}" "$${ca_chain}" >"$${tmp_dir}/pki_vault_intermediate.pem"
-  imported_issuer_id="$(
-    vault write -format=json pki_vault/intermediate/set-signed \
-      certificate=@"$${tmp_dir}/pki_vault_intermediate.pem" |
-      jq -r '.data.mapping | to_entries[] | select(.value != "") | .key'
+  set_signed_payload="$(
+    jq -nc \
+      --arg signed_cert "$${signed_cert}" \
+      --arg ca_chain "$${ca_chain}" \
+      '{certificate: ($signed_cert + "\n" + $ca_chain)}'
   )"
 
-  # Set the imported issuer as the default so cert/ca and issue endpoints work
-  vault write pki_vault/config/issuers \
-    default="$${imported_issuer_id}" \
-    >/dev/null
+  set_signed_response_file="$${TMPDIR_SESSION}/intermediate_set_signed_response.json"
+  vault write -format=json pki_vault/intermediate/set-signed - >"$${set_signed_response_file}" <<EOF
+$${set_signed_payload}
+EOF
+
+  imported_issuer_id="$(
+    jq -r '.data.mapping | to_entries[] | select(.value != "") | .key' <"$${set_signed_response_file}"
+  )"
+
+  vault write pki_vault/config/issuers default="$${imported_issuer_id}" >/dev/null
 
   log_info "Intermediate CA signed and imported"
-}
+)
 
 configure_vault_server_pki_role() (
-  set -euf
   log_info "Creating vault-server PKI role"
 
   vault write pki_vault/roles/vault-server - >/dev/null <<EOF
@@ -915,7 +941,6 @@ EOF
 )
 
 write_vault_server_policy() (
-  set -euf
   log_info "Writing vault-server policy"
 
   cat >"$${VAULT_POLICY_DIR}/vault-server.hcl" <<'EOF'
@@ -928,7 +953,6 @@ EOF
 )
 
 write_admin_policy() (
-  set -euf
   log_info "Writing admin policy"
 
   cat >"$${VAULT_POLICY_DIR}/admin.hcl" <<'EOF'
@@ -941,7 +965,6 @@ EOF
 )
 
 write_vault_pki_ca_bundle() (
-  set -euf
   cluster_tls_ca_bundle="$(fetch_tls_ca_bundle)"
 
   log_info "Replacing bootstrap CA cert with PKI managed TLS CA bundle"
@@ -958,7 +981,6 @@ write_vault_pki_ca_bundle() (
 )
 
 issue_vault_pki_tls_certificate_and_key() (
-  set -euf
   log_info "Issuing PKI TLS certificate and private key for this node"
 
   # Follower nodes need to fetch the new CA bundle from SSM and authenticate
@@ -1014,7 +1036,6 @@ EOF
 )
 
 reload_vault_listener() (
-  set -euf
   log_info "Reloading Vault TLS listener with PKI-signed certificate"
 
   systemctl kill --signal=SIGHUP --kill-whom=main vault.service
@@ -1023,7 +1044,6 @@ reload_vault_listener() (
 )
 
 wait_for_pki_ready() (
-  set -euf
   log_info "Waiting for the bootstrap node to finish PKI setup"
 
   # 60 attempts x 10s = 10 minutes.
@@ -1047,33 +1067,7 @@ wait_for_pki_ready() (
 )
 
 fetch_tls_ca_bundle() (
-  set -euf
   fetch_parameter "$${VAULT_TLS_CA_BUNDLE_SSM_NAME}"
-)
-
-fetch_signed_intermediate() (
-  set -euf
-  interval=10
-  max_attempts=$((VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS / interval))
-  attempt=0
-
-  while [ "$${attempt}" -lt "$${max_attempts}" ]; do
-    attempt=$((attempt + 1))
-
-    secret_value="$(aws secretsmanager get-secret-value \
-      --secret-id "$${VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN}" \
-      --query SecretString --output text 2>/dev/null)" || secret_value=""
-
-    if [ -n "$${secret_value}" ] && printf '%s' "$${secret_value}" | jq -e '.certificate' >/dev/null 2>&1; then
-      printf '%s' "$${secret_value}"
-      return 0
-    fi
-
-    sleep "$${interval}"
-  done
-
-  log_error "Timed out after $${VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS}s waiting for signed intermediate at $${VAULT_PKI_INTERMEDIATE_CA_SIGNED_CSR_SECRET_ARN}"
-  return 1
 )
 
 #######################################
@@ -1081,7 +1075,6 @@ fetch_signed_intermediate() (
 #######################################
 
 enable_aws_auth_method() (
-  set -euf
   log_info "Enabling Vault AWS auth method"
 
   if ! vault auth list -format=json | jq -e '."aws/"' >/dev/null 2>&1; then
@@ -1092,7 +1085,6 @@ enable_aws_auth_method() (
 )
 
 bind_vault_server_iam_role() (
-  set -euf
   log_info "Binding vault-server IAM role"
 
   vault write auth/aws/role/vault-server - >/dev/null <<EOF
@@ -1111,7 +1103,6 @@ EOF
 #######################################
 
 enable_jwt_auth_method() (
-  set -euf
   log_info "Enabling Vault JWT auth method"
 
   if ! vault auth list -format=json | jq -e ".\"$${HCP_TERRAFORM_JWT_AUTH_MOUNT_PATH}/\"" >/dev/null 2>&1; then
@@ -1120,7 +1111,6 @@ enable_jwt_auth_method() (
 )
 
 write_jwt_auth_config() (
-  set -euf
   # $@ = optional extra arg, "oidc_discovery_ca_pem=@..."
   vault write "auth/$${HCP_TERRAFORM_JWT_AUTH_MOUNT_PATH}/config" \
     "oidc_discovery_url=https://$${HCP_TERRAFORM_JWT_AUTH_HOSTNAME}" \
@@ -1130,7 +1120,6 @@ write_jwt_auth_config() (
 )
 
 configure_jwt_auth_method() (
-  set -euf
   log_info "Configuring JWT auth method for HCP Terraform"
 
   # Handle the case when HCP Terraform Enterprise (TFE) uses a custom
@@ -1145,7 +1134,6 @@ configure_jwt_auth_method() (
 )
 
 bind_admin_jwt_role() (
-  set -euf
   log_info "Binding $${HCP_TERRAFORM_JWT_AUTH_ROLE_NAME} JWT role"
 
   bound_claims="\"terraform_organization_name\": \"$${HCP_TERRAFORM_JWT_AUTH_ORGANIZATION_NAME}\""
@@ -1176,7 +1164,6 @@ EOF
 #######################################
 
 configure_vault_agent_directories() (
-  set -euf
   log_info "Configuring Vault Agent directory tree"
 
   mkdir -p "$${VAULT_AGENT_TEMPLATE_DIR}"
@@ -1185,7 +1172,6 @@ configure_vault_agent_directories() (
 )
 
 write_vault_agent_service_unit() (
-  set -euf
   log_info "Writing Vault Agent systemd unit"
 
   cat >/etc/systemd/system/vault-agent.service <<'EOF'
@@ -1194,7 +1180,6 @@ EOF
 )
 
 start_vault_agent() (
-  set -euf
   log_info "Starting Vault Agent"
 
   systemctl daemon-reload
@@ -1202,7 +1187,6 @@ start_vault_agent() (
 )
 
 write_vault_agent_reload_rules() (
-  set -euf
   log_info "Writing Vault Agent polkit rules"
 
   cat >"$${VAULT_AGENT_RELOAD_RULES_FILE}" <<'EOF'
@@ -1211,7 +1195,6 @@ EOF
 )
 
 write_vault_agent_config() (
-  set -euf
   log_info "Writing Vault Agent configuration"
 
   cat >"$${VAULT_AGENT_CONFIG_FILE}" <<'EOF'
@@ -1223,7 +1206,6 @@ EOF
 )
 
 write_vault_agent_tls_template() (
-  set -euf
   log_info "Writing Vault Agent TLS certificate template"
 
   cat >"$${VAULT_AGENT_SERVER_TLS_TEMPLATE_FILE}" <<'EOF'
@@ -1235,7 +1217,6 @@ EOF
 )
 
 write_vault_agent_reload_script() (
-  set -euf
   log_info "Writing Vault Agent TLS reload script"
 
   cat >"$${VAULT_AGENT_SERVER_TLS_RELOAD_FILE}" <<'EOF'
@@ -1247,11 +1228,13 @@ EOF
 )
 
 main() {
+  # Verify AMI-provided utilities are available.
+  verify_prerequisites
+
+  # Export Vault CLI environment variables early.
   export VAULT_ADDR="https://127.0.0.1:8200"
   export VAULT_TLS_SERVER_NAME="$${VAULT_FQDN}"
   export VAULT_CACERT="$${VAULT_TLS_CA_FILE}"
-
-  VAULT_PKI_INTERMEDIATE_CA_CHAIN=""
 
   # Prepare System
   wait_for_network
@@ -1259,8 +1242,13 @@ main() {
   configure_system_time
 
   # Prepare Storage
-  prepare_disk "$${EBS_RAFT_DEVICE_NAME}" "$${VAULT_RAFT_DIR}" "vault-raft"
-  prepare_disk "$${EBS_AUDIT_DEVICE_NAME}" "$${VAULT_LOG_DIR}" "vault-audit"
+  wait_for_ebs_nvme_device "$${EBS_RAFT_DEVICE_NAME}"
+  raft_device="$(get_ebs_nvme_device "$${EBS_RAFT_DEVICE_NAME}")"
+  prepare_disk "$${raft_device}" "$${VAULT_RAFT_DIR}" "vault-raft"
+
+  wait_for_ebs_nvme_device "$${EBS_AUDIT_DEVICE_NAME}"
+  audit_device="$(get_ebs_nvme_device "$${EBS_AUDIT_DEVICE_NAME}")"
+  prepare_disk "$${audit_device}" "$${VAULT_LOG_DIR}" "vault-audit"
 
   # Prepare Vault Server
   create_vault_user
@@ -1298,7 +1286,11 @@ main() {
   # Enable PKI and TLS
   if [ "$${vault_node_role}" = "bootstrap" ]; then
     configure_pki_vault_secrets_engine
-    configure_pki_vault_intermediate_ca
+    intermediate_csr="$(generate_pki_intermediate_csr)"
+    publish_pki_intermediate_csr "$${intermediate_csr}"
+    wait_for_signed_pki_intermediate
+    signed_intermediate="$(fetch_signed_pki_intermediate)"
+    import_signed_pki_intermediate "$${signed_intermediate}"
     configure_vault_server_pki_role
     write_vault_server_policy
     if [ -n "$${HCP_TERRAFORM_JWT_AUTH_ORGANIZATION_NAME}" ]; then

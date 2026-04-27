@@ -237,6 +237,34 @@ variable "vault_snapshot_retain" {
   }
 }
 
+# AWS Auth
+
+variable "vault_aws_auth_role_max_ttl" {
+  type        = string
+  description = "Max TTL for the vault-server AWS auth role."
+  default     = "24h"
+}
+
+variable "vault_aws_auth_role_ttl" {
+  type        = string
+  description = "Default TTL for the vault-server AWS auth role."
+  default     = "4h"
+}
+
+# JWT Auth
+
+variable "vault_jwt_auth_role_max_ttl" {
+  type        = string
+  description = "Max TTL for the HCP Terraform JWT auth role."
+  default     = "2h"
+}
+
+variable "vault_jwt_auth_role_ttl" {
+  type        = string
+  description = "Default TTL for the HCP Terraform JWT auth role."
+  default     = "1h"
+}
+
 # PKI
 
 variable "vault_pki_intermediate_ca" {
@@ -270,4 +298,22 @@ variable "vault_pki_signed_intermediate_wait_timeout_seconds" {
   type        = number
   description = "Maximum seconds the bootstrap node waits for the signed intermediate certificate to appear in Secrets Manager."
   default     = 1800
+}
+
+variable "vault_pki_vault_mount_max_ttl" {
+  type        = string
+  description = "Max lease TTL for the Vault PKI secrets engine mount."
+  default     = "26280h"
+}
+
+variable "vault_pki_vault_server_role_max_ttl" {
+  type        = string
+  description = "Max TTL for certificates issued by the vault-server PKI role."
+  default     = "24h"
+}
+
+variable "vault_pki_server_cert_ttl" {
+  type        = string
+  description = "TTL requested when the bootstrap script issues the Vault server certificate."
+  default     = "24h"
 }
