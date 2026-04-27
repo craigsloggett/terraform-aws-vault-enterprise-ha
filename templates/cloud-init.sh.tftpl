@@ -104,7 +104,7 @@ readonly VAULT_JWT_AUTH_ROLE_MAX_TTL="2h"
 
 log_info() (
   set -euf
-  printf '[INFO]  %s\n' "$${1}"
+  printf '[INFO]  %s\n' "$${1}" >&2
 )
 
 log_warn() (
