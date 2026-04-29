@@ -373,6 +373,8 @@ variable "vault_aws_resource_names" {
   default     = {}
   type = object({
     bastion_instance_name             = optional(string, "vault-enterprise-bastion-host")
+    vault_server_instance_name        = optional(string, "vault-enterprise-server")
+    vault_server_volume_name          = optional(string, "vault-enterprise-server-volume")
     vault_kms_key_name                = optional(string, "vault-enterprise-auto-unseal-key")
     vpc_name                          = optional(string, "vault-enterprise-vpc")
     secretsmanager_vpc_endpoint_name  = optional(string, "vault-enterprise-secretsmanager-vpc-endpoint")
@@ -380,7 +382,7 @@ variable "vault_aws_resource_names" {
     ec2_vpc_endpoint_name             = optional(string, "vault-enterprise-ec2-vpc-endpoint")
     s3_vpc_endpoint_name              = optional(string, "vault-enterprise-s3-vpc-endpoint")
     bastion_security_group_name       = optional(string, "vault-enterprise-bastion-security-group")
-    vault_security_group_name         = optional(string, "vault-enterprise-security-group")
+    vault_servers_security_group_name = optional(string, "vault-enterprise-servers-security-group")
     vpc_endpoints_security_group_name = optional(string, "vault-enterprise-vpc-endpoints-security-group")
   })
 }

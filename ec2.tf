@@ -151,10 +151,10 @@ resource "aws_launch_template" "vault" {
   }
 
   tag_specifications {
-    resource_type = "instance"
+    resource_type = "volume"
 
     tags = {
-      (local.vault_cluster_auto_join_tag_key) = local.vault_cluster_auto_join_tag_value
+      Name = var.vault_aws_resource_names.vault_server_volume_name
     }
   }
 
@@ -198,6 +198,12 @@ resource "aws_autoscaling_group" "vault" {
   tag {
     key                 = local.vault_cluster_auto_join_tag_key
     value               = local.vault_cluster_auto_join_tag_value
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Name"
+    value               = var.vault_aws_resource_names.vault_server_instance_name
     propagate_at_launch = true
   }
 

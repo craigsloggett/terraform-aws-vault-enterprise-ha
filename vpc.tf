@@ -118,7 +118,7 @@ resource "aws_security_group" "vault" {
   vpc_id      = local.vpc.id
 
   tags = {
-    Name = var.vault_aws_resource_names.vault_security_group_name
+    Name = var.vault_aws_resource_names.vault_servers_security_group_name
   }
 
   lifecycle {
