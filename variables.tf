@@ -155,6 +155,19 @@ variable "vault_audit_disk" {
   }
 }
 
+variable "vault_cluster_auto_join_tag" {
+  type = object({
+    key   = optional(string, "vault:raft:retryjoin:autojoin")
+    value = string
+  })
+  description = "The Vault cluster EC2 tag_key and tag_value configuration used for AWS Cloud auto-join."
+
+  validation {
+    condition     = length(var.vault_cluster_auto_join_tag.value) > 0
+    error_message = "vault_cluster_auto_join_tag.value must be a non-empty string to prevent accidentally joining an existing cluster."
+  }
+}
+
 variable "bastion_instance_type" {
   type        = string
   description = "EC2 instance type for the bastion host."

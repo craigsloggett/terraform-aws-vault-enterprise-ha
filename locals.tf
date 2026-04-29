@@ -38,12 +38,12 @@ locals {
   })
 
   config_vault_hcl = templatefile("${path.module}/templates/vault/vault.hcl.tftpl", {
-    cluster_name            = var.project_name
-    vault_fqdn              = trimsuffix(aws_route53_record.vault.fqdn, ".")
-    aws_region              = data.aws_region.current.region
-    kms_key_alias           = aws_kms_alias.vault.name
-    vault_cluster_tag_key   = local.vault_cluster_tag_key
-    vault_cluster_tag_value = local.vault_cluster_tag_value
+    cluster_name                      = var.project_name
+    vault_fqdn                        = trimsuffix(aws_route53_record.vault.fqdn, ".")
+    aws_region                        = data.aws_region.current.region
+    kms_key_alias                     = aws_kms_alias.vault.name
+    vault_cluster_auto_join_tag_key   = local.vault_cluster_auto_join_tag_key
+    vault_cluster_auto_join_tag_value = local.vault_cluster_auto_join_tag_value
   })
 
   config_vault_snapshot_json = templatefile("${path.module}/templates/vault/snapshot.json.tftpl", {
@@ -54,8 +54,8 @@ locals {
   })
 
   # Cluster Coordination Configuration
-  vault_cluster_tag_key   = "vault-cluster"
-  vault_cluster_tag_value = var.project_name
+  vault_cluster_auto_join_tag_key   = var.vault_cluster_auto_join_tag.key
+  vault_cluster_auto_join_tag_value = var.vault_cluster_auto_join_tag.value
 
   # Vault Agent Configuration
   config_vault_agent_service                 = file("${path.module}/files/agent/vault-agent.service")

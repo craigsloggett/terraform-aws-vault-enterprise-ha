@@ -63,8 +63,8 @@ resource "aws_launch_template" "vault" {
     bootstrap_tls_private_key_secret_arn = aws_secretsmanager_secret.bootstrap_tls_private_key.arn
 
     # Cluster Coordination Configuration
-    vault_cluster_tag_key                 = local.vault_cluster_tag_key
-    vault_cluster_tag_value               = local.vault_cluster_tag_value
+    vault_cluster_auto_join_tag_key       = local.vault_cluster_auto_join_tag_key
+    vault_cluster_auto_join_tag_value     = local.vault_cluster_auto_join_tag_value
     vault_cluster_state_ssm_name          = aws_ssm_parameter.vault_cluster_state.name
     vault_bootstrap_root_token_secret_arn = aws_secretsmanager_secret.vault_server_bootstrap_root_token.arn
     vault_recovery_keys_secret_arn        = aws_secretsmanager_secret.vault_recovery_keys.arn
@@ -150,7 +150,7 @@ resource "aws_launch_template" "vault" {
     resource_type = "instance"
 
     tags = {
-      (local.vault_cluster_tag_key) = local.vault_cluster_tag_value
+      (local.vault_cluster_auto_join_tag_key) = local.vault_cluster_auto_join_tag_value
     }
   }
 
@@ -192,8 +192,8 @@ resource "aws_autoscaling_group" "vault" {
   }
 
   tag {
-    key                 = local.vault_cluster_tag_key
-    value               = local.vault_cluster_tag_value
+    key                 = local.vault_cluster_auto_join_tag_key
+    value               = local.vault_cluster_auto_join_tag_value
     propagate_at_launch = true
   }
 

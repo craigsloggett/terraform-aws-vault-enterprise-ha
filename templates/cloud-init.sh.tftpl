@@ -58,8 +58,8 @@ readonly BOOTSTRAP_TLS_CERT_SECRET_ARN="${bootstrap_tls_cert_secret_arn}"
 readonly BOOTSTRAP_TLS_PRIVATE_KEY_SECRET_ARN="${bootstrap_tls_private_key_secret_arn}"
 
 # Cluster Coordination
-readonly VAULT_CLUSTER_TAG_KEY="${vault_cluster_tag_key}"
-readonly VAULT_CLUSTER_TAG_VALUE="${vault_cluster_tag_value}"
+readonly VAULT_CLUSTER_AUTO_JOIN_TAG_KEY="${vault_cluster_auto_join_tag_key}"
+readonly VAULT_CLUSTER_AUTO_JOIN_TAG_VALUE="${vault_cluster_auto_join_tag_value}"
 readonly VAULT_CLUSTER_STATE_SSM_NAME="${vault_cluster_state_ssm_name}"
 readonly VAULT_BOOTSTRAP_ROOT_TOKEN_SECRET_ARN="${vault_bootstrap_root_token_secret_arn}"
 readonly VAULT_RECOVERY_KEYS_SECRET_ARN="${vault_recovery_keys_secret_arn}"
@@ -263,7 +263,7 @@ list_cluster_instance_ids() (
     if result="$(
       aws ec2 describe-instances \
         --filters \
-        "Name=tag:$${VAULT_CLUSTER_TAG_KEY},Values=$${VAULT_CLUSTER_TAG_VALUE}" \
+        "Name=tag:$${VAULT_CLUSTER_AUTO_JOIN_TAG_KEY},Values=$${VAULT_CLUSTER_AUTO_JOIN_TAG_VALUE}" \
         "Name=instance-state-name,Values=running" \
         --query "Reservations[].Instances[].InstanceId" \
         --output text 2>/dev/null
