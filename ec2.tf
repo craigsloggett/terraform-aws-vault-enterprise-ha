@@ -15,7 +15,7 @@ resource "aws_instance" "bastion" {
   }
 
   tags = {
-    Name = var.resource_names.bastion_instance_name
+    Name = var.vault_aws_resource_names.bastion_instance_name
   }
 }
 

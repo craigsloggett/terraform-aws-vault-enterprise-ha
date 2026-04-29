@@ -363,7 +363,7 @@ variable "vault_server_iam_resource_names" {
 
 # Tags
 
-variable "resource_names" {
+variable "vault_aws_resource_names" {
   description = <<-EOT
     Values for the `Name` tag applied to AWS resources created by this module.
     Each field is optional; consumers may override individual entries to avoid

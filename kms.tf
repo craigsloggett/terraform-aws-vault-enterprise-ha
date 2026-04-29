@@ -4,7 +4,7 @@ resource "aws_kms_key" "vault" {
   enable_key_rotation     = true
 
   tags = {
-    Name = var.resource_names.vault_kms_key_name
+    Name = var.vault_aws_resource_names.vault_kms_key_name
   }
 }
 

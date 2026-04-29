@@ -4,7 +4,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "6.6.1"
 
-  name = var.resource_names.vpc_name
+  name = var.vault_aws_resource_names.vpc_name
   cidr = var.vpc_cidr
 
   azs             = slice(data.aws_availability_zones.available.names, 0, 3)
@@ -31,7 +31,7 @@ resource "aws_vpc_endpoint" "secretsmanager" {
   private_dns_enabled = true
 
   tags = {
-    Name = var.resource_names.secretsmanager_vpc_endpoint_name
+    Name = var.vault_aws_resource_names.secretsmanager_vpc_endpoint_name
   }
 }
 
@@ -46,7 +46,7 @@ resource "aws_vpc_endpoint" "kms" {
   private_dns_enabled = true
 
   tags = {
-    Name = var.resource_names.kms_vpc_endpoint_name
+    Name = var.vault_aws_resource_names.kms_vpc_endpoint_name
   }
 }
 
@@ -61,7 +61,7 @@ resource "aws_vpc_endpoint" "ec2" {
   private_dns_enabled = true
 
   tags = {
-    Name = var.resource_names.ec2_vpc_endpoint_name
+    Name = var.vault_aws_resource_names.ec2_vpc_endpoint_name
   }
 }
 
@@ -74,7 +74,7 @@ resource "aws_vpc_endpoint" "s3" {
   route_table_ids   = module.vpc[0].private_route_table_ids
 
   tags = {
-    Name = var.resource_names.s3_vpc_endpoint_name
+    Name = var.vault_aws_resource_names.s3_vpc_endpoint_name
   }
 }
 
@@ -86,7 +86,7 @@ resource "aws_security_group" "bastion" {
   vpc_id      = local.vpc.id
 
   tags = {
-    Name = var.resource_names.bastion_security_group_name
+    Name = var.vault_aws_resource_names.bastion_security_group_name
   }
 
   lifecycle {
@@ -118,7 +118,7 @@ resource "aws_security_group" "vault" {
   vpc_id      = local.vpc.id
 
   tags = {
-    Name = var.resource_names.vault_security_group_name
+    Name = var.vault_aws_resource_names.vault_security_group_name
   }
 
   lifecycle {
@@ -179,7 +179,7 @@ resource "aws_security_group" "vpc_endpoints" {
   vpc_id      = module.vpc[0].vpc_id
 
   tags = {
-    Name = var.resource_names.vpc_endpoints_security_group_name
+    Name = var.vault_aws_resource_names.vpc_endpoints_security_group_name
   }
 
   lifecycle {
