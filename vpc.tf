@@ -7,7 +7,7 @@ module "vpc" {
   name = "${var.project_name}-vault"
   cidr = var.vpc_cidr
 
-  azs             = local.azs
+  azs             = slice(data.aws_availability_zones.available.names, 0, 3)
   private_subnets = var.vpc_private_subnets
   public_subnets  = var.vpc_public_subnets
 

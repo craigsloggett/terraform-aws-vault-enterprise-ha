@@ -263,8 +263,8 @@ list_cluster_instance_ids() (
     if result="$(
       aws ec2 describe-instances \
         --filters \
-          "Name=tag:$${VAULT_CLUSTER_TAG_KEY},Values=$${VAULT_CLUSTER_TAG_VALUE}" \
-          "Name=instance-state-name,Values=running" \
+        "Name=tag:$${VAULT_CLUSTER_TAG_KEY},Values=$${VAULT_CLUSTER_TAG_VALUE}" \
+        "Name=instance-state-name,Values=running" \
         --query "Reservations[].Instances[].InstanceId" \
         --output text 2>/dev/null
     )"; then
@@ -1176,7 +1176,7 @@ write_vault_agent_service_unit() (
   log_info "Writing Vault Agent systemd unit"
 
   cat >/etc/systemd/system/vault-agent.service <<'EOF'
-${config_agent_service}
+${config_vault_agent_service}
 EOF
 )
 
@@ -1191,7 +1191,7 @@ write_vault_agent_reload_rules() (
   log_info "Writing Vault Agent polkit rules"
 
   cat >"$${VAULT_AGENT_RELOAD_RULES_FILE}" <<'EOF'
-${config_agent_reload_rules}
+${config_vault_agent_reload_rules}
 EOF
 )
 
@@ -1199,7 +1199,7 @@ write_vault_agent_config() (
   log_info "Writing Vault Agent configuration"
 
   cat >"$${VAULT_AGENT_CONFIG_FILE}" <<'EOF'
-${config_agent_hcl}
+${config_vault_agent_hcl}
 EOF
 
   chown vault:vault "$${VAULT_AGENT_CONFIG_FILE}"
@@ -1210,7 +1210,7 @@ write_vault_agent_tls_template() (
   log_info "Writing Vault Agent TLS certificate template"
 
   cat >"$${VAULT_AGENT_SERVER_TLS_TEMPLATE_FILE}" <<'EOF'
-${config_agent_server_tls_ctmpl}
+${config_vault_agent_server_tls_ctmpl}
 EOF
 
   chown vault:vault "$${VAULT_AGENT_SERVER_TLS_TEMPLATE_FILE}"
@@ -1221,7 +1221,7 @@ write_vault_agent_reload_script() (
   log_info "Writing Vault Agent TLS reload script"
 
   cat >"$${VAULT_AGENT_SERVER_TLS_RELOAD_FILE}" <<'EOF'
-${config_agent_reload_vault_server_tls}
+${config_vault_agent_reload_vault_server_tls}
 EOF
 
   chown root:root "$${VAULT_AGENT_SERVER_TLS_RELOAD_FILE}"

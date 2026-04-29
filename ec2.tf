@@ -26,7 +26,7 @@ resource "aws_launch_template" "vault" {
   key_name      = var.ec2_key_pair_name
 
   iam_instance_profile {
-    name = aws_iam_instance_profile.vault.name
+    name = aws_iam_instance_profile.vault_server.name
   }
 
   network_interfaces {
@@ -42,37 +42,37 @@ resource "aws_launch_template" "vault" {
   }
 
   user_data = base64gzip(templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
-    # Environment
-    vault_version = var.vault_version
-    vault_fqdn    = local.vault_fqdn
+    # Environment Configuration
+    vault_fqdn                          = local.vault_fqdn
+    vault_version                       = var.vault_version
+    vault_enterprise_license_secret_arn = aws_secretsmanager_secret.vault_enterprise_license.arn
 
-    # Prepare Storage
+    # EBS Configuration
     ebs_raft_device_name  = local.ebs_raft_device_name
     ebs_audit_device_name = local.ebs_audit_device_name
 
     # Vault Server Configuration
     config_vault_service          = local.config_vault_service
     config_vault_service_override = local.config_vault_service_override
-    config_vault_hcl              = local.config_vault_hcl
-    config_vault_server_policy    = local.config_vault_server_policy
     config_vault_admin_policy     = local.config_vault_admin_policy
+    config_vault_server_policy    = local.config_vault_server_policy
+    config_vault_hcl              = local.config_vault_hcl
+    config_vault_snapshot_json    = local.config_vault_snapshot_json
 
     # Bootstrap Artifacts
-    vault_enterprise_license_secret_arn  = aws_secretsmanager_secret.vault_enterprise_license.arn
-    bootstrap_tls_ca_secret_arn          = aws_secretsmanager_secret.vault_bootstrap_tls_ca.arn
-    bootstrap_tls_cert_secret_arn        = aws_secretsmanager_secret.vault_bootstrap_tls_cert.arn
-    bootstrap_tls_private_key_secret_arn = aws_secretsmanager_secret.vault_bootstrap_tls_private_key.arn
-    config_vault_snapshot_json           = local.config_vault_snapshot_json
+    bootstrap_tls_ca_secret_arn          = aws_secretsmanager_secret.bootstrap_tls_ca.arn
+    bootstrap_tls_cert_secret_arn        = aws_secretsmanager_secret.bootstrap_tls_cert.arn
+    bootstrap_tls_private_key_secret_arn = aws_secretsmanager_secret.bootstrap_tls_private_key.arn
 
-    # Cluster Coordination
+    # Cluster Coordination Configuration
     vault_cluster_tag_key                 = local.vault_cluster_tag_key
     vault_cluster_tag_value               = local.vault_cluster_tag_value
     vault_cluster_state_ssm_name          = aws_ssm_parameter.vault_cluster_state.name
-    vault_bootstrap_root_token_secret_arn = aws_secretsmanager_secret.vault_bootstrap_root_token.arn
+    vault_bootstrap_root_token_secret_arn = aws_secretsmanager_secret.vault_server_bootstrap_root_token.arn
     vault_recovery_keys_secret_arn        = aws_secretsmanager_secret.vault_recovery_keys.arn
     vault_minimum_quorum_size             = var.vault_node_count
 
-    # PKI and TLS
+    # PKI and TLS Configuration
     vault_pki_state_ssm_name                           = aws_ssm_parameter.vault_pki_state.name
     vault_tls_ca_bundle_ssm_name                       = aws_ssm_parameter.vault_tls_ca_bundle.name
     vault_pki_intermediate_ca_common_name              = var.vault_pki_intermediate_ca.common_name
@@ -88,12 +88,12 @@ resource "aws_launch_template" "vault" {
     vault_pki_server_cert_ttl                          = var.vault_pki_server_cert_ttl
     vault_pki_mount_path                               = var.vault_pki_mount_path
 
-    # AWS Auth
-    vault_iam_role_arn          = aws_iam_role.vault.arn
+    # AWS Auth Configuration
+    vault_iam_role_arn          = aws_iam_role.vault_server.arn
     vault_aws_auth_role_max_ttl = var.vault_aws_auth_role_max_ttl
     vault_aws_auth_role_ttl     = var.vault_aws_auth_role_ttl
 
-    # HCP Terraform JWT Auth
+    # HCP Terraform JWT Auth Configuration
     hcp_terraform_jwt_auth_hostname              = var.hcp_terraform_jwt_auth.hostname
     hcp_terraform_jwt_auth_organization_name     = var.hcp_terraform_jwt_auth.organization_name
     hcp_terraform_jwt_auth_workspace_id          = var.hcp_terraform_jwt_auth.workspace_id
@@ -103,12 +103,12 @@ resource "aws_launch_template" "vault" {
     vault_jwt_auth_role_max_ttl                  = var.vault_jwt_auth_role_max_ttl
     vault_jwt_auth_role_ttl                      = var.vault_jwt_auth_role_ttl
 
-    # Vault Agent
-    config_agent_hcl                     = local.config_agent_hcl
-    config_agent_server_tls_ctmpl        = local.config_agent_server_tls_ctmpl
-    config_agent_reload_vault_server_tls = local.config_agent_reload_vault_server_tls
-    config_agent_reload_rules            = local.config_agent_reload_rules
-    config_agent_service                 = local.config_agent_service
+    # Vault Agent Configuration
+    config_vault_agent_hcl                     = local.config_vault_agent_hcl
+    config_vault_agent_server_tls_ctmpl        = local.config_vault_agent_server_tls_ctmpl
+    config_vault_agent_reload_vault_server_tls = local.config_vault_agent_reload_vault_server_tls
+    config_vault_agent_reload_rules            = local.config_vault_agent_reload_rules
+    config_vault_agent_service                 = local.config_vault_agent_service
   }))
 
   block_device_mappings {
@@ -215,7 +215,7 @@ resource "aws_autoscaling_group" "vault" {
   }
 
   depends_on = [
-    aws_iam_role_policy.vault_kms,
-    aws_iam_role_policy.vault_secrets_manager,
+    aws_iam_role_policy.vault_server_kms_read_write,
+    aws_iam_role_policy.vault_server_secrets_manager_read,
   ]
 }

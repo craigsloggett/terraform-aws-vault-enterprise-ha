@@ -45,7 +45,7 @@ output "vault_tls_ca_bundle_ssm_parameter_name" {
 
 output "vault_iam_role_name" {
   description = "Name of the Vault server IAM role."
-  value       = aws_iam_role.vault.name
+  value       = aws_iam_role.vault_server.name
 }
 
 output "vault_jwt_auth_path" {
