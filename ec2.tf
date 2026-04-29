@@ -13,8 +13,6 @@ resource "aws_instance" "bastion" {
     http_tokens                 = "required"
     http_put_response_hop_limit = 1
   }
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-enterprise-bastion" })
 }
 
 # Vault Nodes
@@ -151,18 +149,9 @@ resource "aws_launch_template" "vault" {
   tag_specifications {
     resource_type = "instance"
 
-    tags = merge(var.common_tags, {
-      Name                          = "${var.project_name}-vault-enterprise"
+    tags = {
       (local.vault_cluster_tag_key) = local.vault_cluster_tag_value
-    })
-  }
-
-  tag_specifications {
-    resource_type = "volume"
-
-    tags = merge(var.common_tags, {
-      Name = "${var.project_name}-vault"
-    })
+    }
   }
 
   lifecycle {
@@ -202,16 +191,10 @@ resource "aws_autoscaling_group" "vault" {
     }
   }
 
-  dynamic "tag" {
-    for_each = merge(var.common_tags, {
-      (local.vault_cluster_tag_key) = local.vault_cluster_tag_value
-    })
-
-    content {
-      key                 = tag.key
-      value               = tag.value
-      propagate_at_launch = true
-    }
+  tag {
+    key                 = local.vault_cluster_tag_key
+    value               = local.vault_cluster_tag_value
+    propagate_at_launch = true
   }
 
   depends_on = [

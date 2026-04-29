@@ -7,6 +7,4 @@ resource "aws_ssm_parameter" "vault_tls_ca_bundle" {
   lifecycle {
     ignore_changes = [value]
   }
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-tls-ca-bundle" })
 }

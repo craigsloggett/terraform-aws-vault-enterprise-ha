@@ -66,8 +66,6 @@ resource "tls_locally_signed_cert" "bootstrap_tls_cert" {
 resource "aws_secretsmanager_secret" "bootstrap_tls_ca" {
   name_prefix = "${var.project_name}-vault-bootstrap-tls-ca-"
   description = "Vault Bootstrap TLS CA"
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-ca" })
 }
 
 resource "aws_secretsmanager_secret_version" "bootstrap_tls_ca" {
@@ -78,8 +76,6 @@ resource "aws_secretsmanager_secret_version" "bootstrap_tls_ca" {
 resource "aws_secretsmanager_secret" "bootstrap_tls_cert" {
   name_prefix = "${var.project_name}-vault-bootstrap-tls-cert-"
   description = "Vault Bootstrap TLS Certificate"
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-cert" })
 }
 
 resource "aws_secretsmanager_secret_version" "bootstrap_tls_cert" {
@@ -90,8 +86,6 @@ resource "aws_secretsmanager_secret_version" "bootstrap_tls_cert" {
 resource "aws_secretsmanager_secret" "bootstrap_tls_private_key" {
   name_prefix = "${var.project_name}-vault-bootstrap-tls-private-key-"
   description = "Vault Bootstrap TLS Private Key"
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-tls-private-key" })
 }
 
 resource "aws_secretsmanager_secret_version" "bootstrap_tls_private_key" {
@@ -104,8 +98,6 @@ resource "aws_secretsmanager_secret_version" "bootstrap_tls_private_key" {
 resource "aws_secretsmanager_secret" "vault_server_bootstrap_root_token" {
   name_prefix = "${var.project_name}-vault-bootstrap-root-token-"
   description = "Vault Bootstrap Root Token"
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bootstrap-root-token" })
 }
 
 # Initialization Coordination SSM Parameters
@@ -119,8 +111,6 @@ resource "aws_ssm_parameter" "vault_cluster_state" {
   lifecycle {
     ignore_changes = [value]
   }
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-cluster-state" })
 }
 
 resource "aws_ssm_parameter" "vault_pki_state" {
@@ -132,8 +122,6 @@ resource "aws_ssm_parameter" "vault_pki_state" {
   lifecycle {
     ignore_changes = [value]
   }
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-pki-state" })
 }
 
 resource "aws_ssm_parameter" "vault_pki_intermediate_ca_csr" {
@@ -145,6 +133,4 @@ resource "aws_ssm_parameter" "vault_pki_intermediate_ca_csr" {
   lifecycle {
     ignore_changes = [value]
   }
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-pki-intermediate-ca-csr" })
 }

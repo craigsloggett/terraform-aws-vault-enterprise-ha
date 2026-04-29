@@ -6,8 +6,6 @@ resource "aws_lb" "vault" {
 
   enable_cross_zone_load_balancing = true
 
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault" })
-
   lifecycle {
     create_before_destroy = true
   }
@@ -28,8 +26,6 @@ resource "aws_lb_target_group" "vault" {
     unhealthy_threshold = 3
     interval            = 30
   }
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault" })
 
   lifecycle {
     create_before_destroy = true

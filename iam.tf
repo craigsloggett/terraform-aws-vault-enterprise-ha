@@ -14,15 +14,11 @@ data "aws_iam_policy_document" "vault_server_assume_role" {
 resource "aws_iam_role" "vault_server" {
   name               = var.vault_server_iam_resource_names.role
   assume_role_policy = data.aws_iam_policy_document.vault_server_assume_role.json
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault" })
 }
 
 resource "aws_iam_instance_profile" "vault_server" {
   name = var.vault_server_iam_resource_names.instance_profile
   role = aws_iam_role.vault_server.name
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault" })
 }
 
 data "aws_iam_policy_document" "vault_server_kms_read_write" {

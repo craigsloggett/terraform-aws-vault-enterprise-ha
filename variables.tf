@@ -50,14 +50,6 @@ variable "hcp_terraform_jwt_auth" {
   })
 }
 
-# General
-
-variable "common_tags" {
-  type        = map(string)
-  description = "Tags to apply to all resources."
-  default     = {}
-}
-
 # VPC
 
 variable "vpc_cidr" {

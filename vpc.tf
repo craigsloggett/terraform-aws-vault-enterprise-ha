@@ -16,8 +16,6 @@ module "vpc" {
 
   enable_dns_hostnames = true
   enable_dns_support   = true
-
-  tags = var.common_tags
 }
 
 # VPC Endpoints
@@ -31,8 +29,6 @@ resource "aws_vpc_endpoint" "secretsmanager" {
   subnet_ids          = module.vpc[0].private_subnets
   security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
   private_dns_enabled = true
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-secretsmanager" })
 }
 
 resource "aws_vpc_endpoint" "kms" {
@@ -44,8 +40,6 @@ resource "aws_vpc_endpoint" "kms" {
   subnet_ids          = module.vpc[0].private_subnets
   security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
   private_dns_enabled = true
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-kms" })
 }
 
 resource "aws_vpc_endpoint" "ec2" {
@@ -57,8 +51,6 @@ resource "aws_vpc_endpoint" "ec2" {
   subnet_ids          = module.vpc[0].private_subnets
   security_group_ids  = [aws_security_group.vpc_endpoints[0].id]
   private_dns_enabled = true
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-ec2" })
 }
 
 resource "aws_vpc_endpoint" "s3" {
@@ -68,8 +60,6 @@ resource "aws_vpc_endpoint" "s3" {
   service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = module.vpc[0].private_route_table_ids
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-s3" })
 }
 
 # Security Groups
@@ -78,8 +68,6 @@ resource "aws_security_group" "bastion" {
   name_prefix = "${var.project_name}-vault-bastion-"
   description = "Security group for the bastion host"
   vpc_id      = local.vpc.id
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-bastion" })
 
   lifecycle {
     create_before_destroy = true
@@ -108,8 +96,6 @@ resource "aws_security_group" "vault" {
   name_prefix = "${var.project_name}-vault-"
   description = "Security group for Vault nodes"
   vpc_id      = local.vpc.id
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault" })
 
   lifecycle {
     create_before_destroy = true
@@ -167,8 +153,6 @@ resource "aws_security_group" "vpc_endpoints" {
   name_prefix = "${var.project_name}-vault-vpc-endpoints-"
   description = "Security group for VPC endpoints"
   vpc_id      = module.vpc[0].vpc_id
-
-  tags = merge(var.common_tags, { Name = "${var.project_name}-vault-vpc-endpoints" })
 
   lifecycle {
     create_before_destroy = true
