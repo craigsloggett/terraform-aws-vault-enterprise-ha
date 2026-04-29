@@ -179,7 +179,6 @@ resource "aws_iam_role_policy" "vault_server_ssm_read_write" {
 
 data "aws_iam_policy_document" "vault_server_iam_read" {
   statement {
-    sid    = "ResolveIAMRoleARN"
     effect = "Allow"
     actions = [
       "iam:GetRole",
