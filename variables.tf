@@ -341,17 +341,17 @@ variable "vault_server_iam_resource_names" {
   EOT
   default     = {}
   type = object({
-    role                              = optional(string, "VaultServerInstanceRole")
+    role                              = optional(string, "VaultServerRole")
     instance_profile                  = optional(string, "VaultServerInstanceProfile")
-    kms_read_write_policy             = optional(string, "VaultServerKMSReadWriteAccess")
-    kms_describe_policy               = optional(string, "VaultServerKMSDescribeAccess")
-    secrets_manager_read_policy       = optional(string, "VaultServerSecretsManagerReadAccess")
-    secrets_manager_describe_policy   = optional(string, "VaultServerSecretsManagerDescribeAccess")
-    secrets_manager_read_write_policy = optional(string, "VaultServerSecretsManagerReadWriteAccess")
-    s3_read_write_policy              = optional(string, "VaultServerS3ObjectReadWriteAccess")
-    s3_list_policy                    = optional(string, "VaultServerS3BucketListAccess")
-    ec2_describe_policy               = optional(string, "VaultServerEC2DescribeAccess")
-    ssm_read_write_policy             = optional(string, "VaultServerSSMReadWriteAccess")
-    iam_read_policy                   = optional(string, "VaultServerIAMReadAccess")
+    kms_read_write_policy             = optional(string, "KMSReadWriteAccess")
+    kms_describe_policy               = optional(string, "KMSDescribeAccess")
+    secrets_manager_read_policy       = optional(string, "SecretsManagerReadAccess")
+    secrets_manager_describe_policy   = optional(string, "SecretsManagerDescribeAccess")
+    secrets_manager_read_write_policy = optional(string, "SecretsManagerReadWriteAccess")
+    s3_read_write_policy              = optional(string, "S3ObjectReadWriteAccess")
+    s3_list_policy                    = optional(string, "S3BucketListAccess")
+    ec2_describe_policy               = optional(string, "EC2DescribeAccess")
+    ssm_read_write_policy             = optional(string, "SSMReadWriteAccess")
+    iam_read_policy                   = optional(string, "IAMReadAccess")
   })
 }
