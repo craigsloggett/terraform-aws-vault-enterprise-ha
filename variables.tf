@@ -294,7 +294,7 @@ variable "route53_record" {
     Route 53 A record configuration. The record is created in the hosted zone
     supplied via `route53_zone` and points (via alias) at the NLB created by
     this module. The record's fully-qualified name is
-    `${subdomain}.${route53_zone.name}`.
+    `$${subdomain}.$${route53_zone.name}`.
   EOT
 
   validation {

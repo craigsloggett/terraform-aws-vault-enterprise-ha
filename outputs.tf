@@ -5,7 +5,7 @@ output "vault_url" {
 
 output "vault_version" {
   description = "Vault Enterprise version deployed."
-  value       = var.vault_version
+  value       = var.vault.enterprise_version
 }
 
 output "bastion_public_ip" {
@@ -35,7 +35,7 @@ output "vault_target_group_arn" {
 
 output "ec2_ami_name" {
   description = "Name of the AMI used for EC2 instances."
-  value       = var.ec2_ami.name
+  value       = var.ami.name
 }
 
 output "vault_tls_ca_bundle_ssm_parameter_name" {

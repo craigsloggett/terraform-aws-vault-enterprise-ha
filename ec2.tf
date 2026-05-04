@@ -1,9 +1,9 @@
 # Bastion Host
 
 resource "aws_instance" "bastion" {
-  ami                         = var.ec2_ami.id
-  instance_type               = var.bastion_instance_type
-  key_name                    = var.ec2_key_pair_name
+  ami                         = var.ami.id
+  instance_type               = var.bastion.instance_type
+  key_name                    = var.key_pair.key_name
   subnet_id                   = local.vpc.public_subnet_ids[0]
   vpc_security_group_ids      = [aws_security_group.bastion.id]
   associate_public_ip_address = true
@@ -15,7 +15,7 @@ resource "aws_instance" "bastion" {
   }
 
   tags = {
-    Name = var.vault_aws_resource_names.bastion_instance_name
+    Name = var.bastion.name
   }
 }
 
@@ -23,9 +23,9 @@ resource "aws_instance" "bastion" {
 
 resource "aws_launch_template" "vault" {
   name_prefix   = "${var.project_name}-vault-"
-  image_id      = var.ec2_ami.id
-  instance_type = var.vault_server_instance_type
-  key_name      = var.ec2_key_pair_name
+  image_id      = var.ami.id
+  instance_type = var.vault_enterprise_servers.instance_type
+  key_name      = var.key_pair.key_name
 
   iam_instance_profile {
     name = aws_iam_instance_profile.vault_server.name
@@ -46,7 +46,7 @@ resource "aws_launch_template" "vault" {
   user_data = base64gzip(templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
     # Environment Configuration
     vault_fqdn                          = local.vault_fqdn
-    vault_version                       = var.vault_version
+    vault_version                       = var.vault.enterprise_version
     vault_enterprise_license_secret_arn = aws_secretsmanager_secret.vault_enterprise_license.arn
 
     # EBS Configuration
@@ -72,28 +72,28 @@ resource "aws_launch_template" "vault" {
     vault_cluster_state_ssm_name          = aws_ssm_parameter.vault_cluster_state.name
     vault_bootstrap_root_token_secret_arn = aws_secretsmanager_secret.vault_server_bootstrap_root_token.arn
     vault_recovery_keys_secret_arn        = aws_secretsmanager_secret.vault_recovery_keys.arn
-    vault_minimum_quorum_size             = var.vault_node_count
+    vault_minimum_quorum_size             = var.vault_enterprise_servers.node_count
 
     # PKI and TLS Configuration
     vault_pki_state_ssm_name                           = aws_ssm_parameter.vault_pki_state.name
     vault_tls_ca_bundle_ssm_name                       = aws_ssm_parameter.vault_tls_ca_bundle.name
-    vault_pki_intermediate_ca_common_name              = var.vault_pki_intermediate_ca.common_name
-    vault_pki_intermediate_ca_country                  = var.vault_pki_intermediate_ca.country
-    vault_pki_intermediate_ca_organization             = var.vault_pki_intermediate_ca.organization
-    vault_pki_intermediate_ca_key_type                 = var.vault_pki_intermediate_ca.key_type
-    vault_pki_intermediate_ca_key_bits                 = var.vault_pki_intermediate_ca.key_bits
+    vault_pki_intermediate_ca_common_name              = var.vault_pki.intermediate_ca.common_name
+    vault_pki_intermediate_ca_country                  = var.vault_pki.intermediate_ca.country
+    vault_pki_intermediate_ca_organization             = var.vault_pki.intermediate_ca.organization
+    vault_pki_intermediate_ca_key_type                 = var.vault_pki.intermediate_ca.key_type
+    vault_pki_intermediate_ca_key_bits                 = var.vault_pki.intermediate_ca.key_bits
     vault_pki_intermediate_ca_csr_ssm_name             = aws_ssm_parameter.vault_pki_intermediate_ca_csr.name
-    vault_pki_signed_intermediate_wait_timeout_seconds = var.vault_pki_signed_intermediate_wait_timeout_seconds
+    vault_pki_signed_intermediate_wait_timeout_seconds = var.vault_pki.signed_intermediate_wait_timeout_secs
     vault_pki_intermediate_ca_signed_csr_secret_arn    = aws_secretsmanager_secret.vault_pki_intermediate_ca_signed_csr.arn
-    vault_pki_vault_mount_max_ttl                      = var.vault_pki_vault_mount_max_ttl
-    vault_pki_vault_server_role_max_ttl                = var.vault_pki_vault_server_role_max_ttl
-    vault_pki_server_cert_ttl                          = var.vault_pki_server_cert_ttl
-    vault_pki_mount_path                               = var.vault_pki_mount_path
+    vault_pki_vault_mount_max_ttl                      = var.vault_pki.mount_max_ttl
+    vault_pki_vault_server_role_max_ttl                = var.vault_pki.server_role_max_ttl
+    vault_pki_server_cert_ttl                          = var.vault_pki.server_cert_ttl
+    vault_pki_mount_path                               = var.vault_pki.mount_path
 
     # AWS Auth Configuration
     vault_iam_role_arn          = aws_iam_role.vault_server.arn
-    vault_aws_auth_role_max_ttl = var.vault_aws_auth_role_max_ttl
-    vault_aws_auth_role_ttl     = var.vault_aws_auth_role_ttl
+    vault_aws_auth_role_max_ttl = var.vault_auth.aws.role_max_ttl
+    vault_aws_auth_role_ttl     = var.vault_auth.aws.role_ttl
 
     # HCP Terraform JWT Auth Configuration
     hcp_terraform_jwt_auth_hostname              = var.hcp_terraform_jwt_auth.hostname
@@ -102,8 +102,8 @@ resource "aws_launch_template" "vault" {
     hcp_terraform_jwt_auth_oidc_discovery_ca_pem = var.hcp_terraform_jwt_auth.oidc_discovery_ca_pem
     hcp_terraform_jwt_auth_mount_path            = var.hcp_terraform_jwt_auth.mount_path
     hcp_terraform_jwt_auth_role_name             = var.hcp_terraform_jwt_auth.role_name
-    vault_jwt_auth_role_max_ttl                  = var.vault_jwt_auth_role_max_ttl
-    vault_jwt_auth_role_ttl                      = var.vault_jwt_auth_role_ttl
+    vault_jwt_auth_role_max_ttl                  = var.vault_auth.jwt.role_max_ttl
+    vault_jwt_auth_role_ttl                      = var.vault_auth.jwt.role_ttl
 
     # Vault Agent Configuration
     config_vault_agent_hcl                     = local.config_vault_agent_hcl
@@ -118,7 +118,7 @@ resource "aws_launch_template" "vault" {
 
     ebs {
       volume_type           = "gp3"
-      volume_size           = var.root_volume_size
+      volume_size           = var.vault_enterprise_servers.root_volume_size
       encrypted             = true
       delete_on_termination = true
     }
@@ -129,10 +129,10 @@ resource "aws_launch_template" "vault" {
     device_name = "/dev/xvdf"
 
     ebs {
-      volume_type           = var.vault_data_disk.volume_type
-      volume_size           = var.vault_data_disk.volume_size
-      iops                  = var.vault_data_disk.iops
-      throughput            = var.vault_data_disk.throughput
+      volume_type           = var.vault_enterprise_servers.raft_data_disk.volume_type
+      volume_size           = var.vault_enterprise_servers.raft_data_disk.volume_size
+      iops                  = var.vault_enterprise_servers.raft_data_disk.iops
+      throughput            = var.vault_enterprise_servers.raft_data_disk.throughput
       encrypted             = true
       delete_on_termination = true
     }
@@ -143,8 +143,8 @@ resource "aws_launch_template" "vault" {
     device_name = "/dev/xvdg"
 
     ebs {
-      volume_type           = var.vault_audit_disk.volume_type
-      volume_size           = var.vault_audit_disk.volume_size
+      volume_type           = var.vault_enterprise_servers.audit_disk.volume_type
+      volume_size           = var.vault_enterprise_servers.audit_disk.volume_size
       encrypted             = true
       delete_on_termination = true
     }
@@ -154,7 +154,7 @@ resource "aws_launch_template" "vault" {
     resource_type = "volume"
 
     tags = {
-      Name = var.vault_aws_resource_names.vault_server_volume_name
+      Name = var.vault_enterprise_servers.volume_name
     }
   }
 
@@ -162,7 +162,7 @@ resource "aws_launch_template" "vault" {
     create_before_destroy = true
 
     precondition {
-      condition     = can(regex("(ubuntu|debian)", lower(var.ec2_ami.name)))
+      condition     = can(regex("(ubuntu|debian)", lower(var.ami.name)))
       error_message = "The provided AMI must be Ubuntu or Debian-based."
     }
   }
@@ -171,9 +171,9 @@ resource "aws_launch_template" "vault" {
 resource "aws_autoscaling_group" "vault" {
   name_prefix = "${var.project_name}-vault-"
 
-  min_size         = var.vault_node_count
-  max_size         = var.vault_node_count
-  desired_capacity = var.vault_node_count
+  min_size         = var.vault_enterprise_servers.node_count
+  max_size         = var.vault_enterprise_servers.node_count
+  desired_capacity = var.vault_enterprise_servers.node_count
 
   vpc_zone_identifier = local.vpc.private_subnet_ids
 
@@ -203,7 +203,7 @@ resource "aws_autoscaling_group" "vault" {
 
   tag {
     key                 = "Name"
-    value               = var.vault_aws_resource_names.vault_server_instance_name
+    value               = var.vault_enterprise_servers.instance_name
     propagate_at_launch = true
   }
 
