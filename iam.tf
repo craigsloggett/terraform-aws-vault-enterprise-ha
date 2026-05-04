@@ -12,12 +12,14 @@ data "aws_iam_policy_document" "vault_server_assume_role" {
 }
 
 resource "aws_iam_role" "vault_server" {
-  name               = var.vault_server_iam_resource_names.role
+  name               = var.iam_role.name
+  path               = var.iam_role.path
   assume_role_policy = data.aws_iam_policy_document.vault_server_assume_role.json
 }
 
 resource "aws_iam_instance_profile" "vault_server" {
-  name = var.vault_server_iam_resource_names.instance_profile
+  name = var.iam_instance_profile.name
+  path = var.iam_instance_profile.path
   role = aws_iam_role.vault_server.name
 }
 
@@ -36,7 +38,7 @@ data "aws_iam_policy_document" "vault_server_kms_read_write" {
 }
 
 resource "aws_iam_role_policy" "vault_server_kms_read_write" {
-  name   = var.vault_server_iam_resource_names.kms_read_write_policy
+  name   = var.iam_role.inline_policy_names.kms_read_write
   role   = aws_iam_role.vault_server.id
   policy = data.aws_iam_policy_document.vault_server_kms_read_write.json
 }
@@ -51,7 +53,7 @@ data "aws_iam_policy_document" "vault_server_kms_describe" {
 }
 
 resource "aws_iam_role_policy" "vault_server_kms_describe" {
-  name   = var.vault_server_iam_resource_names.kms_describe_policy
+  name   = var.iam_role.inline_policy_names.kms_describe
   role   = aws_iam_role.vault_server.id
   policy = data.aws_iam_policy_document.vault_server_kms_describe.json
 }
@@ -73,7 +75,7 @@ data "aws_iam_policy_document" "vault_server_secrets_manager_read" {
 }
 
 resource "aws_iam_role_policy" "vault_server_secrets_manager_read" {
-  name   = var.vault_server_iam_resource_names.secrets_manager_read_policy
+  name   = var.iam_role.inline_policy_names.secrets_manager_read
   role   = aws_iam_role.vault_server.id
   policy = data.aws_iam_policy_document.vault_server_secrets_manager_read.json
 }
@@ -88,7 +90,7 @@ data "aws_iam_policy_document" "vault_server_secrets_manager_describe" {
 }
 
 resource "aws_iam_role_policy" "vault_server_secrets_manager_describe" {
-  name   = var.vault_server_iam_resource_names.secrets_manager_describe_policy
+  name   = var.iam_role.inline_policy_names.secrets_manager_describe
   role   = aws_iam_role.vault_server.id
   policy = data.aws_iam_policy_document.vault_server_secrets_manager_describe.json
 }
@@ -111,12 +113,12 @@ data "aws_iam_policy_document" "vault_server_secrets_manager_read_write" {
 }
 
 resource "aws_iam_role_policy" "vault_server_secrets_manager_read_write" {
-  name   = var.vault_server_iam_resource_names.secrets_manager_read_write_policy
+  name   = var.iam_role.inline_policy_names.secrets_manager_read_write
   role   = aws_iam_role.vault_server.id
   policy = data.aws_iam_policy_document.vault_server_secrets_manager_read_write.json
 }
 
-data "aws_iam_policy_document" "vault_server_s3_read_write" {
+data "aws_iam_policy_document" "vault_server_s3_object_read_write" {
   statement {
     sid    = "RaftSnapshotObjectManagement"
     effect = "Allow"
@@ -131,13 +133,13 @@ data "aws_iam_policy_document" "vault_server_s3_read_write" {
   }
 }
 
-resource "aws_iam_role_policy" "vault_server_s3_read_write" {
-  name   = var.vault_server_iam_resource_names.s3_read_write_policy
+resource "aws_iam_role_policy" "vault_server_s3_object_read_write" {
+  name   = var.iam_role.inline_policy_names.s3_object_read_write
   role   = aws_iam_role.vault_server.id
-  policy = data.aws_iam_policy_document.vault_server_s3_read_write.json
+  policy = data.aws_iam_policy_document.vault_server_s3_object_read_write.json
 }
 
-data "aws_iam_policy_document" "vault_server_s3_list" {
+data "aws_iam_policy_document" "vault_server_s3_bucket_list" {
   statement {
     sid       = "RaftSnapshotEnumeration"
     effect    = "Allow"
@@ -146,10 +148,10 @@ data "aws_iam_policy_document" "vault_server_s3_list" {
   }
 }
 
-resource "aws_iam_role_policy" "vault_server_s3_list" {
-  name   = var.vault_server_iam_resource_names.s3_list_policy
+resource "aws_iam_role_policy" "vault_server_s3_bucket_list" {
+  name   = var.iam_role.inline_policy_names.s3_bucket_list
   role   = aws_iam_role.vault_server.id
-  policy = data.aws_iam_policy_document.vault_server_s3_list.json
+  policy = data.aws_iam_policy_document.vault_server_s3_bucket_list.json
 }
 
 data "aws_iam_policy_document" "vault_server_ec2_describe" {
@@ -162,7 +164,7 @@ data "aws_iam_policy_document" "vault_server_ec2_describe" {
 }
 
 resource "aws_iam_role_policy" "vault_server_ec2_describe" {
-  name   = var.vault_server_iam_resource_names.ec2_describe_policy
+  name   = var.iam_role.inline_policy_names.ec2_describe
   role   = aws_iam_role.vault_server.id
   policy = data.aws_iam_policy_document.vault_server_ec2_describe.json
 }
@@ -187,7 +189,7 @@ data "aws_iam_policy_document" "vault_server_ssm_read_write" {
 }
 
 resource "aws_iam_role_policy" "vault_server_ssm_read_write" {
-  name   = var.vault_server_iam_resource_names.ssm_read_write_policy
+  name   = var.iam_role.inline_policy_names.ssm_read_write
   role   = aws_iam_role.vault_server.id
   policy = data.aws_iam_policy_document.vault_server_ssm_read_write.json
 }
@@ -206,7 +208,7 @@ data "aws_iam_policy_document" "vault_server_iam_read" {
 }
 
 resource "aws_iam_role_policy" "vault_server_iam_read" {
-  name   = var.vault_server_iam_resource_names.iam_read_policy
+  name   = var.iam_role.inline_policy_names.iam_read
   role   = aws_iam_role.vault_server.id
   policy = data.aws_iam_policy_document.vault_server_iam_read.json
 }

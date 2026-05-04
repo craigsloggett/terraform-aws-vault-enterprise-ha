@@ -336,29 +336,113 @@ variable "vault_pki_mount_path" {
 
 # IAM
 
-variable "vault_server_iam_resource_names" {
-  description = <<-EOT
-    Names for the IAM resources created by this module. Each field is optional;
-    consumers are expected to set these to environment-appropriate values to
-    avoid collisions when deploying multiple instances of the module into the
-    same AWS account. Switching a name (or accepting a new default) replaces
-    the underlying AWS resource since IAM resource names are immutable.
-  EOT
-  default     = {}
+variable "iam_role" {
   type = object({
-    role                              = optional(string, "VaultServerRole")
-    instance_profile                  = optional(string, "VaultServerInstanceProfile")
-    kms_read_write_policy             = optional(string, "KMSReadWriteAccess")
-    kms_describe_policy               = optional(string, "KMSDescribeAccess")
-    secrets_manager_read_policy       = optional(string, "SecretsManagerReadAccess")
-    secrets_manager_describe_policy   = optional(string, "SecretsManagerDescribeAccess")
-    secrets_manager_read_write_policy = optional(string, "SecretsManagerReadWriteAccess")
-    s3_read_write_policy              = optional(string, "S3ObjectReadWriteAccess")
-    s3_list_policy                    = optional(string, "S3BucketListAccess")
-    ec2_describe_policy               = optional(string, "EC2DescribeAccess")
-    ssm_read_write_policy             = optional(string, "SSMReadWriteAccess")
-    iam_read_policy                   = optional(string, "IAMReadAccess")
+    name = optional(string, "VaultEnterpriseServerRole")
+    path = optional(string, "/")
+    inline_policy_names = optional(object({
+      kms_read_write             = optional(string, "KMSReadWriteAccess")
+      kms_describe               = optional(string, "KMSDescribeAccess")
+      secrets_manager_read       = optional(string, "SecretsManagerReadAccess")
+      secrets_manager_describe   = optional(string, "SecretsManagerDescribeAccess")
+      secrets_manager_read_write = optional(string, "SecretsManagerReadWriteAccess")
+      s3_object_read_write       = optional(string, "S3ObjectReadWriteAccess")
+      s3_bucket_list             = optional(string, "S3BucketListAccess")
+      ec2_describe               = optional(string, "EC2DescribeAccess")
+      ssm_read_write             = optional(string, "SSMReadWriteAccess")
+      iam_read                   = optional(string, "IAMReadAccess")
+    }), {})
   })
+  default = {}
+
+  description = <<-EOT
+    IAM role configuration for the Vault Enterprise EC2 instances. The module
+    creates one role with several inline policies attached. Defaults reflect the
+    module's recommended PascalCase naming; consumer-supplied values are passed
+    through verbatim with no transformation.
+  EOT
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9+=,.@_-]+$", var.iam_role.name))
+    error_message = "IAM role name must contain only alphanumeric or '+=,.@-_' characters."
+  }
+
+  validation {
+    condition     = length(var.iam_role.name) >= 1 && length(var.iam_role.name) <= 64
+    error_message = "IAM role name must be 1-64 characters."
+  }
+
+  validation {
+    condition = alltrue([
+      for policy_name in values(var.iam_role.inline_policy_names) :
+      can(regex("^[A-Za-z0-9+=,.@_-]+$", policy_name))
+    ])
+    error_message = "IAM inline policy names must contain only alphanumeric or '+=,.@-_' characters."
+  }
+
+  validation {
+    condition = alltrue([
+      for policy_name in values(var.iam_role.inline_policy_names) :
+      length(policy_name) >= 1 && length(policy_name) <= 64
+    ])
+    error_message = "IAM inline policy names must be 1-64 characters."
+  }
+
+  validation {
+    condition     = startswith(var.iam_role.path, "/") && endswith(var.iam_role.path, "/")
+    error_message = "IAM path must start and end with '/'."
+  }
+
+  validation {
+    condition     = !can(regex("[[:space:]]", var.iam_role.path))
+    error_message = "IAM path must not contain spaces, tabs, or newlines."
+  }
+
+  validation {
+    condition     = can(regex("^[[:print:]/]+$", var.iam_role.path))
+    error_message = "IAM path must contain only printable ASCII characters."
+  }
+}
+
+variable "iam_instance_profile" {
+  type = object({
+    name = optional(string, "VaultEnterpriseServerInstanceProfile")
+    path = optional(string, "/")
+  })
+  default = {}
+
+  description = <<-EOT
+    IAM instance profile configuration for the Vault Enterprise EC2 instances.
+    The module creates one instance profile and associates it with the IAM role
+    created by this module. Defaults reflect the module's recommended PascalCase
+    naming; consumer-supplied values are passed through verbatim with no
+    transformation.
+  EOT
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9+=,.@_-]+$", var.iam_instance_profile.name))
+    error_message = "IAM instance profile name must contain only alphanumeric or '+=,.@-_' characters."
+  }
+
+  validation {
+    condition     = length(var.iam_instance_profile.name) >= 1 && length(var.iam_instance_profile.name) <= 64
+    error_message = "IAM instance profile name must be 1-64 characters."
+  }
+
+  validation {
+    condition     = startswith(var.iam_instance_profile.path, "/") && endswith(var.iam_instance_profile.path, "/")
+    error_message = "IAM instance profile path must start and end with '/'."
+  }
+
+  validation {
+    condition     = !can(regex("[[:space:]]", var.iam_instance_profile.path))
+    error_message = "IAM instance profile path must not contain spaces, tabs, or newlines."
+  }
+
+  validation {
+    condition     = can(regex("^[[:print:]/]+$", var.iam_instance_profile.path))
+    error_message = "IAM instance profile path must contain only printable ASCII characters."
+  }
 }
 
 # Tags
