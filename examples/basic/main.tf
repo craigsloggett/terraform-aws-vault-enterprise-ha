@@ -41,6 +41,10 @@ data "aws_ami" "selected" {
   }
 }
 
+data "aws_key_pair" "selected" {
+  key_name = var.ec2_key_pair_name
+}
+
 module "vault" {
   # tflint-ignore: terraform_module_pinned_source
   source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise"
@@ -48,23 +52,35 @@ module "vault" {
   project_name             = var.project_name
   route53_zone             = data.aws_route53_zone.vault
   vault_enterprise_license = var.vault_enterprise_license
-  ec2_key_pair_name        = var.ec2_key_pair_name
-  ec2_ami                  = data.aws_ami.selected
+  key_pair                 = data.aws_key_pair.selected
+  ami                      = data.aws_ami.selected
 
-  existing_vpc = {
-    vpc_id             = data.aws_vpc.selected.id
-    private_subnet_ids = data.aws_subnets.private.ids
-    public_subnet_ids  = data.aws_subnets.public.ids
+  vpc = {
+    existing = {
+      vpc_id             = data.aws_vpc.selected.id
+      private_subnet_ids = data.aws_subnets.private.ids
+      public_subnet_ids  = data.aws_subnets.public.ids
+    }
   }
 
-  vault_pki_intermediate_ca = {
-    key_type = local.pki_key_type
-    key_bits = local.pki_key_bits
+  vault_pki = {
+    intermediate_ca = {
+      key_type = local.pki_key_type
+      key_bits = local.pki_key_bits
+    }
   }
 
-  nlb_internal               = true
-  vault_api_allowed_cidrs    = ["0.0.0.0/0"]
-  vault_server_instance_type = "t3.medium"
+  nlb = {
+    internal          = true
+    api_allowed_cidrs = ["0.0.0.0/0"]
+  }
+
+  vault_enterprise_servers = {
+    instance_type = "t3.medium"
+    cluster_auto_join_tag = {
+      value = var.project_name
+    }
+  }
 
   hcp_terraform_jwt_auth = {
     hostname          = "app.terraform.io"

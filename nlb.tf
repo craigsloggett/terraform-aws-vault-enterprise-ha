@@ -1,8 +1,8 @@
 resource "aws_lb" "vault" {
   name_prefix        = "vault-"
-  internal           = var.nlb_internal
+  internal           = var.nlb.internal
   load_balancer_type = "network"
-  subnets            = var.nlb_internal ? local.vpc.private_subnet_ids : local.vpc.public_subnet_ids
+  subnets            = var.nlb.internal ? local.vpc.private_subnet_ids : local.vpc.public_subnet_ids
 
   enable_cross_zone_load_balancing = true
 
