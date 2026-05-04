@@ -41,6 +41,10 @@ data "aws_ami" "selected" {
   }
 }
 
+data "aws_key_pair" "selected" {
+  key_name = var.ec2_key_pair_name
+}
+
 module "vault" {
   # tflint-ignore: terraform_module_pinned_source
   source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise"
@@ -48,7 +52,7 @@ module "vault" {
   project_name             = var.project_name
   route53_zone             = data.aws_route53_zone.vault
   vault_enterprise_license = var.vault_enterprise_license
-  key_pair                 = { key_name = var.ec2_key_pair_name }
+  key_pair                 = data.aws_key_pair.selected
   ami                      = data.aws_ami.selected
 
   vpc = {
