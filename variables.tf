@@ -10,7 +10,7 @@ variable "ami" {
     name = string
   })
 
-  description = "AMI for EC2 instances. Must be Ubuntu or Debian-based. Accepts the result of an aws_ami data source directly."
+  description = "AMI for EC2 instances. Must be Ubuntu or Debian-based. Accepts the result of an `aws_ami` data source directly."
 }
 
 variable "key_pair" {
@@ -18,7 +18,7 @@ variable "key_pair" {
     key_name = string
   })
 
-  description = "EC2 key pair for SSH access. Accepts the result of an aws_key_pair data source directly."
+  description = "EC2 key pair for SSH access. Accepts the result of an `aws_key_pair` data source directly."
 }
 
 variable "route53_zone" {
@@ -27,7 +27,7 @@ variable "route53_zone" {
     name    = string
   })
 
-  description = "Route 53 hosted zone for the Vault DNS record. Accepts the result of an aws_route53_zone data source directly."
+  description = "Route 53 hosted zone for the Vault DNS record. Accepts the result of an `aws_route53_zone` data source directly."
 }
 
 variable "vpc" {
@@ -48,9 +48,9 @@ variable "vpc" {
   description = <<-EOT
     VPC configuration. When `existing` is null (default), a new VPC is created
     using `cidr`, `private_subnets`, and `public_subnets`. When `existing` is
-    set, those creation fields are ignored and the supplied VPC is used; it
-    must already have the required VPC endpoints (Secrets Manager, KMS, EC2
-    Interface; S3 Gateway).
+    set, those creation fields are ignored and the supplied VPC is used. The
+    supplied VPC must have the required VPC endpoints configured (Secrets
+    Manager, KMS, EC2 Interface; S3 Gateway).
   EOT
 
   validation {
@@ -84,7 +84,7 @@ variable "bastion" {
 
   default     = {}
   description = <<-EOT
-    Bastion host configuration. `allowed_cidrs` defaults to 0.0.0.0/0 for lab
+    Bastion host configuration. `allowed_cidrs` defaults to `["0.0.0.0/0"]` for
     convenience; restrict to known ranges in any production deployment.
   EOT
 
@@ -160,7 +160,7 @@ variable "nlb" {
   default     = {}
   description = <<-EOT
     NLB configuration for the Vault API. `api_allowed_cidrs` is only effective
-    when `internal` is false.
+    when `internal` is `false`.
   EOT
 
   validation {
@@ -208,7 +208,7 @@ variable "security_group" {
   description = <<-EOT
     Name prefixes for the security groups created by this module. The AWS
     provider appends a random suffix to guarantee uniqueness, which enables
-    create_before_destroy for security group replacements.
+    `create_before_destroy` for security group replacements.
   EOT
 }
 
@@ -234,9 +234,7 @@ variable "iam_role" {
   default     = {}
   description = <<-EOT
     IAM role configuration for the Vault Enterprise EC2 instances. The module
-    creates one role with several inline policies attached. Defaults reflect the
-    module's recommended PascalCase naming; consumer-supplied values are passed
-    through verbatim with no transformation.
+    creates one role with several inline policies attached.
   EOT
 
   validation {
@@ -291,9 +289,7 @@ variable "iam_instance_profile" {
   description = <<-EOT
     IAM instance profile configuration for the Vault Enterprise EC2 instances.
     The module creates one instance profile and associates it with the IAM role
-    created by this module. Defaults reflect the module's recommended PascalCase
-    naming; consumer-supplied values are passed through verbatim with no
-    transformation.
+    created by this module.
   EOT
 
   validation {
@@ -329,10 +325,9 @@ variable "route53_record" {
 
   default     = {}
   description = <<-EOT
-    Route 53 A record configuration. The record is created in the hosted zone
+    Route53 A record configuration. The record is created in the hosted zone
     supplied via `route53_zone` and points (via alias) at the NLB created by
-    this module. The record's fully-qualified name is
-    `$${subdomain}.$${route53_zone.name}`.
+    this module.
   EOT
 
   validation {
@@ -398,10 +393,7 @@ variable "vault_auth" {
 
   default     = {}
   description = <<-EOT
-    TTL configuration for Vault auth method roles. `vault_auth.aws` configures
-    Vault's AWS auth method (Vault authenticating callers via AWS IAM identities)
-    and is unrelated to the `iam_role` variable, which configures the AWS IAM
-    role used by the EC2 instances running Vault.
+    TTL configuration for Vault auth method roles.
   EOT
 }
 
