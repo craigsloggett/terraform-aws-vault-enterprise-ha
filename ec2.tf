@@ -72,7 +72,7 @@ resource "aws_launch_template" "vault_enterprise" {
     bootstrap_cluster_state_name           = aws_ssm_parameter.bootstrap_cluster_state.name
     bootstrap_pki_state_name               = aws_ssm_parameter.bootstrap_pki_state.name
     bootstrap_pki_intermediate_ca_csr_name = aws_ssm_parameter.bootstrap_pki_intermediate_ca_csr.name
-    bootstrap_root_token_secret_arn        = aws_secretsmanager_secret.bootstrap_root_token.arn
+    root_token_secret_arn                  = aws_secretsmanager_secret.root_token.arn
     recovery_keys_secret_arn               = aws_secretsmanager_secret.recovery_keys.arn
     vault_minimum_quorum_size              = var.vault_enterprise_servers.node_count
 

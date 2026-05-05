@@ -63,7 +63,7 @@ readonly VAULT_CLUSTER_AUTO_JOIN_TAG_VALUE="${vault_cluster_auto_join_tag_value}
 readonly BOOTSTRAP_CLUSTER_STATE_NAME="${bootstrap_cluster_state_name}"
 readonly BOOTSTRAP_PKI_STATE_NAME="${bootstrap_pki_state_name}"
 readonly BOOTSTRAP_PKI_INTERMEDIATE_CA_CSR_NAME="${bootstrap_pki_intermediate_ca_csr_name}"
-readonly BOOTSTRAP_ROOT_TOKEN_SECRET_ARN="${bootstrap_root_token_secret_arn}"
+readonly ROOT_TOKEN_SECRET_ARN="${root_token_secret_arn}"
 readonly RECOVERY_KEYS_SECRET_ARN="${recovery_keys_secret_arn}"
 readonly VAULT_MINIMUM_QUORUM_SIZE="${vault_minimum_quorum_size}"
 
@@ -329,7 +329,7 @@ initialize_vault_cluster() (
   recovery_keys="$(printf '%s' "$${init_output}" | jq -c '.recovery_keys_b64')"
 
   log_info "Storing bootstrap root token in Secrets Manager"
-  put_secret "$${BOOTSTRAP_ROOT_TOKEN_SECRET_ARN}" "$${root_token}"
+  put_secret "$${ROOT_TOKEN_SECRET_ARN}" "$${root_token}"
 
   log_info "Storing recovery keys in Secrets Manager"
   put_secret "$${RECOVERY_KEYS_SECRET_ARN}" "$${recovery_keys}"
@@ -1274,7 +1274,7 @@ main() {
   if [ "$${vault_node_role}" = "bootstrap" ]; then
     log_info "=== Bootstrap Node ==="
     initialize_vault_cluster
-    VAULT_TOKEN="$(fetch_secret "$${BOOTSTRAP_ROOT_TOKEN_SECRET_ARN}")"
+    VAULT_TOKEN="$(fetch_secret "$${ROOT_TOKEN_SECRET_ARN}")"
     export VAULT_TOKEN
 
     configure_autopilot

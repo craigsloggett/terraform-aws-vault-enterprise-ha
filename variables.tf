@@ -391,7 +391,7 @@ variable "vault_pki" {
     signed_intermediate_wait_timeout_seconds = optional(number, 1800)
 
     ssm_parameter = optional(object({
-      tls_ca_bundle_name = optional(string, "/vault/tls/ca-bundle")
+      tls_ca_bundle_name = optional(string, "/vault-enterprise/tls/ca-bundle")
     }), {})
 
     intermediate_ca = optional(object({
@@ -432,16 +432,16 @@ variable "bootstrap" {
     secretsmanager_secret = optional(object({
       intermediate_ca_signed_csr_name_prefix = optional(string, "vault-enterprise-intermediate-ca-signed-csr-")
       recovery_keys_name_prefix              = optional(string, "vault-enterprise-recovery-keys-")
-      root_token_name_prefix                 = optional(string, "vault-enterprise-bootstrap-root-token")
+      root_token_name_prefix                 = optional(string, "vault-enterprise-root-token")
       tls_ca_name_prefix                     = optional(string, "vault-enterprise-bootstrap-tls-ca-")
       tls_cert_name_prefix                   = optional(string, "vault-enterprise-bootstrap-tls-cert-")
       tls_private_key_name_prefix            = optional(string, "vault-enterprise-bootstrap-tls-private-key-")
     }), {})
 
     ssm_parameter = optional(object({
-      cluster_state_name           = optional(string, "/vault/bootstrap/cluster/state")
-      pki_state_name               = optional(string, "/vault/bootstrap/pki/state")
-      pki_intermediate_ca_csr_name = optional(string, "/vault/bootstrap/pki/intermediate-ca-csr")
+      cluster_state_name           = optional(string, "/vault-enterprise/bootstrap/cluster/state")
+      pki_state_name               = optional(string, "/vault-enterprise/bootstrap/pki/state")
+      pki_intermediate_ca_csr_name = optional(string, "/vault-enterprise/bootstrap/pki/intermediate-ca-csr")
     }), {})
   })
 
