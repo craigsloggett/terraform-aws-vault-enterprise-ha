@@ -118,13 +118,13 @@ variable "vault_cluster" {
     })
 
     launch_template = optional(object({
-      name_prefix = optional(string, "vault-enterprise-")
+      name_prefix = optional(string, "vault-enterprise-servers-")
       volume_name = optional(string, "vault-enterprise-volume")
     }), {})
 
     autoscaling_group = optional(object({
-      name_prefix   = optional(string, "vault-enterprise-")
-      instance_name = optional(string, "vault-enterprise")
+      name_prefix   = optional(string, "vault-enterprise-servers-")
+      instance_name = optional(string, "vault-enterprise-server")
     }), {})
   })
 
@@ -191,9 +191,17 @@ variable "kms_key" {
 
 variable "security_group" {
   type = object({
-    bastion_name_prefix       = optional(string, "vault-enterprise-bastion-sg-")
-    vault_servers_name_prefix = optional(string, "vault-enterprise-servers-sg-")
-    vpc_endpoints_name_prefix = optional(string, "vault-enterprise-vpc-endpoints-sg-")
+    bastion = optional(object({
+      name_prefix = optional(string, "vault-enterprise-bastion-sg-")
+    }), {})
+
+    vault_servers = optional(object({
+      name_prefix = optional(string, "vault-enterprise-servers-sg-")
+    }), {})
+
+    vpc_endpoints = optional(object({
+      name_prefix = optional(string, "vault-enterprise-vpc-endpoints-sg-")
+    }), {})
   })
 
   default     = {}
