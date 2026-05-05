@@ -106,7 +106,7 @@ data "aws_iam_policy_document" "secrets_manager_read_write" {
     ]
 
     resources = [
-      aws_secretsmanager_secret.bootstrap_root_token.arn,
+      aws_secretsmanager_secret.root_token.arn,
       aws_secretsmanager_secret.recovery_keys.arn,
     ]
   }
