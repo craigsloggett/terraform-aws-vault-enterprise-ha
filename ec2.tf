@@ -74,7 +74,7 @@ resource "aws_launch_template" "vault_enterprise" {
     bootstrap_pki_intermediate_ca_csr_name = aws_ssm_parameter.bootstrap_pki_intermediate_ca_csr.name
     root_token_secret_arn                  = aws_secretsmanager_secret.root_token.arn
     recovery_keys_secret_arn               = aws_secretsmanager_secret.recovery_keys.arn
-    vault_autopilot_min_quorum             = floor(var.vault_cluster.node_count / 2) + 1
+    vault_autopilot_min_quorum             = max(3, floor(var.vault_cluster.node_count / 2) + 1)
 
     # PKI and TLS Configuration
     tls_ca_bundle_name                                 = aws_ssm_parameter.tls_ca_bundle.name
