@@ -5,7 +5,7 @@ output "vault_url" {
 
 output "vault_version" {
   description = "Vault Enterprise version deployed."
-  value       = var.vault.enterprise_version
+  value       = var.vault.version
 }
 
 output "bastion_public_ip" {

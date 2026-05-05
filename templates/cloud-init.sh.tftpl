@@ -52,7 +52,7 @@ readonly EBS_RAFT_DEVICE_NAME="${ebs_raft_device_name}"
 readonly EBS_AUDIT_DEVICE_NAME="${ebs_audit_device_name}"
 
 # Bootstrap Artifacts
-readonly VAULT_ENTERPRISE_LICENSE_SECRET_ARN="${vault_enterprise_license_secret_arn}"
+readonly LICENSE_SECRET_ARN="${license_secret_arn}"
 readonly BOOTSTRAP_TLS_CA_SECRET_ARN="${bootstrap_tls_ca_secret_arn}"
 readonly BOOTSTRAP_TLS_CERT_SECRET_ARN="${bootstrap_tls_cert_secret_arn}"
 readonly BOOTSTRAP_TLS_PRIVATE_KEY_SECRET_ARN="${bootstrap_tls_private_key_secret_arn}"
@@ -300,7 +300,7 @@ fetch_bootstrap_tls_private_key() (
 )
 
 fetch_vault_license() (
-  fetch_secret "$${VAULT_ENTERPRISE_LICENSE_SECRET_ARN}"
+  fetch_secret "$${LICENSE_SECRET_ARN}"
 )
 
 #######################################

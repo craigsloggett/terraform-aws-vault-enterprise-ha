@@ -64,7 +64,7 @@ resource "tls_locally_signed_cert" "bootstrap_tls_cert" {
 # Secrets Manager
 
 resource "aws_secretsmanager_secret" "bootstrap_tls_ca" {
-  name_prefix = var.secretsmanager_secret.bootstrap_tls_ca_name_prefix
+  name_prefix = var.bootstrap.secretsmanager_secret.tls_ca_name_prefix
   description = "Vault Enterprise Bootstrap TLS CA"
 }
 
@@ -74,7 +74,7 @@ resource "aws_secretsmanager_secret_version" "bootstrap_tls_ca" {
 }
 
 resource "aws_secretsmanager_secret" "bootstrap_tls_cert" {
-  name_prefix = var.secretsmanager_secret.bootstrap_tls_cert_name_prefix
+  name_prefix = var.bootstrap.secretsmanager_secret.tls_cert_name_prefix
   description = "Vault Enterprise Bootstrap TLS Certificate"
 }
 
@@ -84,7 +84,7 @@ resource "aws_secretsmanager_secret_version" "bootstrap_tls_cert" {
 }
 
 resource "aws_secretsmanager_secret" "bootstrap_tls_private_key" {
-  name_prefix = var.secretsmanager_secret.bootstrap_tls_private_key_name_prefix
+  name_prefix = var.bootstrap.secretsmanager_secret.tls_private_key_name_prefix
   description = "Vault Enterprise Bootstrap TLS Private Key"
 }
 
@@ -94,14 +94,24 @@ resource "aws_secretsmanager_secret_version" "bootstrap_tls_private_key" {
 }
 
 resource "aws_secretsmanager_secret" "bootstrap_root_token" {
-  name_prefix = var.secretsmanager_secret.bootstrap_root_token_name_prefix
+  name_prefix = var.bootstrap.secretsmanager_secret.root_token_name_prefix
   description = "Vault Enterprise Bootstrap Root Token"
+}
+
+resource "aws_secretsmanager_secret" "intermediate_ca_signed_csr" {
+  name_prefix = var.bootstrap.secretsmanager_secret.intermediate_ca_signed_csr_name_prefix
+  description = "Vault Enterprise Intermediate CA and Signed CSR"
+}
+
+resource "aws_secretsmanager_secret" "recovery_keys" {
+  name_prefix = var.bootstrap.secretsmanager_secret.recovery_keys_name_prefix
+  description = "Vault Enterprise Recovery Keys"
 }
 
 # Initialization Coordination SSM Parameters
 
 resource "aws_ssm_parameter" "bootstrap_cluster_state" {
-  name        = var.ssm_parameter.bootstrap_cluster_state_name
+  name        = var.bootstrap.ssm_parameter.cluster_state_name
   type        = "String"
   value       = "Uninitialized"
   description = "Bootstrap Initialization State Flag"
@@ -112,7 +122,7 @@ resource "aws_ssm_parameter" "bootstrap_cluster_state" {
 }
 
 resource "aws_ssm_parameter" "bootstrap_pki_state" {
-  name        = var.ssm_parameter.bootstrap_pki_state_name
+  name        = var.bootstrap.ssm_parameter.pki_state_name
   type        = "String"
   value       = "Uninitialized"
   description = "Bootstrap PKI State Flag"
@@ -123,7 +133,7 @@ resource "aws_ssm_parameter" "bootstrap_pki_state" {
 }
 
 resource "aws_ssm_parameter" "bootstrap_pki_intermediate_ca_csr" {
-  name        = var.ssm_parameter.bootstrap_pki_intermediate_ca_csr_name
+  name        = var.bootstrap.ssm_parameter.pki_intermediate_ca_csr_name
   type        = "String"
   value       = "Uninitialized"
   description = "Bootstrap PKI Intermediate CA CSR"

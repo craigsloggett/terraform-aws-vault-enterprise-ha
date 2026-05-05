@@ -320,37 +320,15 @@ variable "route53_record" {
   }
 }
 
-variable "secretsmanager_secret" {
-  type = object({
-    vault_enterprise_license_name_prefix   = optional(string, "vault-enterprise-license-")
-    intermediate_ca_signed_csr_name_prefix = optional(string, "vault-enterprise-intermediate-ca-signed-csr-")
-    recovery_keys_name_prefix              = optional(string, "vault-enterprise-recovery-keys-")
-    bootstrap_root_token_name_prefix       = optional(string, "vault-enterprise-bootstrap-root-token")
-    bootstrap_tls_ca_name_prefix           = optional(string, "vault-enterprise-bootstrap-tls-ca-")
-    bootstrap_tls_cert_name_prefix         = optional(string, "vault-enterprise-bootstrap-tls-cert-")
-    bootstrap_tls_private_key_name_prefix  = optional(string, "vault-enterprise-bootstrap-tls-private-key-")
-  })
-
-  default     = {}
-  description = "Name prefixes for the Secrets Manager secrets created by this module."
-}
-
-variable "ssm_parameter" {
-  type = object({
-    bootstrap_cluster_state_name           = optional(string, "/vault/bootstrap/cluster/state")
-    bootstrap_pki_state_name               = optional(string, "/vault/bootstrap/pki/state")
-    bootstrap_pki_intermediate_ca_csr_name = optional(string, "/vault/bootstrap/pki/intermediate-ca-csr")
-    tls_ca_bundle_name                     = optional(string, "/vault/tls/ca-bundle")
-  })
-
-  default     = {}
-  description = "Names for the SSM parameters created by this module."
-}
-
 variable "vault" {
   type = object({
-    enterprise_version = optional(string, "1.21.4+ent")
-    cluster_name       = optional(string, "vault-enterprise")
+    version      = optional(string, "1.21.4+ent")
+    cluster_name = optional(string, "vault-enterprise")
+
+    secretsmanager_secret = optional(object({
+      license_name_prefix = optional(string, "vault-enterprise-license-")
+    }), {})
+
     snapshots = optional(object({
       interval      = optional(number, 3600)
       retain        = optional(number, 72)
@@ -362,8 +340,8 @@ variable "vault" {
   description = "Vault Enterprise product configuration."
 
   validation {
-    condition     = can(regex("^\\d+\\.\\d+\\.\\d+\\+ent(\\.hsm)?(\\.fips1402)?$", var.vault.enterprise_version))
-    error_message = "vault.enterprise_version must be a valid Vault Enterprise release version (e.g., 1.21.4+ent, 1.21.4+ent.hsm, 1.21.4+ent.fips1402)."
+    condition     = can(regex("^\\d+\\.\\d+\\.\\d+\\+ent(\\.hsm)?(\\.fips1402)?$", var.vault.version))
+    error_message = "vault.version must be a valid Vault Enterprise release version (e.g., 1.21.4+ent, 1.21.4+ent.hsm, 1.21.4+ent.fips1402)."
   }
 
   validation {
@@ -412,6 +390,10 @@ variable "vault_pki" {
     server_cert_ttl                          = optional(string, "24h")
     signed_intermediate_wait_timeout_seconds = optional(number, 1800)
 
+    ssm_parameter = optional(object({
+      tls_ca_bundle_name = optional(string, "/vault/tls/ca-bundle")
+    }), {})
+
     intermediate_ca = optional(object({
       common_name  = optional(string, "Vault Intermediate CA")
       country      = optional(string, "")
@@ -443,6 +425,34 @@ variable "vault_pki" {
     condition     = var.vault_pki.intermediate_ca.key_type != "rsa" || contains([2048, 3072, 4096, 8192], var.vault_pki.intermediate_ca.key_bits)
     error_message = "vault_pki.intermediate_ca.key_bits for 'rsa' must be 2048, 3072, 4096, or 8192."
   }
+}
+
+variable "bootstrap" {
+  type = object({
+    secretsmanager_secret = optional(object({
+      intermediate_ca_signed_csr_name_prefix = optional(string, "vault-enterprise-intermediate-ca-signed-csr-")
+      recovery_keys_name_prefix              = optional(string, "vault-enterprise-recovery-keys-")
+      root_token_name_prefix                 = optional(string, "vault-enterprise-bootstrap-root-token")
+      tls_ca_name_prefix                     = optional(string, "vault-enterprise-bootstrap-tls-ca-")
+      tls_cert_name_prefix                   = optional(string, "vault-enterprise-bootstrap-tls-cert-")
+      tls_private_key_name_prefix            = optional(string, "vault-enterprise-bootstrap-tls-private-key-")
+    }), {})
+
+    ssm_parameter = optional(object({
+      cluster_state_name           = optional(string, "/vault/bootstrap/cluster/state")
+      pki_state_name               = optional(string, "/vault/bootstrap/pki/state")
+      pki_intermediate_ca_csr_name = optional(string, "/vault/bootstrap/pki/intermediate-ca-csr")
+    }), {})
+  })
+
+  default     = {}
+  description = <<-EOT
+    AWS resources used during the Vault bootstrap ceremony. Secrets Manager
+    secrets hold sensitive ceremony material (recovery keys, initial root token,
+    bootstrap TLS, signed intermediate CA returned by the offline CA); SSM
+    parameters hold non-sensitive coordination state and the intermediate CA
+    CSR exchanged out-of-band.
+  EOT
 }
 
 variable "hcp_terraform_jwt_auth" {

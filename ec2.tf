@@ -33,7 +33,7 @@ resource "aws_launch_template" "vault_enterprise" {
 
   network_interfaces {
     associate_public_ip_address = false
-    security_groups             = [aws_security_group.vault.id]
+    security_groups             = [aws_security_group.vault_enterprise.id]
     delete_on_termination       = true
   }
 
@@ -45,9 +45,9 @@ resource "aws_launch_template" "vault_enterprise" {
 
   user_data = base64gzip(templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
     # Environment Configuration
-    vault_fqdn                          = local.vault_fqdn
-    vault_version                       = var.vault.enterprise_version
-    vault_enterprise_license_secret_arn = aws_secretsmanager_secret.vault_enterprise_license.arn
+    vault_fqdn         = local.vault_fqdn
+    vault_version      = var.vault.version
+    license_secret_arn = aws_secretsmanager_secret.license.arn
 
     # EBS Configuration
     ebs_raft_device_name  = local.ebs_raft_device_name

@@ -82,7 +82,7 @@ resource "aws_vpc_endpoint" "s3" {
 
 resource "aws_security_group" "bastion" {
   name_prefix = var.security_group.bastion_name_prefix
-  description = "Vault Enterprise bastion host security group"
+  description = "Bastion host security group"
   vpc_id      = local.vpc.id
 
   lifecycle {
@@ -108,7 +108,7 @@ resource "aws_vpc_security_group_egress_rule" "bastion_all" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
-resource "aws_security_group" "vault" {
+resource "aws_security_group" "vault_enterprise" {
   name_prefix = var.security_group.vault_servers_name_prefix
   description = "Vault Enterprise servers security group"
   vpc_id      = local.vpc.id
@@ -118,38 +118,38 @@ resource "aws_security_group" "vault" {
   }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "vault_api" {
-  security_group_id = aws_security_group.vault.id
-  description       = "Vault Enterprise API from VPC"
+resource "aws_vpc_security_group_ingress_rule" "vault_enterprise_api" {
+  security_group_id = aws_security_group.vault_enterprise.id
+  description       = "Vault Enterprise API traffic from VPC"
   from_port         = 8200
   to_port           = 8200
   ip_protocol       = "tcp"
   cidr_ipv4         = local.vpc.cidr
 }
 
-resource "aws_vpc_security_group_ingress_rule" "vault_api_external" {
+resource "aws_vpc_security_group_ingress_rule" "vault_enterprise_api_external" {
   for_each = toset(var.nlb.api_allowed_cidrs)
 
-  security_group_id = aws_security_group.vault.id
-  description       = "Vault Enterprise API from external CIDR"
+  security_group_id = aws_security_group.vault_enterprise.id
+  description       = "Vault Enterprise API traffic from external CIDR"
   from_port         = 8200
   to_port           = 8200
   ip_protocol       = "tcp"
   cidr_ipv4         = each.value
 }
 
-resource "aws_vpc_security_group_ingress_rule" "vault_cluster" {
-  security_group_id            = aws_security_group.vault.id
-  description                  = "Vault Enterprise cluster traffic"
+resource "aws_vpc_security_group_ingress_rule" "vault_enterprise_cluster" {
+  security_group_id            = aws_security_group.vault_enterprise.id
+  description                  = "Vault Enterprise inter-cluster traffic"
   from_port                    = 8201
   to_port                      = 8201
   ip_protocol                  = "tcp"
-  referenced_security_group_id = aws_security_group.vault.id
+  referenced_security_group_id = aws_security_group.vault_enterprise.id
 }
 
 resource "aws_vpc_security_group_ingress_rule" "vault_ssh" {
-  security_group_id            = aws_security_group.vault.id
-  description                  = "SSH from the Vault Enterprise bastion host"
+  security_group_id            = aws_security_group.vault_enterprise.id
+  description                  = "SSH traffic from the bastion host"
   from_port                    = 22
   to_port                      = 22
   ip_protocol                  = "tcp"
@@ -157,7 +157,7 @@ resource "aws_vpc_security_group_ingress_rule" "vault_ssh" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "vault_all" {
-  security_group_id = aws_security_group.vault.id
+  security_group_id = aws_security_group.vault_enterprise.id
   description       = "All outbound traffic"
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
@@ -179,7 +179,7 @@ resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_https" {
   count = var.vpc.existing == null ? 1 : 0
 
   security_group_id = aws_security_group.vpc_endpoints[0].id
-  description       = "HTTPS from VPC"
+  description       = "HTTPS traffic from VPC"
   from_port         = 443
   to_port           = 443
   ip_protocol       = "tcp"

@@ -68,7 +68,7 @@ data "aws_iam_policy_document" "secrets_manager_read" {
       aws_secretsmanager_secret.bootstrap_tls_ca.arn,
       aws_secretsmanager_secret.bootstrap_tls_cert.arn,
       aws_secretsmanager_secret.bootstrap_tls_private_key.arn,
-      aws_secretsmanager_secret.vault_enterprise_license.arn,
+      aws_secretsmanager_secret.license.arn,
       aws_secretsmanager_secret.intermediate_ca_signed_csr.arn
     ]
   }
