@@ -99,7 +99,7 @@ variable "bastion" {
   }
 }
 
-variable "vault_enterprise_servers" {
+variable "vault_cluster" {
   type = object({
     instance_name    = optional(string, "vault-enterprise-server")
     volume_name      = optional(string, "vault-enterprise-server-volume")
@@ -128,18 +128,18 @@ variable "vault_enterprise_servers" {
   description = "Configuration for the Vault Enterprise server EC2 instances and their EBS volumes."
 
   validation {
-    condition     = contains([3, 5], var.vault_enterprise_servers.node_count)
-    error_message = "vault_enterprise_servers.node_count must be 3 or 5 for Raft quorum."
+    condition     = contains([3, 5], var.vault_cluster.node_count)
+    error_message = "vault_cluster.node_count must be 3 or 5 for Raft quorum."
   }
 
   validation {
-    condition     = var.vault_enterprise_servers.root_volume_size >= 20
-    error_message = "vault_enterprise_servers.root_volume_size must be at least 20 GiB."
+    condition     = var.vault_cluster.root_volume_size >= 20
+    error_message = "vault_cluster.root_volume_size must be at least 20 GiB."
   }
 
   validation {
-    condition     = length(var.vault_enterprise_servers.cluster_auto_join_tag.value) > 0
-    error_message = "vault_enterprise_servers.cluster_auto_join_tag.value must be a non-empty string to prevent accidentally joining an existing cluster."
+    condition     = length(var.vault_cluster.cluster_auto_join_tag.value) > 0
+    error_message = "vault_cluster.cluster_auto_join_tag.value must be a non-empty string to prevent accidentally joining an existing cluster."
   }
 }
 

@@ -75,7 +75,7 @@ module "vault" {
     api_allowed_cidrs = ["0.0.0.0/0"]
   }
 
-  vault_enterprise_servers = {
+  vault_cluster = {
     instance_type = "t3.medium"
     cluster_auto_join_tag = {
       value = var.project_name

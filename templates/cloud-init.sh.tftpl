@@ -65,7 +65,7 @@ readonly BOOTSTRAP_PKI_STATE_NAME="${bootstrap_pki_state_name}"
 readonly BOOTSTRAP_PKI_INTERMEDIATE_CA_CSR_NAME="${bootstrap_pki_intermediate_ca_csr_name}"
 readonly ROOT_TOKEN_SECRET_ARN="${root_token_secret_arn}"
 readonly RECOVERY_KEYS_SECRET_ARN="${recovery_keys_secret_arn}"
-readonly VAULT_MINIMUM_QUORUM_SIZE="${vault_minimum_quorum_size}"
+readonly VAULT_AUTOPILOT_MIN_QUORUM="${vault_autopilot_min_quorum}"
 
 # PKI and TLS
 readonly VAULT_PKI_MOUNT_PATH="${vault_pki_mount_path}"
@@ -766,7 +766,7 @@ configure_autopilot() (
   vault operator raft autopilot set-config \
     -cleanup-dead-servers=true \
     -dead-server-last-contact-threshold=10m \
-    -min-quorum=$${VAULT_MINIMUM_QUORUM_SIZE}
+    -min-quorum=$${VAULT_AUTOPILOT_MIN_QUORUM}
 )
 
 configure_snapshots() (

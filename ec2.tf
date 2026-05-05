@@ -24,7 +24,7 @@ resource "aws_instance" "bastion" {
 resource "aws_launch_template" "vault_enterprise" {
   name_prefix   = "${var.project_name}-vault-"
   image_id      = var.ami.id
-  instance_type = var.vault_enterprise_servers.instance_type
+  instance_type = var.vault_cluster.instance_type
   key_name      = var.key_pair.key_name
 
   iam_instance_profile {
@@ -74,7 +74,7 @@ resource "aws_launch_template" "vault_enterprise" {
     bootstrap_pki_intermediate_ca_csr_name = aws_ssm_parameter.bootstrap_pki_intermediate_ca_csr.name
     root_token_secret_arn                  = aws_secretsmanager_secret.root_token.arn
     recovery_keys_secret_arn               = aws_secretsmanager_secret.recovery_keys.arn
-    vault_minimum_quorum_size              = var.vault_enterprise_servers.node_count
+    vault_autopilot_min_quorum             = floor(var.vault_cluster.node_count / 2) + 1
 
     # PKI and TLS Configuration
     tls_ca_bundle_name                                 = aws_ssm_parameter.tls_ca_bundle.name
@@ -118,7 +118,7 @@ resource "aws_launch_template" "vault_enterprise" {
 
     ebs {
       volume_type           = "gp3"
-      volume_size           = var.vault_enterprise_servers.root_volume_size
+      volume_size           = var.vault_cluster.root_volume_size
       encrypted             = true
       delete_on_termination = true
     }
@@ -129,10 +129,10 @@ resource "aws_launch_template" "vault_enterprise" {
     device_name = "/dev/xvdf"
 
     ebs {
-      volume_type           = var.vault_enterprise_servers.raft_data_disk.volume_type
-      volume_size           = var.vault_enterprise_servers.raft_data_disk.volume_size
-      iops                  = var.vault_enterprise_servers.raft_data_disk.iops
-      throughput            = var.vault_enterprise_servers.raft_data_disk.throughput
+      volume_type           = var.vault_cluster.raft_data_disk.volume_type
+      volume_size           = var.vault_cluster.raft_data_disk.volume_size
+      iops                  = var.vault_cluster.raft_data_disk.iops
+      throughput            = var.vault_cluster.raft_data_disk.throughput
       encrypted             = true
       delete_on_termination = true
     }
@@ -143,8 +143,8 @@ resource "aws_launch_template" "vault_enterprise" {
     device_name = "/dev/xvdg"
 
     ebs {
-      volume_type           = var.vault_enterprise_servers.audit_disk.volume_type
-      volume_size           = var.vault_enterprise_servers.audit_disk.volume_size
+      volume_type           = var.vault_cluster.audit_disk.volume_type
+      volume_size           = var.vault_cluster.audit_disk.volume_size
       encrypted             = true
       delete_on_termination = true
     }
@@ -154,7 +154,7 @@ resource "aws_launch_template" "vault_enterprise" {
     resource_type = "volume"
 
     tags = {
-      Name = var.vault_enterprise_servers.volume_name
+      Name = var.vault_cluster.volume_name
     }
   }
 
@@ -171,9 +171,9 @@ resource "aws_launch_template" "vault_enterprise" {
 resource "aws_autoscaling_group" "vault_enterprise" {
   name_prefix = "vault-enterprise-"
 
-  min_size         = var.vault_enterprise_servers.node_count
-  max_size         = var.vault_enterprise_servers.node_count
-  desired_capacity = var.vault_enterprise_servers.node_count
+  min_size         = var.vault_cluster.node_count
+  max_size         = var.vault_cluster.node_count
+  desired_capacity = var.vault_cluster.node_count
 
   vpc_zone_identifier = local.vpc.private_subnet_ids
 
@@ -203,7 +203,7 @@ resource "aws_autoscaling_group" "vault_enterprise" {
 
   tag {
     key                 = "Name"
-    value               = var.vault_enterprise_servers.instance_name
+    value               = var.vault_cluster.instance_name
     propagate_at_launch = true
   }
 

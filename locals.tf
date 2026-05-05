@@ -18,7 +18,7 @@ locals {
   #   n=3 --> 66% (1 node out, 2 healthy)
   #   n=5 --> 80% (1 node out, 4 healthy)
   instance_refresh_min_healthy_pct = floor(
-    (var.vault_enterprise_servers.node_count - 1) / var.vault_enterprise_servers.node_count * 100
+    (var.vault_cluster.node_count - 1) / var.vault_cluster.node_count * 100
   )
 
   # Environment Configuration
@@ -54,8 +54,8 @@ locals {
   })
 
   # Cluster Coordination Configuration
-  vault_cluster_auto_join_tag_key   = var.vault_enterprise_servers.cluster_auto_join_tag.key
-  vault_cluster_auto_join_tag_value = var.vault_enterprise_servers.cluster_auto_join_tag.value
+  vault_cluster_auto_join_tag_key   = var.vault_cluster.cluster_auto_join_tag.key
+  vault_cluster_auto_join_tag_value = var.vault_cluster.cluster_auto_join_tag.value
 
   # Vault Agent Configuration
   config_vault_agent_service                 = file("${path.module}/files/agent/vault-agent.service")
