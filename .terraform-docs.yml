@@ -8,7 +8,12 @@ content: |-
 
   ### main.tf
   ```hcl
-  {{ include "examples/basic/main.tf" }}
+  {{ include "examples/self-signed-tls/main.tf" }}
+  ```
+
+  ### tls.tf
+  ```hcl
+  {{ include "examples/self-signed-tls/tls.tf" }}
   ```
 
   {{ .Requirements }}

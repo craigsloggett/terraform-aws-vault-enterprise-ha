@@ -1,33 +1,19 @@
-# WARNING: This root CA is managed entirely by Terraform and exists only for
-# demonstration purposes. The private key is stored in Terraform state. Do NOT
-# use this approach in production. Replace with an external CA (e.g., AWS Private
-# CA or your organization's PKI) for any real deployment.
+# TLS Signing Orchestration
 
-data "aws_region" "current" {}
-
-locals {
-  pki_key_type = "ec"
-  pki_key_bits = 384
-
-  tls_algorithm   = local.pki_key_type == "ec" ? "ECDSA" : "RSA"
-  tls_ecdsa_curve = local.pki_key_type == "ec" ? "P${local.pki_key_bits}" : null
-  tls_rsa_bits    = local.pki_key_type == "rsa" ? local.pki_key_bits : null
-}
-
-# Root CA
+## Root CA
 
 resource "tls_private_key" "root_ca" {
-  algorithm   = local.tls_algorithm
-  ecdsa_curve = local.tls_ecdsa_curve
-  rsa_bits    = local.tls_rsa_bits
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P384"
 }
 
 resource "tls_self_signed_cert" "root_ca" {
   private_key_pem = tls_private_key.root_ca.private_key_pem
 
   subject {
-    common_name  = "${title(var.project_name)} Root CA"
-    organization = "HashiDemos"
+    common_name  = "Vault Root CA"
+    country      = "US"
+    organization = "HashiCorp Demos"
   }
 
   validity_period_hours = 87600
@@ -39,7 +25,7 @@ resource "tls_self_signed_cert" "root_ca" {
   ]
 }
 
-# Intermediate CA Signing
+## Intermediate CA Signing
 
 resource "terraform_data" "wait_for_csr" {
   input = module.vault.vault_pki_intermediate_ca_csr_ssm_parameter_name
@@ -49,7 +35,7 @@ resource "terraform_data" "wait_for_csr" {
     environment = {
       PARAMETER_NAME = self.input
       TIMEOUT_SEC    = "1800"
-      REGION         = data.aws_region.current.region
+      REGION         = data.aws_region.this.region
     }
   }
 }
