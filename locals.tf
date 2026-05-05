@@ -1,5 +1,5 @@
 locals {
-  # (Optional) Existing VPC Configuration
+  # VPC Configuration
   vpc = var.vpc.existing != null ? {
     id                 = var.vpc.existing.vpc_id
     cidr               = data.aws_vpc.existing[0].cidr_block
@@ -14,11 +14,11 @@ locals {
 
   # Derived as maximum nodes that can be out during instance refresh
   # while maintaining quorum.
-  #  floor( ( n-1 ) / n * 100 ) gives:
+  #  floor( ( n-1 ) * 100 / n ) gives:
   #   n=3 --> 66% (1 node out, 2 healthy)
   #   n=5 --> 80% (1 node out, 4 healthy)
   instance_refresh_min_healthy_pct = floor(
-    (var.vault_cluster.node_count - 1) / var.vault_cluster.node_count * 100
+    (var.vault_cluster.node_count - 1) * 100 / var.vault_cluster.node_count
   )
 
   # Environment Configuration
@@ -71,5 +71,4 @@ locals {
     vault_pki_mount_path      = var.vault_pki.mount_path
     vault_pki_server_cert_ttl = var.vault_pki.server_cert_ttl
   })
-
 }

@@ -1,7 +1,13 @@
+data "aws_region" "this" {}
+
+locals {
+  existing_vpc_name = "hashistack"
+}
+
 data "aws_vpc" "selected" {
   filter {
     name   = "tag:Name"
-    values = [var.vpc_name]
+    values = [local.existing_vpc_name]
   }
 }
 
@@ -12,7 +18,7 @@ data "aws_subnets" "private" {
   }
   filter {
     name   = "tag:Name"
-    values = ["${var.vpc_name}-private-*"]
+    values = ["${local.existing_vpc_name}-private-*"]
   }
 }
 
@@ -23,37 +29,37 @@ data "aws_subnets" "public" {
   }
   filter {
     name   = "tag:Name"
-    values = ["${var.vpc_name}-public-*"]
+    values = ["${local.existing_vpc_name}-public-*"]
   }
 }
 
 data "aws_route53_zone" "vault" {
-  name = var.route53_zone_name
+  name = "craig-sloggett.sbx.hashidemos.io"
 }
 
 data "aws_ami" "selected" {
   most_recent = true
-  owners      = [var.ec2_ami_owner]
+  owners      = [var.ami_owner]
 
   filter {
     name   = "name"
-    values = [var.ec2_ami_name]
+    values = [var.ami_name]
   }
 }
 
 data "aws_key_pair" "selected" {
-  key_name = var.ec2_key_pair_name
+  key_name = var.key_pair_key_name
 }
 
 module "vault" {
   # tflint-ignore: terraform_module_pinned_source
-  source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise"
+  source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise?ref=9acdcceae57f84fc46e74e25bcb6527e0491c605"
 
-  project_name             = var.project_name
-  route53_zone             = data.aws_route53_zone.vault
   vault_enterprise_license = var.vault_enterprise_license
-  key_pair                 = data.aws_key_pair.selected
-  ami                      = data.aws_ami.selected
+
+  route53_zone = data.aws_route53_zone.vault
+  key_pair     = data.aws_key_pair.selected
+  ami          = data.aws_ami.selected
 
   vpc = {
     existing = {
@@ -63,10 +69,22 @@ module "vault" {
     }
   }
 
+  vault_cluster = {
+    instance_type = "t3.medium"
+    node_count    = 3
+
+    cluster_auto_join_tag = {
+      value = data.aws_region.this.region
+    }
+  }
+
   vault_pki = {
     intermediate_ca = {
-      key_type = local.pki_key_type
-      key_bits = local.pki_key_bits
+      common_name  = "Vault Intermediate CA"
+      country      = "US"
+      organization = "HashiCorp Demos"
+      key_type     = "ec"
+      key_bits     = 384
     }
   }
 
@@ -75,15 +93,78 @@ module "vault" {
     api_allowed_cidrs = ["0.0.0.0/0"]
   }
 
-  vault_cluster = {
-    instance_type = "t3.medium"
-    cluster_auto_join_tag = {
-      value = var.project_name
-    }
-  }
-
   hcp_terraform_jwt_auth = {
     hostname          = "app.terraform.io"
-    organization_name = var.hcp_terraform_organization_name
+    organization_name = "craigsloggett-lab"
   }
+}
+
+# TLS Signing Orchestration
+
+## Root CA
+
+resource "tls_private_key" "root_ca" {
+  algorithm   = "ECDSA"
+  ecdsa_curve = "P384"
+}
+
+resource "tls_self_signed_cert" "root_ca" {
+  private_key_pem = tls_private_key.root_ca.private_key_pem
+
+  subject {
+    common_name  = "Vault Root CA"
+    country      = "US"
+    organization = "HashiCorp Demos"
+  }
+
+  validity_period_hours = 87600
+  is_ca_certificate     = true
+
+  allowed_uses = [
+    "cert_signing",
+    "crl_signing",
+  ]
+}
+
+## Intermediate CA Signing
+
+resource "terraform_data" "wait_for_csr" {
+  input = module.vault.vault_pki_intermediate_ca_csr_ssm_parameter_name
+
+  provisioner "local-exec" {
+    command = "${path.module}/files/wait-for-csr.sh"
+    environment = {
+      PARAMETER_NAME = self.input
+      TIMEOUT_SEC    = "1800"
+      REGION         = data.aws_region.this.region
+    }
+  }
+}
+
+data "aws_ssm_parameter" "vault_pki_intermediate_ca_csr" {
+  name = module.vault.vault_pki_intermediate_ca_csr_ssm_parameter_name
+
+  depends_on = [terraform_data.wait_for_csr]
+}
+
+resource "tls_locally_signed_cert" "vault_pki_signed_intermediate_ca" {
+  cert_request_pem   = data.aws_ssm_parameter.vault_pki_intermediate_ca_csr.value
+  ca_private_key_pem = tls_private_key.root_ca.private_key_pem
+  ca_cert_pem        = tls_self_signed_cert.root_ca.cert_pem
+
+  validity_period_hours = 26280
+  is_ca_certificate     = true
+
+  allowed_uses = [
+    "cert_signing",
+    "crl_signing",
+  ]
+}
+
+resource "aws_secretsmanager_secret_version" "vault_pki_signed_intermediate_ca" {
+  secret_id = module.vault.vault_pki_signed_intermediate_ca_secret_arn
+  secret_string = jsonencode({
+    certificate = tls_locally_signed_cert.vault_pki_signed_intermediate_ca.cert_pem
+    ca_chain    = tls_self_signed_cert.root_ca.cert_pem
+  })
 }
