@@ -22,7 +22,7 @@ locals {
   )
 
   # Environment Configuration
-  vault_fqdn = "${var.route53_record.subdomain}.${var.route53_zone.name}"
+  vault_fqdn = trimsuffix(aws_route53_record.vault_enterprise.fqdn, ".")
 
   # EBS Configuration
   ebs_raft_device_name  = "/dev/xvdf"
@@ -39,7 +39,7 @@ locals {
 
   config_vault_hcl = templatefile("${path.module}/templates/vault/vault.hcl.tftpl", {
     cluster_name                      = var.vault.cluster_name
-    vault_fqdn                        = trimsuffix(aws_route53_record.vault_enterprise.fqdn, ".")
+    vault_fqdn                        = local.vault_fqdn
     aws_region                        = data.aws_region.current.region
     kms_key_alias                     = aws_kms_alias.auto_unseal.name
     vault_cluster_auto_join_tag_key   = local.vault_cluster_auto_join_tag_key
@@ -63,11 +63,11 @@ locals {
   config_vault_agent_reload_vault_server_tls = file("${path.module}/files/agent/vault-server-tls-reload.sh")
 
   config_vault_agent_hcl = templatefile("${path.module}/templates/agent/agent.hcl.tftpl", {
-    vault_fqdn = trimsuffix(aws_route53_record.vault_enterprise.fqdn, ".")
+    vault_fqdn = local.vault_fqdn
   })
 
   config_vault_agent_server_tls_ctmpl = templatefile("${path.module}/templates/agent/vault-server-tls.ctmpl.tftpl", {
-    vault_fqdn                = trimsuffix(aws_route53_record.vault_enterprise.fqdn, ".")
+    vault_fqdn                = local.vault_fqdn
     vault_pki_mount_path      = var.vault_pki.mount_path
     vault_pki_server_cert_ttl = var.vault_pki.server_cert_ttl
   })

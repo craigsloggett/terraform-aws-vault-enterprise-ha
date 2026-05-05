@@ -1,6 +1,6 @@
 resource "aws_route53_record" "vault_enterprise" {
   zone_id = var.route53_zone.zone_id
-  name    = local.vault_fqdn
+  name    = "${var.route53_record.subdomain}.${var.route53_zone.name}"
   type    = "A"
 
   alias {
