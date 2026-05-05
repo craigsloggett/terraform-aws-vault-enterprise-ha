@@ -166,6 +166,11 @@ variable "nlb" {
   }
 
   validation {
+    condition     = length(var.nlb.lb_target_group.name_prefix) <= 6
+    error_message = "nlb.lb_target_group.name_prefix must be 6 characters or fewer."
+  }
+
+  validation {
     condition     = alltrue([for cidr in var.nlb.api_allowed_cidrs : can(cidrhost(cidr, 0))])
     error_message = "nlb.api_allowed_cidrs entries must be valid CIDR blocks."
   }
