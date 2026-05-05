@@ -69,9 +69,8 @@ variable "vpc_endpoints" {
 
   default     = {}
   description = <<-EOT
-    Configuration for the VPC endpoints created by this module (Secrets Manager,
-    KMS, EC2 Interface, S3 Gateway). Only created when `vpc.existing` is null;
-    when using an existing VPC, endpoints must be provisioned separately.
+    Configuration for the VPC endpoints created by this module. Only created
+    when `vpc.existing` is null.
   EOT
 }
 
