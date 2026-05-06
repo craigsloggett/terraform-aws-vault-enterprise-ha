@@ -27,6 +27,8 @@ resource "tls_self_signed_cert" "root_ca" {
 
 ## Intermediate CA Signing
 
+data "aws_region" "this" {}
+
 resource "terraform_data" "wait_for_csr" {
   input = module.vault.vault_pki_intermediate_ca_csr_ssm_parameter_name
 

@@ -7,38 +7,7 @@ Terraform module which deploys a Vault Enterprise cluster on AWS with Raft integ
 
 ### main.tf
 ```hcl
-data "aws_region" "this" {}
-
-data "aws_vpc" "selected" {
-  filter {
-    name   = "tag:Name"
-    values = [var.existing_vpc_name]
-  }
-}
-
-data "aws_subnets" "private" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.selected.id]
-  }
-  filter {
-    name   = "tag:Name"
-    values = ["${var.existing_vpc_name}-private-*"]
-  }
-}
-
-data "aws_subnets" "public" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.selected.id]
-  }
-  filter {
-    name   = "tag:Name"
-    values = ["${var.existing_vpc_name}-public-*"]
-  }
-}
-
-data "aws_route53_zone" "vault" {
+data "aws_route53_zone" "selected" {
   name = var.route53_zone_name
 }
 
@@ -52,56 +21,13 @@ data "aws_ami" "selected" {
   }
 }
 
-data "aws_key_pair" "selected" {
-  key_name = var.key_pair_key_name
-}
-
 module "vault" {
   # tflint-ignore: terraform_module_pinned_source
   source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise"
 
   vault_enterprise_license = var.vault_enterprise_license
-
-  route53_zone = data.aws_route53_zone.vault
-  key_pair     = data.aws_key_pair.selected
-  ami          = data.aws_ami.selected
-
-  vpc = {
-    existing = {
-      vpc_id             = data.aws_vpc.selected.id
-      private_subnet_ids = data.aws_subnets.private.ids
-      public_subnet_ids  = data.aws_subnets.public.ids
-    }
-  }
-
-  vault_cluster = {
-    instance_type = "t3.medium"
-    node_count    = 3
-
-    cluster_auto_join_tag = {
-      value = data.aws_region.this.region
-    }
-  }
-
-  vault_pki = {
-    intermediate_ca = {
-      common_name  = "Vault Intermediate CA"
-      country      = "US"
-      organization = "HashiCorp Demos"
-      key_type     = "ec"
-      key_bits     = 384
-    }
-  }
-
-  nlb = {
-    internal          = true
-    api_allowed_cidrs = ["0.0.0.0/0"]
-  }
-
-  hcp_terraform_jwt_auth = {
-    hostname          = "app.terraform.io"
-    organization_name = var.hcp_terraform_organization_name
-  }
+  route53_zone             = data.aws_route53_zone.selected
+  ami                      = data.aws_ami.selected
 }
 ```
 
@@ -130,7 +56,7 @@ module "vault" {
 | <a name="input_hcp_terraform_jwt_auth"></a> [hcp\_terraform\_jwt\_auth](#input\_hcp\_terraform\_jwt\_auth) | Configuration for the HCP Terraform JWT auth method that provides<br/>dynamic, short-lived Vault credentials to HCP Terraform workspaces.<br/>When `organization_name` and `workspace_id` are set, a JWT auth method<br/>is mounted at `mount_path` in the root namespace and configured to<br/>verify tokens against `hostname` via OIDC discovery. A role named<br/>`role_name` is created against that mount with `bound_claims`<br/>restricting authentication to the declared organization and workspace. | <pre>object({<br/>    hostname              = optional(string, "app.terraform.io")<br/>    organization_name     = optional(string, "")<br/>    workspace_id          = optional(string, "")<br/>    oidc_discovery_ca_pem = optional(string, "")<br/>    mount_path            = optional(string, "app-terraform-io")<br/>    role_name             = optional(string, "hcp-terraform")<br/>  })</pre> | `{}` | no |
 | <a name="input_iam_instance_profile"></a> [iam\_instance\_profile](#input\_iam\_instance\_profile) | IAM instance profile configuration for the Vault Enterprise EC2 instances.<br/>The module creates one instance profile and associates it with the IAM role<br/>created by this module. | <pre>object({<br/>    name = optional(string, "VaultEnterpriseServerInstanceProfile")<br/>    path = optional(string, "/")<br/>  })</pre> | `{}` | no |
 | <a name="input_iam_role"></a> [iam\_role](#input\_iam\_role) | IAM role configuration for the Vault Enterprise EC2 instances. The module<br/>creates one role with several inline policies attached. | <pre>object({<br/>    name = optional(string, "VaultEnterpriseServerRole")<br/>    path = optional(string, "/")<br/><br/>    inline_policy_names = optional(object({<br/>      kms_read_write             = optional(string, "KMSReadWriteAccess")<br/>      kms_describe               = optional(string, "KMSDescribeAccess")<br/>      secrets_manager_read       = optional(string, "SecretsManagerReadAccess")<br/>      secrets_manager_describe   = optional(string, "SecretsManagerDescribeAccess")<br/>      secrets_manager_read_write = optional(string, "SecretsManagerReadWriteAccess")<br/>      s3_object_read_write       = optional(string, "S3ObjectReadWriteAccess")<br/>      s3_bucket_list             = optional(string, "S3BucketListAccess")<br/>      ec2_describe               = optional(string, "EC2DescribeAccess")<br/>      ssm_read_write             = optional(string, "SSMReadWriteAccess")<br/>      iam_read                   = optional(string, "IAMReadAccess")<br/>    }), {})<br/>  })</pre> | `{}` | no |
-| <a name="input_key_pair"></a> [key\_pair](#input\_key\_pair) | EC2 key pair for SSH access. Accepts the result of an `aws_key_pair` data source directly. | <pre>object({<br/>    key_name = string<br/>  })</pre> | n/a | yes |
+| <a name="input_key_pair"></a> [key\_pair](#input\_key\_pair) | EC2 key pair for SSH access. Accepts the result of an `aws_key_pair` data source directly. | <pre>object({<br/>    key_name = string<br/>  })</pre> | `null` | no |
 | <a name="input_kms_key"></a> [kms\_key](#input\_kms\_key) | Configuration for the KMS key used for Vault auto-unseal. | <pre>object({<br/>    name  = optional(string, "vault-enterprise-auto-unseal-key")<br/>    alias = optional(string, "vault-enterprise-auto-unseal-key")<br/>  })</pre> | `{}` | no |
 | <a name="input_nlb"></a> [nlb](#input\_nlb) | NLB configuration for the Vault API. `api_allowed_cidrs` is only effective<br/>when `internal` is `false`. | <pre>object({<br/>    name_prefix       = optional(string, "vault-")<br/>    internal          = optional(bool, true)<br/>    api_allowed_cidrs = optional(list(string), [])<br/><br/>    lb_target_group = optional(object({<br/>      name_prefix = optional(string, "vault-")<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_route53_record"></a> [route53\_record](#input\_route53\_record) | Route53 A record configuration. The record is created in the hosted zone<br/>supplied via `route53_zone` and points (via alias) at the NLB created by<br/>this module. | <pre>object({<br/>    subdomain = optional(string, "vault")<br/>  })</pre> | `{}` | no |
@@ -138,7 +64,7 @@ module "vault" {
 | <a name="input_security_group"></a> [security\_group](#input\_security\_group) | Name prefixes for the security groups created by this module. The AWS<br/>provider appends a random suffix to guarantee uniqueness, which enables<br/>`create_before_destroy` for security group replacements. | <pre>object({<br/>    bastion = optional(object({<br/>      name_prefix = optional(string, "vault-enterprise-bastion-sg-")<br/>    }), {})<br/><br/>    vault_enterprise_servers = optional(object({<br/>      name_prefix = optional(string, "vault-enterprise-servers-sg-")<br/>    }), {})<br/><br/>    vpc_endpoints = optional(object({<br/>      name_prefix = optional(string, "vault-enterprise-vpc-endpoints-sg-")<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_vault"></a> [vault](#input\_vault) | Vault Enterprise product configuration. | <pre>object({<br/>    version       = optional(string, "1.21.4+ent")<br/>    ui            = optional(bool, true)<br/>    disable_mlock = optional(bool, true)<br/>    cluster_name  = optional(string, "vault-enterprise")<br/><br/>    log_level  = optional(string, "info")<br/>    log_format = optional(string, "json")<br/><br/>    listener_tcp = optional(object({<br/>      tls_min_version = optional(string, "tls13")<br/>    }), {})<br/><br/>    telemetry = optional(object({<br/>      prometheus_retention_time = optional(string, "24h")<br/>      disable_hostname          = optional(bool, true)<br/>    }), {})<br/><br/>    secretsmanager_secret = optional(object({<br/>      license_name_prefix       = optional(string, "vault-enterprise-license-")<br/>      recovery_keys_name_prefix = optional(string, "vault-enterprise-recovery-keys-")<br/>      root_token_name_prefix    = optional(string, "vault-enterprise-root-token-")<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_vault_auth"></a> [vault\_auth](#input\_vault\_auth) | TTL configuration for Vault auth method roles. | <pre>object({<br/>    aws = optional(object({<br/>      role_ttl     = optional(string, "4h")<br/>      role_max_ttl = optional(string, "24h")<br/>    }), {})<br/><br/>    jwt = optional(object({<br/>      role_ttl     = optional(string, "1h")<br/>      role_max_ttl = optional(string, "2h")<br/>    }), {})<br/>  })</pre> | `{}` | no |
-| <a name="input_vault_cluster"></a> [vault\_cluster](#input\_vault\_cluster) | Configuration for the Vault Enterprise server EC2 instances and their EBS volumes. | <pre>object({<br/>    instance_type    = optional(string, "m5.large")<br/>    node_count       = optional(number, 5)<br/>    root_volume_size = optional(number, 50)<br/><br/>    raft_data_disk = optional(object({<br/>      volume_type = optional(string, "gp3")<br/>      volume_size = optional(number, 50)<br/>      iops        = optional(number, 3000)<br/>      throughput  = optional(number, 125)<br/>    }), {})<br/><br/>    audit_disk = optional(object({<br/>      volume_type = optional(string, "gp3")<br/>      volume_size = optional(number, 50)<br/>    }), {})<br/><br/>    cluster_auto_join_tag = object({<br/>      key   = optional(string, "vault:raft:retryjoin:autojoin")<br/>      value = string<br/>    })<br/><br/>    launch_template = optional(object({<br/>      name_prefix = optional(string, "vault-enterprise-servers-")<br/>      volume_name = optional(string, "vault-enterprise-volume")<br/>    }), {})<br/><br/>    autoscaling_group = optional(object({<br/>      name_prefix   = optional(string, "vault-enterprise-servers-")<br/>      instance_name = optional(string, "vault-enterprise-server")<br/>    }), {})<br/>  })</pre> | n/a | yes |
+| <a name="input_vault_cluster"></a> [vault\_cluster](#input\_vault\_cluster) | Configuration for the Vault Enterprise server EC2 instances and their EBS volumes. | <pre>object({<br/>    instance_type    = optional(string, "m5.large")<br/>    node_count       = optional(number, 5)<br/>    root_volume_size = optional(number, 50)<br/><br/>    raft_data_disk = optional(object({<br/>      volume_type = optional(string, "gp3")<br/>      volume_size = optional(number, 50)<br/>      iops        = optional(number, 3000)<br/>      throughput  = optional(number, 125)<br/>    }), {})<br/><br/>    audit_disk = optional(object({<br/>      volume_type = optional(string, "gp3")<br/>      volume_size = optional(number, 50)<br/>    }), {})<br/><br/>    auto_join = optional(object({<br/>      tag_key   = optional(string, "vault:raft:retryjoin:autojoin")<br/>      tag_value = optional(string, "vault-enterprise")<br/>    }), {})<br/><br/>    launch_template = optional(object({<br/>      name_prefix = optional(string, "vault-enterprise-servers-")<br/>      volume_name = optional(string, "vault-enterprise-volume")<br/>    }), {})<br/><br/>    autoscaling_group = optional(object({<br/>      name_prefix   = optional(string, "vault-enterprise-servers-")<br/>      instance_name = optional(string, "vault-enterprise-server")<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_vault_enterprise_license"></a> [vault\_enterprise\_license](#input\_vault\_enterprise\_license) | Vault Enterprise license string. | `string` | n/a | yes |
 | <a name="input_vault_pki"></a> [vault\_pki](#input\_vault\_pki) | Vault PKI secrets engine configuration. | <pre>object({<br/>    mount_path                               = optional(string, "pki_vault")<br/>    mount_max_ttl                            = optional(string, "26280h")<br/>    server_role_max_ttl                      = optional(string, "24h")<br/>    server_cert_ttl                          = optional(string, "24h")<br/>    signed_intermediate_wait_timeout_seconds = optional(number, 1800)<br/><br/>    secretsmanager_secret = optional(object({<br/>      signed_intermediate_ca_name_prefix = optional(string, "vault-enterprise-signed-intermediate-ca-")<br/>    }), {})<br/><br/>    ssm_parameter = optional(object({<br/>      tls_ca_bundle_name = optional(string, "/vault-enterprise/tls/ca-bundle")<br/>    }), {})<br/><br/>    intermediate_ca = optional(object({<br/>      common_name  = optional(string, "Vault Intermediate CA")<br/>      country      = optional(string, "")<br/>      organization = optional(string, "")<br/>      key_type     = optional(string, "rsa")<br/>      key_bits     = optional(number, 2048)<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_vault_snapshot"></a> [vault\_snapshot](#input\_vault\_snapshot) | Vault Enterprise snapshot configuration. | <pre>object({<br/>    aws_s3_bucket = optional(object({<br/>      name_prefix   = optional(string, "vault-enterprise-snapshots-")<br/>      force_destroy = optional(bool, false)<br/>    }), {})<br/>    path_prefix = optional(string, "snapshots/")<br/>    file_prefix = optional(string, "vault-snapshot")<br/>    interval    = optional(number, 3600)<br/>    retain      = optional(number, 72)<br/>  })</pre> | `{}` | no |

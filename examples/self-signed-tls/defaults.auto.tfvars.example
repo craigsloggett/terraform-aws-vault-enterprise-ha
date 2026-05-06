@@ -1,0 +1,4 @@
+vault_enterprise_license = "LICENSE"
+route53_zone_name        = "example.com"
+ami_owner                = "099720109477"
+ami_name                 = "ubuntu/images/hvm-ssd-gp3/ubuntu-resolute-26.04-amd64-server-20260503"

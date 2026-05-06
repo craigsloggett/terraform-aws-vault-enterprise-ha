@@ -9,11 +9,13 @@ interval=10
 elapsed=0
 
 while [ "${elapsed}" -lt "${TIMEOUT_SEC}" ]; do
-  value="$(aws ssm get-parameter \
-    --name "${PARAMETER_NAME}" \
-    --region "${REGION}" \
-    --query 'Parameter.Value' \
-    --output text 2>/dev/null)" || value=""
+  value="$(
+    aws ssm get-parameter \
+      --name "${PARAMETER_NAME}" \
+      --region "${REGION}" \
+      --query 'Parameter.Value' \
+      --output text 2>/dev/null
+  )" || value=""
 
   case "${value}" in
     "" | Uninitialized)

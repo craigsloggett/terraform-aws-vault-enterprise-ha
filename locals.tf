@@ -49,8 +49,8 @@ locals {
     vault_fqdn                        = local.vault_fqdn
     aws_region                        = data.aws_region.current.region
     kms_key_alias                     = aws_kms_alias.auto_unseal.name
-    vault_cluster_auto_join_tag_key   = local.vault_cluster_auto_join_tag_key
-    vault_cluster_auto_join_tag_value = local.vault_cluster_auto_join_tag_value
+    vault_cluster_auto_join_tag_key   = var.vault_cluster.auto_join.tag_key
+    vault_cluster_auto_join_tag_value = var.vault_cluster.auto_join.tag_value
   })
 
   config_vault_snapshot_json = templatefile("${path.module}/templates/vault/snapshot.json.tftpl", {
@@ -61,10 +61,6 @@ locals {
     interval      = var.vault_snapshot.interval
     retain        = var.vault_snapshot.retain
   })
-
-  # Cluster Coordination Configuration
-  vault_cluster_auto_join_tag_key   = var.vault_cluster.cluster_auto_join_tag.key
-  vault_cluster_auto_join_tag_value = var.vault_cluster.cluster_auto_join_tag.value
 
   # Vault Agent Configuration
   config_vault_agent_service                 = file("${path.module}/files/agent/vault-agent.service")

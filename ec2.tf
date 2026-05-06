@@ -67,8 +67,8 @@ resource "aws_launch_template" "vault_enterprise" {
     bootstrap_tls_private_key_secret_arn = aws_secretsmanager_secret.bootstrap_tls_private_key.arn
 
     # Bootstrap Coordination Configuration
-    vault_cluster_auto_join_tag_key        = local.vault_cluster_auto_join_tag_key
-    vault_cluster_auto_join_tag_value      = local.vault_cluster_auto_join_tag_value
+    vault_cluster_auto_join_tag_key        = var.vault_cluster.auto_join.tag_key
+    vault_cluster_auto_join_tag_value      = var.vault_cluster.auto_join.tag_value
     bootstrap_cluster_state_name           = aws_ssm_parameter.bootstrap_cluster_state.name
     bootstrap_pki_state_name               = aws_ssm_parameter.bootstrap_pki_state.name
     bootstrap_pki_intermediate_ca_csr_name = aws_ssm_parameter.bootstrap_pki_intermediate_ca_csr.name
@@ -196,8 +196,8 @@ resource "aws_autoscaling_group" "vault_enterprise" {
   }
 
   tag {
-    key                 = local.vault_cluster_auto_join_tag_key
-    value               = local.vault_cluster_auto_join_tag_value
+    key                 = var.vault_cluster.auto_join.tag_key
+    value               = var.vault_cluster.auto_join.tag_value
     propagate_at_launch = true
   }
 

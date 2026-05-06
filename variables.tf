@@ -18,6 +18,7 @@ variable "key_pair" {
     key_name = string
   })
 
+  default     = null
   description = "EC2 key pair for SSH access. Accepts the result of an `aws_key_pair` data source directly."
 }
 
@@ -110,10 +111,10 @@ variable "vault_cluster" {
       volume_size = optional(number, 50)
     }), {})
 
-    cluster_auto_join_tag = object({
-      key   = optional(string, "vault:raft:retryjoin:autojoin")
-      value = string
-    })
+    auto_join = optional(object({
+      tag_key   = optional(string, "vault:raft:retryjoin:autojoin")
+      tag_value = optional(string, "vault-enterprise")
+    }), {})
 
     launch_template = optional(object({
       name_prefix = optional(string, "vault-enterprise-servers-")
@@ -126,6 +127,7 @@ variable "vault_cluster" {
     }), {})
   })
 
+  default     = {}
   description = "Configuration for the Vault Enterprise server EC2 instances and their EBS volumes."
 
   validation {
@@ -139,8 +141,8 @@ variable "vault_cluster" {
   }
 
   validation {
-    condition     = length(var.vault_cluster.cluster_auto_join_tag.value) > 0
-    error_message = "vault_cluster.cluster_auto_join_tag.value must be a non-empty string to prevent accidentally joining an existing cluster."
+    condition     = length(var.vault_cluster.auto_join.tag_value) > 0
+    error_message = "vault_cluster.auto_join.tag_value must be a non-empty string to prevent accidentally joining an existing cluster."
   }
 }
 
