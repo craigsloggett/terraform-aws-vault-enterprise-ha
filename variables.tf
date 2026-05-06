@@ -65,6 +65,11 @@ variable "vpc_endpoints" {
     kms_name            = optional(string, "vault-enterprise-kms-vpc-endpoint")
     ec2_name            = optional(string, "vault-enterprise-ec2-vpc-endpoint")
     s3_name             = optional(string, "vault-enterprise-s3-vpc-endpoint")
+
+    security_group = optional(object({
+      name_prefix = optional(string, "vault-enterprise-vpc-endpoints-")
+      name        = optional(string, "vault-enterprise-vpc-endpoints")
+    }), {})
   })
 
   default     = {}
@@ -79,6 +84,11 @@ variable "bastion" {
     name          = optional(string, "vault-enterprise-bastion-host")
     instance_type = optional(string, "t3.micro")
     allowed_cidrs = optional(list(string), ["0.0.0.0/0"])
+
+    security_group = optional(object({
+      name_prefix = optional(string, "vault-enterprise-bastion-host-")
+      name        = optional(string, "vault-enterprise-bastion-host")
+    }), {})
   })
 
   default     = {}
@@ -114,6 +124,11 @@ variable "vault_cluster" {
     auto_join = optional(object({
       tag_key   = optional(string, "vault:raft:retryjoin:autojoin")
       tag_value = optional(string, "vault-enterprise")
+    }), {})
+
+    security_group = optional(object({
+      name_prefix = optional(string, "vault-enterprise-servers-")
+      name        = optional(string, "vault-enterprise-servers")
     }), {})
 
     launch_template = optional(object({
@@ -189,29 +204,6 @@ variable "kms_key" {
 
   default     = {}
   description = "Configuration for the KMS key used for Vault auto-unseal."
-}
-
-variable "security_group" {
-  type = object({
-    bastion = optional(object({
-      name_prefix = optional(string, "vault-enterprise-bastion-sg-")
-    }), {})
-
-    vault_enterprise_servers = optional(object({
-      name_prefix = optional(string, "vault-enterprise-servers-sg-")
-    }), {})
-
-    vpc_endpoints = optional(object({
-      name_prefix = optional(string, "vault-enterprise-vpc-endpoints-sg-")
-    }), {})
-  })
-
-  default     = {}
-  description = <<-EOT
-    Name prefixes for the security groups created by this module. The AWS
-    provider appends a random suffix to guarantee uniqueness, which enables
-    `create_before_destroy` for security group replacements.
-  EOT
 }
 
 variable "iam_role" {
