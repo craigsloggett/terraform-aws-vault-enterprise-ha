@@ -62,7 +62,6 @@ readonly VAULT_CLUSTER_AUTO_JOIN_TAG_KEY="${vault_cluster_auto_join_tag_key}"
 readonly VAULT_CLUSTER_AUTO_JOIN_TAG_VALUE="${vault_cluster_auto_join_tag_value}"
 readonly BOOTSTRAP_CLUSTER_STATE_NAME="${bootstrap_cluster_state_name}"
 readonly BOOTSTRAP_PKI_STATE_NAME="${bootstrap_pki_state_name}"
-readonly BOOTSTRAP_PKI_INTERMEDIATE_CA_CSR_NAME="${bootstrap_pki_intermediate_ca_csr_name}"
 readonly ROOT_TOKEN_SECRET_ARN="${root_token_secret_arn}"
 readonly RECOVERY_KEYS_SECRET_ARN="${recovery_keys_secret_arn}"
 readonly VAULT_AUTOPILOT_MIN_QUORUM="${vault_autopilot_min_quorum}"
@@ -72,8 +71,9 @@ readonly VAULT_PKI_MOUNT_PATH="${vault_pki_mount_path}"
 readonly VAULT_PKI_VAULT_MOUNT_MAX_TTL="${vault_pki_vault_mount_max_ttl}"
 readonly VAULT_PKI_VAULT_SERVER_ROLE_MAX_TTL="${vault_pki_vault_server_role_max_ttl}"
 readonly VAULT_PKI_SERVER_CERT_TTL="${vault_pki_server_cert_ttl}"
-readonly TLS_CA_BUNDLE_NAME="${tls_ca_bundle_name}"
-readonly SIGNED_INTERMEDIATE_CA_SECRET_ARN="${signed_intermediate_ca_secret_arn}"
+readonly VAULT_PKI_INTERMEDIATE_CA_SSM_PARAMETER_NAME="${vault_pki_intermediate_ca_ssm_parameter_name}"
+readonly VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_PARAMETER_NAME="${vault_pki_intermediate_ca_csr_ssm_parameter_name}"
+readonly VAULT_PKI_SIGNED_INTERMEDIATE_CA_SECRET_ARN="${vault_pki_signed_intermediate_ca_secret_arn}"
 readonly VAULT_PKI_INTERMEDIATE_CA_COMMON_NAME="${vault_pki_intermediate_ca_common_name}"
 readonly VAULT_PKI_INTERMEDIATE_CA_COUNTRY="${vault_pki_intermediate_ca_country}"
 readonly VAULT_PKI_INTERMEDIATE_CA_ORGANIZATION="${vault_pki_intermediate_ca_organization}"
@@ -370,7 +370,7 @@ publish_tls_ca_bundle() (
   vault read -format=json "$${VAULT_PKI_MOUNT_PATH}/issuer/default/json" >"$${ca_bundle_response_file}"
   tls_ca_bundle="$(jq -r '.data.ca_chain[]' <"$${ca_bundle_response_file}")"
 
-  put_parameter "$${TLS_CA_BUNDLE_NAME}" "$${tls_ca_bundle}"
+  put_parameter "$${VAULT_PKI_INTERMEDIATE_CA_SSM_PARAMETER_NAME}" "$${tls_ca_bundle}"
 )
 
 mark_pki_ready() (
@@ -841,8 +841,8 @@ EOF
 publish_pki_intermediate_csr() (
   csr_pem="$${1}"
 
-  log_info "Publishing intermediate CSR to $${BOOTSTRAP_PKI_INTERMEDIATE_CA_CSR_NAME}"
-  put_parameter "$${BOOTSTRAP_PKI_INTERMEDIATE_CA_CSR_NAME}" "$${csr_pem}"
+  log_info "Publishing intermediate CSR to $${VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_PARAMETER_NAME}"
+  put_parameter "$${VAULT_PKI_INTERMEDIATE_CA_CSR_SSM_PARAMETER_NAME}" "$${csr_pem}"
 )
 
 wait_for_signed_pki_intermediate() (
@@ -856,7 +856,7 @@ wait_for_signed_pki_intermediate() (
     attempt=$((attempt + 1))
 
     secret_value="$(aws secretsmanager get-secret-value \
-      --secret-id "$${SIGNED_INTERMEDIATE_CA_SECRET_ARN}" \
+      --secret-id "$${VAULT_PKI_SIGNED_INTERMEDIATE_CA_SECRET_ARN}" \
       --query SecretString --output text 2>/dev/null)" || secret_value=""
 
     if [ -n "$${secret_value}" ] && printf '%s' "$${secret_value}" | jq -e '.certificate' >/dev/null 2>&1; then
@@ -866,12 +866,12 @@ wait_for_signed_pki_intermediate() (
     sleep "$${interval}"
   done
 
-  log_error "Timed out after $${VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS}s waiting for signed intermediate at $${SIGNED_INTERMEDIATE_CA_SECRET_ARN}"
+  log_error "Timed out after $${VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS}s waiting for signed intermediate at $${VAULT_PKI_SIGNED_INTERMEDIATE_CA_SECRET_ARN}"
   return 1
 )
 
 fetch_signed_pki_intermediate() (
-  fetch_secret "$${SIGNED_INTERMEDIATE_CA_SECRET_ARN}"
+  fetch_secret "$${VAULT_PKI_SIGNED_INTERMEDIATE_CA_SECRET_ARN}"
 )
 
 import_signed_pki_intermediate() (
@@ -1068,7 +1068,7 @@ wait_for_pki_ready() (
 )
 
 fetch_tls_ca_bundle() (
-  fetch_parameter "$${TLS_CA_BUNDLE_NAME}"
+  fetch_parameter "$${VAULT_PKI_INTERMEDIATE_CA_SSM_PARAMETER_NAME}"
 )
 
 #######################################

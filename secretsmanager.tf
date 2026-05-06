@@ -18,7 +18,7 @@ resource "aws_secretsmanager_secret" "root_token" {
   description = "Vault Enterprise Root Token"
 }
 
-resource "aws_secretsmanager_secret" "signed_intermediate_ca" {
+resource "aws_secretsmanager_secret" "vault_pki_signed_intermediate_ca" {
   name_prefix = var.vault_pki.secretsmanager_secret.signed_intermediate_ca_name_prefix
   description = "Vault Enterprise Signed Intermediate CA"
 }

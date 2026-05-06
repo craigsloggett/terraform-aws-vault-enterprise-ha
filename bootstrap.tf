@@ -116,14 +116,3 @@ resource "aws_ssm_parameter" "bootstrap_pki_state" {
     ignore_changes = [value]
   }
 }
-
-resource "aws_ssm_parameter" "bootstrap_pki_intermediate_ca_csr" {
-  name        = var.bootstrap.ssm_parameter.pki_intermediate_ca_csr_name
-  type        = "String"
-  value       = "Uninitialized"
-  description = "Bootstrap PKI Intermediate CA CSR"
-
-  lifecycle {
-    ignore_changes = [value]
-  }
-}

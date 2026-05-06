@@ -67,24 +67,24 @@ resource "aws_launch_template" "vault_enterprise" {
     bootstrap_tls_private_key_secret_arn = aws_secretsmanager_secret.bootstrap_tls_private_key.arn
 
     # Bootstrap Coordination Configuration
-    vault_cluster_auto_join_tag_key        = var.vault_cluster.auto_join.tag_key
-    vault_cluster_auto_join_tag_value      = var.vault_cluster.auto_join.tag_value
-    bootstrap_cluster_state_name           = aws_ssm_parameter.bootstrap_cluster_state.name
-    bootstrap_pki_state_name               = aws_ssm_parameter.bootstrap_pki_state.name
-    bootstrap_pki_intermediate_ca_csr_name = aws_ssm_parameter.bootstrap_pki_intermediate_ca_csr.name
-    root_token_secret_arn                  = aws_secretsmanager_secret.root_token.arn
-    recovery_keys_secret_arn               = aws_secretsmanager_secret.recovery_keys.arn
-    vault_autopilot_min_quorum             = max(3, floor(var.vault_cluster.node_count / 2) + 1)
+    vault_cluster_auto_join_tag_key   = var.vault_cluster.auto_join.tag_key
+    vault_cluster_auto_join_tag_value = var.vault_cluster.auto_join.tag_value
+    bootstrap_cluster_state_name      = aws_ssm_parameter.bootstrap_cluster_state.name
+    bootstrap_pki_state_name          = aws_ssm_parameter.bootstrap_pki_state.name
+    root_token_secret_arn             = aws_secretsmanager_secret.root_token.arn
+    recovery_keys_secret_arn          = aws_secretsmanager_secret.recovery_keys.arn
+    vault_autopilot_min_quorum        = max(3, floor(var.vault_cluster.node_count / 2) + 1)
 
     # PKI and TLS Configuration
-    tls_ca_bundle_name                                 = aws_ssm_parameter.tls_ca_bundle.name
     vault_pki_intermediate_ca_common_name              = var.vault_pki.intermediate_ca.common_name
     vault_pki_intermediate_ca_country                  = var.vault_pki.intermediate_ca.country
     vault_pki_intermediate_ca_organization             = var.vault_pki.intermediate_ca.organization
     vault_pki_intermediate_ca_key_type                 = var.vault_pki.intermediate_ca.key_type
     vault_pki_intermediate_ca_key_bits                 = var.vault_pki.intermediate_ca.key_bits
     vault_pki_signed_intermediate_wait_timeout_seconds = var.vault_pki.signed_intermediate_wait_timeout_seconds
-    signed_intermediate_ca_secret_arn                  = aws_secretsmanager_secret.signed_intermediate_ca.arn
+    vault_pki_intermediate_ca_ssm_parameter_name       = aws_ssm_parameter.vault_pki_intermediate_ca.name
+    vault_pki_intermediate_ca_csr_ssm_parameter_name   = aws_ssm_parameter.vault_pki_intermediate_ca_csr.name
+    vault_pki_signed_intermediate_ca_secret_arn        = aws_secretsmanager_secret.vault_pki_signed_intermediate_ca.arn
     vault_pki_vault_mount_max_ttl                      = var.vault_pki.mount_max_ttl
     vault_pki_vault_server_role_max_ttl                = var.vault_pki.server_role_max_ttl
     vault_pki_server_cert_ttl                          = var.vault_pki.server_cert_ttl

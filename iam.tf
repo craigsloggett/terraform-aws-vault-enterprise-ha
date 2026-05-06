@@ -69,7 +69,7 @@ data "aws_iam_policy_document" "secrets_manager_read" {
       aws_secretsmanager_secret.bootstrap_tls_cert.arn,
       aws_secretsmanager_secret.bootstrap_tls_private_key.arn,
       aws_secretsmanager_secret.license.arn,
-      aws_secretsmanager_secret.signed_intermediate_ca.arn
+      aws_secretsmanager_secret.vault_pki_signed_intermediate_ca.arn
     ]
   }
 }
@@ -85,7 +85,7 @@ data "aws_iam_policy_document" "secrets_manager_describe" {
     sid       = "SignedIntermediateCAPolling"
     effect    = "Allow"
     actions   = ["secretsmanager:DescribeSecret"]
-    resources = [aws_secretsmanager_secret.signed_intermediate_ca.arn]
+    resources = [aws_secretsmanager_secret.vault_pki_signed_intermediate_ca.arn]
   }
 }
 
@@ -182,8 +182,8 @@ data "aws_iam_policy_document" "ssm_read_write" {
     resources = [
       aws_ssm_parameter.bootstrap_cluster_state.arn,
       aws_ssm_parameter.bootstrap_pki_state.arn,
-      aws_ssm_parameter.tls_ca_bundle.arn,
-      aws_ssm_parameter.bootstrap_pki_intermediate_ca_csr.arn,
+      aws_ssm_parameter.vault_pki_intermediate_ca.arn,
+      aws_ssm_parameter.vault_pki_intermediate_ca_csr.arn,
     ]
   }
 }

@@ -1,5 +1,5 @@
 output "vault_url" {
-  description = "URL of the Vault cluster."
+  description = "URL of the Vault Enterprise cluster."
   value       = "https://${local.vault_fqdn}"
 }
 
@@ -13,57 +13,42 @@ output "bastion_public_ip" {
   value       = aws_instance.bastion.public_ip
 }
 
-output "vault_asg_name" {
-  description = "Name of the Vault Auto Scaling Group."
+output "vault_cluster_autoscaling_group_name" {
+  description = "Name of the Vault Enterprise Auto Scaling Group."
   value       = aws_autoscaling_group.vault_enterprise.name
 }
 
-output "vault_kms_key_id" {
-  description = "KMS key ID used for Vault auto-unseal."
-  value       = aws_kms_key.auto_unseal.key_id
-}
-
-output "vault_snapshots_bucket" {
-  description = "S3 bucket for Vault snapshots."
-  value       = aws_s3_bucket.snapshots.id
-}
-
-output "vault_target_group_arn" {
-  description = "ARN of the Vault NLB target group."
-  value       = aws_lb_target_group.vault_enterprise.arn
-}
-
-output "ec2_ami_name" {
+output "ami_name" {
   description = "Name of the AMI used for EC2 instances."
   value       = var.ami.name
 }
 
-output "vault_tls_ca_bundle_ssm_parameter_name" {
-  description = "SSM Parameter for the Vault PKI managed TLS CA bundle."
-  value       = aws_ssm_parameter.tls_ca_bundle.name
+output "vault_snapshot_aws_s3_bucket_name" {
+  description = "Name of the S3 bucket for Vault Enterprise snapshots."
+  value       = aws_s3_bucket.snapshots.id
 }
 
-output "vault_iam_role_name" {
-  description = "Name of the Vault server IAM role."
-  value       = aws_iam_role.vault_enterprise.name
+output "vault_pki_intermediate_ca_ssm_parameter_name" {
+  description = "SSM Parameter for the Vault PKI intermediate CA PEM."
+  value       = aws_ssm_parameter.vault_pki_intermediate_ca.name
 }
 
-output "vault_jwt_auth_path" {
+output "vault_pki_intermediate_ca_csr_ssm_parameter_name" {
+  description = "SSM parameter name where the Vault PKI intermediate CA CSR is published."
+  value       = aws_ssm_parameter.vault_pki_intermediate_ca_csr.name
+}
+
+output "vault_pki_signed_intermediate_ca_secret_arn" {
+  description = "Secrets Manager ARN for the Vault PKI signed intermediate CA PEM."
+  value       = aws_secretsmanager_secret.vault_pki_signed_intermediate_ca.arn
+}
+
+output "hcp_terraform_jwt_auth_mount_path" {
   description = "Vault JWT auth method path for HCP Terraform (TFC_VAULT_AUTH_PATH)."
   value       = var.hcp_terraform_jwt_auth.mount_path
 }
 
-output "vault_jwt_auth_role_name" {
+output "hcp_terraform_jwt_auth_role_name" {
   description = "Vault JWT auth role name for HCP Terraform (TFC_VAULT_RUN_ROLE)."
   value       = var.hcp_terraform_jwt_auth.role_name
-}
-
-output "vault_pki_intermediate_ca_csr_ssm_parameter_name" {
-  description = "SSM parameter name where the intermediate CA CSR is published."
-  value       = aws_ssm_parameter.bootstrap_pki_intermediate_ca_csr.name
-}
-
-output "vault_pki_signed_intermediate_ca_secret_arn" {
-  description = "Secrets Manager ARN for the signed intermediate CA and root CA PEM."
-  value       = aws_secretsmanager_secret.signed_intermediate_ca.arn
 }

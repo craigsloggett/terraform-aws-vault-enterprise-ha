@@ -181,8 +181,10 @@ variable "nlb" {
 
 variable "kms_key" {
   type = object({
-    name  = optional(string, "vault-enterprise-auto-unseal-key")
-    alias = optional(string, "vault-enterprise-auto-unseal-key")
+    name                    = optional(string, "vault-enterprise-auto-unseal-key")
+    alias                   = optional(string, "vault-enterprise-auto-unseal-key")
+    deletion_window_in_days = optional(number, 7)
+    enable_key_rotation     = optional(bool, true)
   })
 
   default     = {}
@@ -434,7 +436,8 @@ variable "vault_pki" {
     }), {})
 
     ssm_parameter = optional(object({
-      tls_ca_bundle_name = optional(string, "/vault-enterprise/tls/ca-bundle")
+      intermediate_ca_name     = optional(string, "/vault-enterprise/pki/intermediate-ca")
+      intermediate_ca_csr_name = optional(string, "/vault-enterprise/pki/intermediate-ca-csr")
     }), {})
 
     intermediate_ca = optional(object({
@@ -479,9 +482,8 @@ variable "bootstrap" {
     }), {})
 
     ssm_parameter = optional(object({
-      cluster_state_name           = optional(string, "/vault-enterprise/bootstrap/cluster/state")
-      pki_state_name               = optional(string, "/vault-enterprise/bootstrap/pki/state")
-      pki_intermediate_ca_csr_name = optional(string, "/vault-enterprise/bootstrap/pki/intermediate-ca-csr")
+      cluster_state_name = optional(string, "/vault-enterprise/bootstrap/cluster/state")
+      pki_state_name     = optional(string, "/vault-enterprise/bootstrap/pki/state")
     }), {})
   })
 
