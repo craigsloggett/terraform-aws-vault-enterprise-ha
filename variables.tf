@@ -370,6 +370,21 @@ variable "vault" {
   }
 }
 
+variable "vault_autopilot" {
+  type = object({
+    cleanup_dead_servers               = optional(bool, true)
+    dead_server_last_contact_threshold = optional(string, "24h")
+  })
+
+  default     = {}
+  description = "Vault Enterprise autopilot configuration."
+
+  validation {
+    condition     = can(timeadd("2000-01-01T00:00:00Z", var.vault_autopilot.dead_server_last_contact_threshold))
+    error_message = "vault_autopilot.dead_server_last_contact_threshold must be a Go duration string (e.g., \"24h\", \"30m\", \"1h30m\"). Valid units: \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+  }
+}
+
 variable "vault_snapshot" {
   type = object({
     aws_s3_bucket = optional(object({

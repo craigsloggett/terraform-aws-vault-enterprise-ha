@@ -73,7 +73,11 @@ resource "aws_launch_template" "vault_enterprise" {
     bootstrap_pki_state_name          = aws_ssm_parameter.bootstrap_pki_state.name
     root_token_secret_arn             = aws_secretsmanager_secret.root_token.arn
     recovery_keys_secret_arn          = aws_secretsmanager_secret.recovery_keys.arn
-    vault_autopilot_min_quorum        = max(3, floor(var.vault_cluster.node_count / 2) + 1)
+
+    # Autopilot Configuration
+    vault_autopilot_cleanup_dead_servers               = var.vault_autopilot.cleanup_dead_servers
+    vault_autopilot_dead_server_last_contact_threshold = var.vault_autopilot.dead_server_last_contact_threshold
+    vault_autopilot_min_quorum                         = max(3, floor(var.vault_cluster.node_count / 2) + 1)
 
     # PKI and TLS Configuration
     vault_pki_intermediate_ca_common_name              = var.vault_pki.intermediate_ca.common_name

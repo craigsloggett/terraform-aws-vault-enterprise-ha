@@ -64,6 +64,10 @@ readonly BOOTSTRAP_CLUSTER_STATE_NAME="${bootstrap_cluster_state_name}"
 readonly BOOTSTRAP_PKI_STATE_NAME="${bootstrap_pki_state_name}"
 readonly ROOT_TOKEN_SECRET_ARN="${root_token_secret_arn}"
 readonly RECOVERY_KEYS_SECRET_ARN="${recovery_keys_secret_arn}"
+
+# Autopilot
+readonly VAULT_AUTOPILOT_CLEANUP_DEAD_SERVERS="${vault_autopilot_cleanup_dead_servers}"
+readonly VAULT_AUTOPILOT_DEAD_SERVER_LAST_CONTACT_THRESHOLD="${vault_autopilot_dead_server_last_contact_threshold}"
 readonly VAULT_AUTOPILOT_MIN_QUORUM="${vault_autopilot_min_quorum}"
 
 # PKI and TLS
@@ -764,8 +768,8 @@ configure_autopilot() (
   log_info "Configuring Raft Autopilot"
 
   vault operator raft autopilot set-config \
-    -cleanup-dead-servers=true \
-    -dead-server-last-contact-threshold=10m \
+    -cleanup-dead-servers=$${VAULT_AUTOPILOT_CLEANUP_DEAD_SERVERS} \
+    -dead-server-last-contact-threshold=$${VAULT_AUTOPILOT_DEAD_SERVER_LAST_CONTACT_THRESHOLD} \
     -min-quorum=$${VAULT_AUTOPILOT_MIN_QUORUM}
 )
 
