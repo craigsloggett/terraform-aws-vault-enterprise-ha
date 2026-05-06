@@ -161,6 +161,8 @@ module "vault" {
 | ---- | ----------- |
 | <a name="output_ami_name"></a> [ami\_name](#output\_ami\_name) | Name of the AMI used for EC2 instances. |
 | <a name="output_bastion_public_ip"></a> [bastion\_public\_ip](#output\_bastion\_public\_ip) | Public IP of the bastion host. |
+| <a name="output_bootstrap_cluster_state_ssm_parameter_name"></a> [bootstrap\_cluster\_state\_ssm\_parameter\_name](#output\_bootstrap\_cluster\_state\_ssm\_parameter\_name) | SSM Parameter for the bootstrap initialization state flag. |
+| <a name="output_bootstrap_pki_state_ssm_parameter_name"></a> [bootstrap\_pki\_state\_ssm\_parameter\_name](#output\_bootstrap\_pki\_state\_ssm\_parameter\_name) | SSM Parameter for the bootstrap PKI state flag. |
 | <a name="output_hcp_terraform_jwt_auth_mount_path"></a> [hcp\_terraform\_jwt\_auth\_mount\_path](#output\_hcp\_terraform\_jwt\_auth\_mount\_path) | Vault JWT auth method path for HCP Terraform (TFC\_VAULT\_AUTH\_PATH). |
 | <a name="output_hcp_terraform_jwt_auth_role_name"></a> [hcp\_terraform\_jwt\_auth\_role\_name](#output\_hcp\_terraform\_jwt\_auth\_role\_name) | Vault JWT auth role name for HCP Terraform (TFC\_VAULT\_RUN\_ROLE). |
 | <a name="output_vault_cluster_autoscaling_group_name"></a> [vault\_cluster\_autoscaling\_group\_name](#output\_vault\_cluster\_autoscaling\_group\_name) | Name of the Vault Enterprise Auto Scaling Group. |
