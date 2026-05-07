@@ -1,8 +1,21 @@
+# Required
+
 variable "vault_enterprise_license" {
   type        = string
   description = "Vault Enterprise license string."
   sensitive   = true
 }
+
+variable "route53_zone" {
+  type = object({
+    zone_id = string
+    name    = string
+  })
+
+  description = "Route 53 hosted zone for the Vault DNS record. Accepts the result of an `aws_route53_zone` data source directly."
+}
+
+# Optional
 
 variable "ami" {
   type = object({
@@ -21,15 +34,6 @@ variable "key_pair" {
 
   default     = null
   description = "EC2 key pair for SSH access. Accepts the result of an `aws_key_pair` data source directly."
-}
-
-variable "route53_zone" {
-  type = object({
-    zone_id = string
-    name    = string
-  })
-
-  description = "Route 53 hosted zone for the Vault DNS record. Accepts the result of an `aws_route53_zone` data source directly."
 }
 
 variable "vpc" {
