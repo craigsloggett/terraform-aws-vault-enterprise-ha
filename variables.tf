@@ -68,7 +68,7 @@ variable "vault_autopilot" {
 
   validation {
     condition     = can(timeadd("2000-01-01T00:00:00Z", var.vault_autopilot.dead_server_last_contact_threshold))
-    error_message = "vault_autopilot.dead_server_last_contact_threshold must be a Go duration string (e.g., \"24h\", \"30m\", \"1h30m\"). Valid units: \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\"."
+    error_message = "vault_autopilot.dead_server_last_contact_threshold must be a Go duration string (e.g., \"24h\", \"1h30m\"). Valid Units: \"s\", \"m\", \"h\"."
   }
 }
 
@@ -161,8 +161,8 @@ variable "vault_pki" {
       common_name  = optional(string, "Vault Intermediate CA")
       country      = optional(string, "")
       organization = optional(string, "")
-      key_type     = optional(string, "rsa")
-      key_bits     = optional(number, 2048)
+      key_type     = optional(string, "ec")
+      key_bits     = optional(number, 384)
     }), {})
   })
 
@@ -187,6 +187,21 @@ variable "vault_pki" {
   validation {
     condition     = var.vault_pki.intermediate_ca.key_type != "rsa" || contains([2048, 3072, 4096, 8192], var.vault_pki.intermediate_ca.key_bits)
     error_message = "vault_pki.intermediate_ca.key_bits for 'rsa' must be 2048, 3072, 4096, or 8192."
+  }
+
+  validation {
+    condition     = can(timeadd("2000-01-01T00:00:00Z", var.vault_pki.mount_max_ttl))
+    error_message = "vault_pki.mount_max_ttl must be a Go duration string (e.g., \"24h\", \"1h30m\"). Valid Units: \"s\", \"m\", \"h\"."
+  }
+
+  validation {
+    condition     = can(timeadd("2000-01-01T00:00:00Z", var.vault_pki.server_role_max_ttl))
+    error_message = "vault_pki.server_role_max_ttl must be a Go duration string (e.g., \"24h\", \"1h30m\"). Valid Units: \"s\", \"m\", \"h\"."
+  }
+
+  validation {
+    condition     = can(timeadd("2000-01-01T00:00:00Z", var.vault_pki.server_cert_ttl))
+    error_message = "vault_pki.server_cert_ttl must be a Go duration string (e.g., \"24h\", \"1h30m\"). Valid Units: \"s\", \"m\", \"h\"."
   }
 }
 
@@ -273,7 +288,7 @@ variable "bastion" {
   }
 }
 
-variable "vault_cluster" {
+variable "compute" {
   type = object({
     instance_type    = optional(string, "m5.large")
     node_count       = optional(number, 5)
@@ -289,6 +304,8 @@ variable "vault_cluster" {
     audit_disk = optional(object({
       volume_type = optional(string, "gp3")
       volume_size = optional(number, 50)
+      iops        = optional(number, 3000)
+      throughput  = optional(number, 125)
     }), {})
 
     auto_join = optional(object({
@@ -316,18 +333,38 @@ variable "vault_cluster" {
   description = "Configuration for the Vault Enterprise server EC2 instances and their EBS volumes."
 
   validation {
-    condition     = contains([3, 5], var.vault_cluster.node_count)
+    condition     = contains([3, 5], var.compute.node_count)
     error_message = "vault_cluster.node_count must be 3 or 5 for Raft quorum."
   }
 
   validation {
-    condition     = var.vault_cluster.root_volume_size >= 20
+    condition     = var.compute.root_volume_size >= 20
     error_message = "vault_cluster.root_volume_size must be at least 20 GiB."
   }
 
   validation {
-    condition     = length(var.vault_cluster.auto_join.tag_value) > 0
+    condition     = length(var.compute.auto_join.tag_value) > 0
     error_message = "vault_cluster.auto_join.tag_value must be a non-empty string to prevent accidentally joining an existing cluster."
+  }
+
+  validation {
+    condition     = var.compute.raft_data_disk.volume_type != "gp3" || (var.compute.raft_data_disk.iops >= 3000 && var.compute.raft_data_disk.iops <= 16000)
+    error_message = "vault_cluster.raft_data_disk.iops for 'gp3' must be between 3000 and 16000."
+  }
+
+  validation {
+    condition     = var.compute.raft_data_disk.volume_type != "gp3" || (var.compute.raft_data_disk.throughput >= 125 && var.compute.raft_data_disk.throughput <= 1000)
+    error_message = "vault_cluster.raft_data_disk.throughput for 'gp3' must be between 125 and 1000."
+  }
+
+  validation {
+    condition     = var.compute.audit_disk.volume_type != "gp3" || (var.compute.audit_disk.iops >= 3000 && var.compute.audit_disk.iops <= 16000)
+    error_message = "vault_cluster.audit_disk.iops for 'gp3' must be between 3000 and 16000."
+  }
+
+  validation {
+    condition     = var.compute.audit_disk.volume_type != "gp3" || (var.compute.audit_disk.throughput >= 125 && var.compute.audit_disk.throughput <= 1000)
+    error_message = "vault_cluster.audit_disk.throughput for 'gp3' must be between 125 and 1000."
   }
 }
 
@@ -374,6 +411,11 @@ variable "kms_key" {
 
   default     = {}
   description = "Configuration for the KMS key used for Vault auto-unseal."
+
+  validation {
+    condition     = var.kms_key.deletion_window_in_days >= 7 && var.kms_key.deletion_window_in_days <= 30
+    error_message = "kms_key.deletion_window_in_days must be between 7 and 30."
+  }
 }
 
 variable "iam_role" {

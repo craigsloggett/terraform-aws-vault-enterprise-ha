@@ -18,7 +18,7 @@ locals {
   #   n=3 --> 66% (1 node out, 2 healthy)
   #   n=5 --> 80% (1 node out, 4 healthy)
   instance_refresh_min_healthy_pct = floor(
-    (var.vault_cluster.node_count - 1) * 100 / var.vault_cluster.node_count
+    (var.compute.node_count - 1) * 100 / var.compute.node_count
   )
 
   # Environment Configuration
@@ -38,19 +38,19 @@ locals {
   })
 
   config_vault_hcl = templatefile("${path.module}/templates/vault/vault.hcl.tftpl", {
-    ui                                = var.vault.ui
-    disable_mlock                     = var.vault.disable_mlock
-    cluster_name                      = var.vault.cluster_name
-    log_level                         = var.vault.log_level
-    log_format                        = var.vault.log_format
-    tls_min_version                   = var.vault.listener_tcp.tls_min_version
-    prometheus_retention_time         = var.vault.telemetry.prometheus_retention_time
-    disable_hostname                  = var.vault.telemetry.disable_hostname
-    vault_fqdn                        = local.vault_fqdn
-    aws_region                        = data.aws_region.current.region
-    kms_key_alias                     = aws_kms_alias.auto_unseal.name
-    vault_cluster_auto_join_tag_key   = var.vault_cluster.auto_join.tag_key
-    vault_cluster_auto_join_tag_value = var.vault_cluster.auto_join.tag_value
+    ui                        = var.vault.ui
+    disable_mlock             = var.vault.disable_mlock
+    cluster_name              = var.vault.cluster_name
+    log_level                 = var.vault.log_level
+    log_format                = var.vault.log_format
+    tls_min_version           = var.vault.listener_tcp.tls_min_version
+    prometheus_retention_time = var.vault.telemetry.prometheus_retention_time
+    disable_hostname          = var.vault.telemetry.disable_hostname
+    vault_fqdn                = local.vault_fqdn
+    aws_region                = data.aws_region.current.region
+    kms_key_alias             = aws_kms_alias.auto_unseal.name
+    auto_join_tag_key         = var.compute.auto_join.tag_key
+    auto_join_tag_value       = var.compute.auto_join.tag_value
   })
 
   config_vault_snapshot_json = templatefile("${path.module}/templates/vault/snapshot.json.tftpl", {

@@ -113,12 +113,12 @@ resource "aws_vpc_security_group_egress_rule" "bastion_all" {
 }
 
 resource "aws_security_group" "vault_enterprise_servers" {
-  name_prefix = var.vault_cluster.security_group.name_prefix
+  name_prefix = var.compute.security_group.name_prefix
   description = "Vault Enterprise servers security group"
   vpc_id      = local.vpc.id
 
   tags = {
-    Name = var.vault_cluster.security_group.name
+    Name = var.compute.security_group.name
   }
 
   lifecycle {

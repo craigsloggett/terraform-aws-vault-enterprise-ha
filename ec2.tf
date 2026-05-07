@@ -22,9 +22,9 @@ resource "aws_instance" "bastion" {
 # Vault Nodes
 
 resource "aws_launch_template" "vault_enterprise" {
-  name_prefix   = var.vault_cluster.launch_template.name_prefix
+  name_prefix   = var.compute.launch_template.name_prefix
   image_id      = data.aws_ami.selected.id
-  instance_type = var.vault_cluster.instance_type
+  instance_type = var.compute.instance_type
   key_name      = var.key_pair.key_name
 
   iam_instance_profile {
@@ -67,17 +67,17 @@ resource "aws_launch_template" "vault_enterprise" {
     bootstrap_tls_private_key_secret_arn = aws_secretsmanager_secret.bootstrap_tls_private_key.arn
 
     # Bootstrap Coordination Configuration
-    vault_cluster_auto_join_tag_key   = var.vault_cluster.auto_join.tag_key
-    vault_cluster_auto_join_tag_value = var.vault_cluster.auto_join.tag_value
-    bootstrap_cluster_state_name      = aws_ssm_parameter.bootstrap_cluster_state.name
-    bootstrap_pki_state_name          = aws_ssm_parameter.bootstrap_pki_state.name
-    root_token_secret_arn             = aws_secretsmanager_secret.root_token.arn
-    recovery_keys_secret_arn          = aws_secretsmanager_secret.recovery_keys.arn
+    auto_join_tag_key            = var.compute.auto_join.tag_key
+    auto_join_tag_value          = var.compute.auto_join.tag_value
+    bootstrap_cluster_state_name = aws_ssm_parameter.bootstrap_cluster_state.name
+    bootstrap_pki_state_name     = aws_ssm_parameter.bootstrap_pki_state.name
+    root_token_secret_arn        = aws_secretsmanager_secret.root_token.arn
+    recovery_keys_secret_arn     = aws_secretsmanager_secret.recovery_keys.arn
 
     # Autopilot Configuration
     vault_autopilot_cleanup_dead_servers               = var.vault_autopilot.cleanup_dead_servers
     vault_autopilot_dead_server_last_contact_threshold = var.vault_autopilot.dead_server_last_contact_threshold
-    vault_autopilot_min_quorum                         = max(3, floor(var.vault_cluster.node_count / 2) + 1)
+    vault_autopilot_min_quorum                         = max(3, floor(var.compute.node_count / 2) + 1)
 
     # PKI and TLS Configuration
     vault_pki_intermediate_ca_common_name               = var.vault_pki.intermediate_ca.common_name
@@ -123,7 +123,7 @@ resource "aws_launch_template" "vault_enterprise" {
 
     ebs {
       volume_type           = "gp3"
-      volume_size           = var.vault_cluster.root_volume_size
+      volume_size           = var.compute.root_volume_size
       encrypted             = true
       delete_on_termination = true
     }
@@ -134,10 +134,10 @@ resource "aws_launch_template" "vault_enterprise" {
     device_name = "/dev/xvdf"
 
     ebs {
-      volume_type           = var.vault_cluster.raft_data_disk.volume_type
-      volume_size           = var.vault_cluster.raft_data_disk.volume_size
-      iops                  = var.vault_cluster.raft_data_disk.iops
-      throughput            = var.vault_cluster.raft_data_disk.throughput
+      volume_type           = var.compute.raft_data_disk.volume_type
+      volume_size           = var.compute.raft_data_disk.volume_size
+      iops                  = var.compute.raft_data_disk.iops
+      throughput            = var.compute.raft_data_disk.throughput
       encrypted             = true
       delete_on_termination = true
     }
@@ -148,8 +148,10 @@ resource "aws_launch_template" "vault_enterprise" {
     device_name = "/dev/xvdg"
 
     ebs {
-      volume_type           = var.vault_cluster.audit_disk.volume_type
-      volume_size           = var.vault_cluster.audit_disk.volume_size
+      volume_type           = var.compute.audit_disk.volume_type
+      volume_size           = var.compute.audit_disk.volume_size
+      iops                  = var.compute.audit_disk.iops
+      throughput            = var.compute.audit_disk.throughput
       encrypted             = true
       delete_on_termination = true
     }
@@ -159,7 +161,7 @@ resource "aws_launch_template" "vault_enterprise" {
     resource_type = "volume"
 
     tags = {
-      Name = var.vault_cluster.launch_template.volume_name
+      Name = var.compute.launch_template.volume_name
     }
   }
 
@@ -174,11 +176,11 @@ resource "aws_launch_template" "vault_enterprise" {
 }
 
 resource "aws_autoscaling_group" "vault_enterprise" {
-  name_prefix = var.vault_cluster.autoscaling_group.name_prefix
+  name_prefix = var.compute.autoscaling_group.name_prefix
 
-  min_size         = var.vault_cluster.node_count
-  max_size         = var.vault_cluster.node_count
-  desired_capacity = var.vault_cluster.node_count
+  min_size         = var.compute.node_count
+  max_size         = var.compute.node_count
+  desired_capacity = var.compute.node_count
 
   vpc_zone_identifier = local.vpc.private_subnet_ids
 
@@ -201,14 +203,14 @@ resource "aws_autoscaling_group" "vault_enterprise" {
   }
 
   tag {
-    key                 = var.vault_cluster.auto_join.tag_key
-    value               = var.vault_cluster.auto_join.tag_value
+    key                 = var.compute.auto_join.tag_key
+    value               = var.compute.auto_join.tag_value
     propagate_at_launch = true
   }
 
   tag {
     key                 = "Name"
-    value               = var.vault_cluster.autoscaling_group.instance_name
+    value               = var.compute.autoscaling_group.instance_name
     propagate_at_launch = true
   }
 
