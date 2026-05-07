@@ -163,8 +163,6 @@ resource "aws_secretsmanager_secret_version" "vault_pki_signed_intermediate_ca" 
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_ami_name"></a> [ami\_name](#input\_ami\_name) | AMI name filter for the EC2 AMI data source. | `string` | n/a | yes |
-| <a name="input_ami_owner"></a> [ami\_owner](#input\_ami\_owner) | AWS account ID that owns the AMI. | `string` | n/a | yes |
 | <a name="input_route53_zone_name"></a> [route53\_zone\_name](#input\_route53\_zone\_name) | Name of the Route 53 hosted zone for the Vault DNS record. | `string` | n/a | yes |
 | <a name="input_vault_enterprise_license"></a> [vault\_enterprise\_license](#input\_vault\_enterprise\_license) | Vault Enterprise license string. | `string` | n/a | yes |
 
