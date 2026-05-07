@@ -117,6 +117,28 @@ variable "vault_auth" {
   EOT
 }
 
+variable "vault_auth_jwt_hcp_terraform" {
+  type = object({
+    hostname              = optional(string, "app.terraform.io")
+    organization_name     = optional(string, "")
+    workspace_id          = optional(string, "")
+    oidc_discovery_ca_pem = optional(string, "")
+    mount_path            = optional(string, "app-terraform-io")
+    role_name             = optional(string, "hcp-terraform")
+  })
+
+  default     = {}
+  description = <<-EOT
+    Configuration for the HCP Terraform JWT auth method that provides
+    dynamic, short-lived Vault credentials to HCP Terraform workspaces.
+    When `organization_name` and `workspace_id` are set, a JWT auth method
+    is mounted at `mount_path` in the root namespace and configured to
+    verify tokens against `hostname` via OIDC discovery. A role named
+    `role_name` is created against that mount with `bound_claims`
+    restricting authentication to the declared organization and workspace.
+  EOT
+}
+
 variable "vault_pki" {
   type = object({
     mount_path                                = optional(string, "pki_vault")
@@ -489,27 +511,5 @@ variable "bootstrap" {
     secrets hold ephemeral bootstrap TLS material that Vault-issued certificates
     replace post-bootstrap; SSM parameters hold non-sensitive coordination state
     and the intermediate CA CSR exchanged out-of-band.
-  EOT
-}
-
-variable "hcp_terraform_jwt_auth" {
-  type = object({
-    hostname              = optional(string, "app.terraform.io")
-    organization_name     = optional(string, "")
-    workspace_id          = optional(string, "")
-    oidc_discovery_ca_pem = optional(string, "")
-    mount_path            = optional(string, "app-terraform-io")
-    role_name             = optional(string, "hcp-terraform")
-  })
-
-  default     = {}
-  description = <<-EOT
-    Configuration for the HCP Terraform JWT auth method that provides
-    dynamic, short-lived Vault credentials to HCP Terraform workspaces.
-    When `organization_name` and `workspace_id` are set, a JWT auth method
-    is mounted at `mount_path` in the root namespace and configured to
-    verify tokens against `hostname` via OIDC discovery. A role named
-    `role_name` is created against that mount with `bound_claims`
-    restricting authentication to the declared organization and workspace.
   EOT
 }

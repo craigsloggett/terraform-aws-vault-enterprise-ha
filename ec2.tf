@@ -101,14 +101,14 @@ resource "aws_launch_template" "vault_enterprise" {
     vault_aws_auth_role_ttl     = var.vault_auth.aws.role_ttl
 
     # HCP Terraform JWT Auth Configuration
-    hcp_terraform_jwt_auth_hostname              = var.hcp_terraform_jwt_auth.hostname
-    hcp_terraform_jwt_auth_organization_name     = var.hcp_terraform_jwt_auth.organization_name
-    hcp_terraform_jwt_auth_workspace_id          = var.hcp_terraform_jwt_auth.workspace_id
-    hcp_terraform_jwt_auth_oidc_discovery_ca_pem = var.hcp_terraform_jwt_auth.oidc_discovery_ca_pem
-    hcp_terraform_jwt_auth_mount_path            = var.hcp_terraform_jwt_auth.mount_path
-    hcp_terraform_jwt_auth_role_name             = var.hcp_terraform_jwt_auth.role_name
-    vault_jwt_auth_role_max_ttl                  = var.vault_auth.jwt.role_max_ttl
-    vault_jwt_auth_role_ttl                      = var.vault_auth.jwt.role_ttl
+    vault_auth_jwt_role_max_ttl                        = var.vault_auth.jwt.role_max_ttl
+    vault_auth_jwt_role_ttl                            = var.vault_auth.jwt.role_ttl
+    vault_auth_jwt_hcp_terraform_hostname              = var.vault_auth_jwt_hcp_terraform.hostname
+    vault_auth_jwt_hcp_terraform_organization_name     = var.vault_auth_jwt_hcp_terraform.organization_name
+    vault_auth_jwt_hcp_terraform_workspace_id          = var.vault_auth_jwt_hcp_terraform.workspace_id
+    vault_auth_jwt_hcp_terraform_oidc_discovery_ca_pem = var.vault_auth_jwt_hcp_terraform.oidc_discovery_ca_pem
+    vault_auth_jwt_hcp_terraform_mount_path            = var.vault_auth_jwt_hcp_terraform.mount_path
+    vault_auth_jwt_hcp_terraform_role_name             = var.vault_auth_jwt_hcp_terraform.role_name
 
     # Vault Agent Configuration
     config_vault_agent_hcl                     = local.config_vault_agent_hcl

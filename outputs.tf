@@ -53,12 +53,12 @@ output "vault_pki_signed_intermediate_ca_secret_arn" {
   value       = aws_secretsmanager_secret.vault_pki_signed_intermediate_ca.arn
 }
 
-output "hcp_terraform_jwt_auth_mount_path" {
+output "vault_auth_jwt_hcp_terraform_mount_path" {
   description = "Vault JWT auth method path for HCP Terraform (TFC_VAULT_AUTH_PATH)."
-  value       = var.hcp_terraform_jwt_auth.mount_path
+  value       = var.vault_auth_jwt_hcp_terraform.mount_path
 }
 
-output "hcp_terraform_jwt_auth_role_name" {
+output "vault_auth_jwt_hcp_terraform_role_name" {
   description = "Vault JWT auth role name for HCP Terraform (TFC_VAULT_RUN_ROLE)."
-  value       = var.hcp_terraform_jwt_auth.role_name
+  value       = var.vault_auth_jwt_hcp_terraform.role_name
 }
