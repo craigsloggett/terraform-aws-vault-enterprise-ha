@@ -348,23 +348,53 @@ variable "compute" {
   }
 
   validation {
-    condition     = var.compute.raft_data_disk.volume_type != "gp3" || (var.compute.raft_data_disk.iops >= 3000 && var.compute.raft_data_disk.iops <= 16000)
-    error_message = "vault_cluster.raft_data_disk.iops for 'gp3' must be between 3000 and 16000."
+    condition     = var.compute.raft_data_disk.volume_size >= 1 && var.compute.raft_data_disk.volume_size <= 16384
+    error_message = "compute.raft_data_disk.volume_size must be between 1 and 16384 GiB."
   }
 
   validation {
-    condition     = var.compute.raft_data_disk.volume_type != "gp3" || (var.compute.raft_data_disk.throughput >= 125 && var.compute.raft_data_disk.throughput <= 1000)
-    error_message = "vault_cluster.raft_data_disk.throughput for 'gp3' must be between 125 and 1000."
+    condition     = var.compute.raft_data_disk.iops >= 3000 && var.compute.raft_data_disk.iops <= 80000
+    error_message = "compute.raft_data_disk.iops must be between 3000 and 80000."
   }
 
   validation {
-    condition     = var.compute.audit_disk.volume_type != "gp3" || (var.compute.audit_disk.iops >= 3000 && var.compute.audit_disk.iops <= 16000)
-    error_message = "vault_cluster.audit_disk.iops for 'gp3' must be between 3000 and 16000."
+    condition     = var.compute.raft_data_disk.throughput >= 125 && var.compute.raft_data_disk.throughput <= 2000
+    error_message = "compute.raft_data_disk.throughput must be between 125 and 2000 MiB/s."
   }
 
   validation {
-    condition     = var.compute.audit_disk.volume_type != "gp3" || (var.compute.audit_disk.throughput >= 125 && var.compute.audit_disk.throughput <= 1000)
-    error_message = "vault_cluster.audit_disk.throughput for 'gp3' must be between 125 and 1000."
+    condition     = var.compute.raft_data_disk.iops <= var.compute.raft_data_disk.volume_size * 500
+    error_message = "compute.raft_data_disk.iops cannot exceed compute.raft_data_disk.volume_size * 500."
+  }
+
+  validation {
+    condition     = var.compute.raft_data_disk.throughput <= var.compute.raft_data_disk.iops * 0.25
+    error_message = "compute.raft_data_disk.throughput cannot exceed compute.raft_data_disk.iops * 0.25."
+  }
+
+  validation {
+    condition     = var.compute.audit_disk.volume_size >= 1 && var.compute.audit_disk.volume_size <= 16384
+    error_message = "compute.audit_disk.volume_size must be between 1 and 16384 GiB."
+  }
+
+  validation {
+    condition     = var.compute.audit_disk.iops >= 3000 && var.compute.audit_disk.iops <= 80000
+    error_message = "compute.audit_disk.iops must be between 3000 and 80000."
+  }
+
+  validation {
+    condition     = var.compute.audit_disk.throughput >= 125 && var.compute.audit_disk.throughput <= 2000
+    error_message = "compute.audit_disk.throughput must be between 125 and 2000 MiB/s."
+  }
+
+  validation {
+    condition     = var.compute.audit_disk.iops <= var.compute.audit_disk.volume_size * 500
+    error_message = "compute.audit_disk.iops cannot exceed compute.audit_disk.volume_size * 500."
+  }
+
+  validation {
+    condition     = var.compute.audit_disk.throughput <= var.compute.audit_disk.iops * 0.25
+    error_message = "compute.audit_disk.throughput cannot exceed compute.audit_disk.iops * 0.25."
   }
 }
 
