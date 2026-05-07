@@ -18,8 +18,8 @@ resource "aws_iam_role" "vault_enterprise" {
 }
 
 resource "aws_iam_instance_profile" "vault_enterprise" {
-  name = var.iam_instance_profile.name
-  path = var.iam_instance_profile.path
+  name = var.iam_role.instance_profile.name
+  path = var.iam_role.instance_profile.path
   role = aws_iam_role.vault_enterprise.name
 }
 

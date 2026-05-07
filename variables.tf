@@ -212,6 +212,11 @@ variable "iam_role" {
     name = optional(string, "VaultEnterpriseServerRole")
     path = optional(string, "/")
 
+    instance_profile = optional(object({
+      name = optional(string, "VaultEnterpriseServerInstanceProfile")
+      path = optional(string, "/")
+    }), {})
+
     inline_policy_names = optional(object({
       kms_read_write             = optional(string, "KMSReadWriteAccess")
       kms_describe               = optional(string, "KMSDescribeAccess")
@@ -229,7 +234,8 @@ variable "iam_role" {
   default     = {}
   description = <<-EOT
     IAM role configuration for the Vault Enterprise EC2 instances. The module
-    creates one role with several inline policies attached.
+    creates one role with several inline policies attached and an associated
+    instance profile.
   EOT
 
   validation {
@@ -240,22 +246,6 @@ variable "iam_role" {
   validation {
     condition     = length(var.iam_role.name) >= 1 && length(var.iam_role.name) <= 64
     error_message = "IAM role name must be 1-64 characters."
-  }
-
-  validation {
-    condition = alltrue([
-      for policy_name in values(var.iam_role.inline_policy_names) :
-      can(regex("^[A-Za-z0-9+=,.@_-]+$", policy_name))
-    ])
-    error_message = "IAM inline policy names must contain only alphanumeric or '+=,.@-_' characters."
-  }
-
-  validation {
-    condition = alltrue([
-      for policy_name in values(var.iam_role.inline_policy_names) :
-      length(policy_name) >= 1 && length(policy_name) <= 64
-    ])
-    error_message = "IAM inline policy names must be 1-64 characters."
   }
 
   validation {
@@ -272,44 +262,45 @@ variable "iam_role" {
     condition     = can(regex("^[[:print:]/]+$", var.iam_role.path))
     error_message = "IAM role path must contain only printable ASCII characters."
   }
-}
-
-variable "iam_instance_profile" {
-  type = object({
-    name = optional(string, "VaultEnterpriseServerInstanceProfile")
-    path = optional(string, "/")
-  })
-
-  default     = {}
-  description = <<-EOT
-    IAM instance profile configuration for the Vault Enterprise EC2 instances.
-    The module creates one instance profile and associates it with the IAM role
-    created by this module.
-  EOT
-
   validation {
-    condition     = can(regex("^[A-Za-z0-9+=,.@_-]+$", var.iam_instance_profile.name))
+    condition     = can(regex("^[A-Za-z0-9+=,.@_-]+$", var.iam_role.instance_profile.name))
     error_message = "IAM instance profile name must contain only alphanumeric or '+=,.@-_' characters."
   }
 
   validation {
-    condition     = length(var.iam_instance_profile.name) >= 1 && length(var.iam_instance_profile.name) <= 64
+    condition     = length(var.iam_role.instance_profile.name) >= 1 && length(var.iam_role.instance_profile.name) <= 64
     error_message = "IAM instance profile name must be 1-64 characters."
   }
 
   validation {
-    condition     = startswith(var.iam_instance_profile.path, "/") && endswith(var.iam_instance_profile.path, "/")
+    condition     = startswith(var.iam_role.instance_profile.path, "/") && endswith(var.iam_role.instance_profile.path, "/")
     error_message = "IAM instance profile path must start and end with '/'."
   }
 
   validation {
-    condition     = !can(regex("[[:space:]]", var.iam_instance_profile.path))
+    condition     = !can(regex("[[:space:]]", var.iam_role.instance_profile.path))
     error_message = "IAM instance profile path must not contain spaces, tabs, or newlines."
   }
 
   validation {
-    condition     = can(regex("^[[:print:]/]+$", var.iam_instance_profile.path))
+    condition     = can(regex("^[[:print:]/]+$", var.iam_role.instance_profile.path))
     error_message = "IAM instance profile path must contain only printable ASCII characters."
+  }
+
+  validation {
+    condition = alltrue([
+      for policy_name in values(var.iam_role.inline_policy_names) :
+      can(regex("^[A-Za-z0-9+=,.@_-]+$", policy_name))
+    ])
+    error_message = "IAM inline policy names must contain only alphanumeric or '+=,.@-_' characters."
+  }
+
+  validation {
+    condition = alltrue([
+      for policy_name in values(var.iam_role.inline_policy_names) :
+      length(policy_name) >= 1 && length(policy_name) <= 64
+    ])
+    error_message = "IAM inline policy names must be 1-64 characters."
   }
 }
 
