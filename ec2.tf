@@ -1,7 +1,7 @@
 # Bastion Host
 
 resource "aws_instance" "bastion" {
-  ami                         = var.ami.id
+  ami                         = data.aws_ami.selected.id
   instance_type               = var.bastion.instance_type
   key_name                    = var.key_pair.key_name
   subnet_id                   = local.vpc.public_subnet_ids[0]
@@ -23,7 +23,7 @@ resource "aws_instance" "bastion" {
 
 resource "aws_launch_template" "vault_enterprise" {
   name_prefix   = var.vault_cluster.launch_template.name_prefix
-  image_id      = var.ami.id
+  image_id      = data.aws_ami.selected.id
   instance_type = var.vault_cluster.instance_type
   key_name      = var.key_pair.key_name
 

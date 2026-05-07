@@ -58,23 +58,12 @@ data "aws_route53_zone" "selected" {
   name = var.route53_zone_name
 }
 
-data "aws_ami" "selected" {
-  most_recent = true
-  owners      = [var.ami_owner]
-
-  filter {
-    name   = "name"
-    values = [var.ami_name]
-  }
-}
-
 module "vault" {
   # tflint-ignore: terraform_module_pinned_source
   source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise"
 
   vault_enterprise_license = var.vault_enterprise_license
   route53_zone             = data.aws_route53_zone.selected
-  ami                      = data.aws_ami.selected
 }
 ```
 
@@ -174,8 +163,6 @@ resource "aws_secretsmanager_secret_version" "vault_pki_signed_intermediate_ca" 
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_ami_name"></a> [ami\_name](#input\_ami\_name) | AMI name filter for the EC2 AMI data source. | `string` | n/a | yes |
-| <a name="input_ami_owner"></a> [ami\_owner](#input\_ami\_owner) | AWS account ID that owns the AMI. | `string` | n/a | yes |
 | <a name="input_route53_zone_name"></a> [route53\_zone\_name](#input\_route53\_zone\_name) | Name of the Route 53 hosted zone for the Vault DNS record. | `string` | n/a | yes |
 | <a name="input_vault_enterprise_license"></a> [vault\_enterprise\_license](#input\_vault\_enterprise\_license) | Vault Enterprise license string. | `string` | n/a | yes |
 
@@ -188,7 +175,6 @@ resource "aws_secretsmanager_secret_version" "vault_pki_signed_intermediate_ca" 
 | [tls_locally_signed_cert.vault_pki_signed_intermediate_ca](https://registry.terraform.io/providers/hashicorp/tls/4.2.1/docs/resources/locally_signed_cert) | resource |
 | [tls_private_key.root_ca](https://registry.terraform.io/providers/hashicorp/tls/4.2.1/docs/resources/private_key) | resource |
 | [tls_self_signed_cert.root_ca](https://registry.terraform.io/providers/hashicorp/tls/4.2.1/docs/resources/self_signed_cert) | resource |
-| [aws_ami.selected](https://registry.terraform.io/providers/hashicorp/aws/6.43.0/docs/data-sources/ami) | data source |
 | [aws_region.this](https://registry.terraform.io/providers/hashicorp/aws/6.43.0/docs/data-sources/region) | data source |
 | [aws_route53_zone.selected](https://registry.terraform.io/providers/hashicorp/aws/6.43.0/docs/data-sources/route53_zone) | data source |
 | [aws_ssm_parameter.vault_pki_intermediate_ca_csr](https://registry.terraform.io/providers/hashicorp/aws/6.43.0/docs/data-sources/ssm_parameter) | data source |

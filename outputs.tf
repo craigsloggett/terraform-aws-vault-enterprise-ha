@@ -20,7 +20,7 @@ output "vault_cluster_autoscaling_group_name" {
 
 output "ami_name" {
   description = "Name of the AMI used for EC2 instances."
-  value       = var.ami.name
+  value       = data.aws_ami.selected.name
 }
 
 output "vault_snapshot_aws_s3_bucket_name" {

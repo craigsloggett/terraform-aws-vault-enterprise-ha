@@ -6,10 +6,11 @@ variable "vault_enterprise_license" {
 
 variable "ami" {
   type = object({
-    id   = string
-    name = string
+    owners = optional(list(string), ["amazon"])
+    name   = optional(string, "ubuntu/images/hvm-ssd-gp3/ubuntu-resolute-26.04-amd64-server-20260503")
   })
 
+  default     = {}
   description = "AMI for EC2 instances. Must be Ubuntu or Debian-based. Accepts the result of an `aws_ami` data source directly."
 }
 

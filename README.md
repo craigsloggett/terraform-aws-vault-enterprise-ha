@@ -11,23 +11,12 @@ data "aws_route53_zone" "selected" {
   name = var.route53_zone_name
 }
 
-data "aws_ami" "selected" {
-  most_recent = true
-  owners      = [var.ami_owner]
-
-  filter {
-    name   = "name"
-    values = [var.ami_name]
-  }
-}
-
 module "vault" {
   # tflint-ignore: terraform_module_pinned_source
   source = "git::https://github.com/craigsloggett/terraform-aws-vault-enterprise"
 
   vault_enterprise_license = var.vault_enterprise_license
   route53_zone             = data.aws_route53_zone.selected
-  ami                      = data.aws_ami.selected
 }
 ```
 
@@ -50,7 +39,7 @@ module "vault" {
 
 | Name | Description | Type | Default | Required |
 | ---- | ----------- | ---- | ------- | :------: |
-| <a name="input_ami"></a> [ami](#input\_ami) | AMI for EC2 instances. Must be Ubuntu or Debian-based. Accepts the result of an `aws_ami` data source directly. | <pre>object({<br/>    id   = string<br/>    name = string<br/>  })</pre> | n/a | yes |
+| <a name="input_ami"></a> [ami](#input\_ami) | AMI for EC2 instances. Must be Ubuntu or Debian-based. Accepts the result of an `aws_ami` data source directly. | <pre>object({<br/>    owners = optional(list(string), ["amazon"])<br/>    name   = optional(string, "ubuntu/images/hvm-ssd-gp3/ubuntu-resolute-26.04-amd64-server-20260503")<br/>  })</pre> | `{}` | no |
 | <a name="input_bastion"></a> [bastion](#input\_bastion) | Bastion host configuration. `allowed_cidrs` defaults to `["0.0.0.0/0"]` for<br/>convenience; restrict to known ranges in any production deployment. | <pre>object({<br/>    name          = optional(string, "vault-enterprise-bastion-host")<br/>    instance_type = optional(string, "t3.micro")<br/>    allowed_cidrs = optional(list(string), ["0.0.0.0/0"])<br/><br/>    security_group = optional(object({<br/>      name_prefix = optional(string, "vault-enterprise-bastion-host-")<br/>      name        = optional(string, "vault-enterprise-bastion-host")<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_bootstrap"></a> [bootstrap](#input\_bootstrap) | AWS resources used only during the Vault bootstrap ceremony. Secrets Manager<br/>secrets hold ephemeral bootstrap TLS material that Vault-issued certificates<br/>replace post-bootstrap; SSM parameters hold non-sensitive coordination state<br/>and the intermediate CA CSR exchanged out-of-band. | <pre>object({<br/>    secretsmanager_secret = optional(object({<br/>      tls_ca_name_prefix          = optional(string, "vault-enterprise-bootstrap-tls-ca-")<br/>      tls_cert_name_prefix        = optional(string, "vault-enterprise-bootstrap-tls-cert-")<br/>      tls_private_key_name_prefix = optional(string, "vault-enterprise-bootstrap-tls-private-key-")<br/>    }), {})<br/><br/>    ssm_parameter = optional(object({<br/>      cluster_state_name = optional(string, "/vault-enterprise/bootstrap/cluster/state")<br/>      pki_state_name     = optional(string, "/vault-enterprise/bootstrap/pki/state")<br/>    }), {})<br/>  })</pre> | `{}` | no |
 | <a name="input_hcp_terraform_jwt_auth"></a> [hcp\_terraform\_jwt\_auth](#input\_hcp\_terraform\_jwt\_auth) | Configuration for the HCP Terraform JWT auth method that provides<br/>dynamic, short-lived Vault credentials to HCP Terraform workspaces.<br/>When `organization_name` and `workspace_id` are set, a JWT auth method<br/>is mounted at `mount_path` in the root namespace and configured to<br/>verify tokens against `hostname` via OIDC discovery. A role named<br/>`role_name` is created against that mount with `bound_claims`<br/>restricting authentication to the declared organization and workspace. | <pre>object({<br/>    hostname              = optional(string, "app.terraform.io")<br/>    organization_name     = optional(string, "")<br/>    workspace_id          = optional(string, "")<br/>    oidc_discovery_ca_pem = optional(string, "")<br/>    mount_path            = optional(string, "app-terraform-io")<br/>    role_name             = optional(string, "hcp-terraform")<br/>  })</pre> | `{}` | no |
@@ -137,6 +126,7 @@ module "vault" {
 | [tls_private_key.bootstrap_tls_ca_private_key](https://registry.terraform.io/providers/hashicorp/tls/latest/docs/resources/private_key) | resource |
 | [tls_private_key.bootstrap_tls_private_key](https://registry.terraform.io/providers/hashicorp/tls/latest/docs/resources/private_key) | resource |
 | [tls_self_signed_cert.bootstrap_tls_ca](https://registry.terraform.io/providers/hashicorp/tls/latest/docs/resources/self_signed_cert) | resource |
+| [aws_ami.selected](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/ami) | data source |
 | [aws_availability_zones.available](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/availability_zones) | data source |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_iam_policy_document.assume_role](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
