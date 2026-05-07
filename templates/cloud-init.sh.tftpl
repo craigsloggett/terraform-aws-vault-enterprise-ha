@@ -83,6 +83,7 @@ readonly VAULT_PKI_INTERMEDIATE_CA_COUNTRY="${vault_pki_intermediate_ca_country}
 readonly VAULT_PKI_INTERMEDIATE_CA_ORGANIZATION="${vault_pki_intermediate_ca_organization}"
 readonly VAULT_PKI_INTERMEDIATE_CA_KEY_TYPE="${vault_pki_intermediate_ca_key_type}"
 readonly VAULT_PKI_INTERMEDIATE_CA_KEY_BITS="${vault_pki_intermediate_ca_key_bits}"
+readonly VAULT_PKI_SIGNED_INTERMEDIATE_POLL_INTERVAL_SECONDS="${vault_pki_signed_intermediate_poll_interval_seconds}"
 readonly VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS="${vault_pki_signed_intermediate_wait_timeout_seconds}"
 
 # AWS Auth
@@ -852,7 +853,7 @@ publish_pki_intermediate_csr() (
 wait_for_signed_pki_intermediate() (
   log_info "Waiting for the externally signed intermediate certificate"
 
-  interval=10
+  interval="$${VAULT_PKI_SIGNED_INTERMEDIATE_POLL_INTERVAL_SECONDS}"
   max_attempts=$((VAULT_PKI_SIGNED_INTERMEDIATE_WAIT_TIMEOUT_SECONDS / interval))
   attempt=0
 
