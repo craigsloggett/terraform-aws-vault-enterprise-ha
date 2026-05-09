@@ -24,23 +24,19 @@ write_files:
   - path: /var/lib/cloud/scripts/bootstrap.env
     owner: root:root
     permissions: '0644'
-    encoding: b64
-    content: ${base64encode(bootstrap_env_file)}
+    content: ${bootstrap_env_file}
   - path: /var/lib/cloud/scripts/determine-vault-node-role.sh
     owner: root:root
     permissions: '0755'
-    encoding: b64
-    content: ${base64encode(determine_vault_node_role_script)}
+    content: ${determine_vault_node_role_script}
   - path: /var/lib/cloud/scripts/install-vault.sh
     owner: root:root
     permissions: '0755'
-    encoding: b64
-    content: ${base64encode(install_vault_script)}
+    content: ${install_vault_script}
   - path: /var/lib/cloud/scripts/vault-bootstrap.sh
     owner: root:root
     permissions: '0755'
-    encoding: b64
-    content: ${base64encode(vault_bootstrap_script)}
+    content: ${vault_bootstrap_script}
 
 runcmd:
   - [install, -d, -o, vault, -g, vault, -m, '755', /opt/vault]
