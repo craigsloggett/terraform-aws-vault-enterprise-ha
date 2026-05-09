@@ -1,8 +1,10 @@
 #!/bin/sh
-# cloud-init.sh.tftpl
+# vault-bootstrap.sh.tftpl
 #
-# This script is rendered by Terraform using templatefile() and placed in
-# EC2 instance user data.
+# This script is rendered by Terraform using templatefile() and embedded into
+# the cloud-init user-data via cloud-init.yml.tftpl. cloud-init installs apt
+# packages, creates the vault user/group, and provisions the non-mount-point
+# directory tree before invoking this script from runcmd.
 #
 # Assumes:
 #   - Ubuntu or Debian
@@ -499,16 +501,6 @@ wait_for_network() (
   return 1
 )
 
-prepare_system() (
-  log_info "Preparing system packages"
-
-  export DEBIAN_FRONTEND=noninteractive
-
-  apt-get -yq update >/dev/null
-  apt-get -yq install \
-    awscli gnupg jq unzip nvme-cli amazon-ec2-utils chrony >/dev/null
-)
-
 configure_system_time() (
   log_info "Configuring system time"
 
@@ -524,52 +516,17 @@ configure_system_time() (
 # Install and Configure Vault Server  #
 #######################################
 
-create_vault_user() (
-  log_info "Creating vault system user"
+configure_vault_mount_directories() (
+  # Mount-point ownership must be set after prepare_disk overlays the volume,
+  # otherwise the settings apply to the underlying directory and are hidden
+  # by the mount.
+  log_info "Setting ownership and permissions on Vault mount directories"
 
-  if ! getent group vault >/dev/null 2>&1; then
-    groupadd --system vault
-  fi
-
-  if ! id vault >/dev/null 2>&1; then
-    useradd --system -g vault -d "$${VAULT_HOME_DIR}" -s /bin/false vault
-  fi
-)
-
-configure_vault_directories() (
-  log_info "Configuring Vault directory tree"
-
-  mkdir -p "$${VAULT_HOME_DIR}"
-  chown vault:vault "$${VAULT_HOME_DIR}"
-  chmod 755 "$${VAULT_HOME_DIR}"
-
-  mkdir -p "$${VAULT_DATA_DIR}"
-  chown vault:vault "$${VAULT_DATA_DIR}"
-  chmod 755 "$${VAULT_DATA_DIR}"
-
-  mkdir -p "$${VAULT_CONFIG_DIR}"
-  chown root:vault "$${VAULT_CONFIG_DIR}"
-  chmod 755 "$${VAULT_CONFIG_DIR}"
-
-  mkdir -p "$${VAULT_LOG_DIR}"
-  chown vault:vault "$${VAULT_LOG_DIR}"
-  chmod 755 "$${VAULT_LOG_DIR}"
-
-  mkdir -p "$${VAULT_LIBEXEC_DIR}"
-  chown root:root "$${VAULT_LIBEXEC_DIR}"
-  chmod 755 "$${VAULT_LIBEXEC_DIR}"
-
-  mkdir -p "$${VAULT_TLS_DIR}"
-  chown vault:vault "$${VAULT_TLS_DIR}"
-  chmod 755 "$${VAULT_TLS_DIR}"
-
-  mkdir -p "$${VAULT_RAFT_DIR}"
   chown vault:vault "$${VAULT_RAFT_DIR}"
   chmod 700 "$${VAULT_RAFT_DIR}"
 
-  mkdir -p "$${VAULT_POLICY_DIR}"
-  chown vault:vault "$${VAULT_POLICY_DIR}"
-  chmod 755 "$${VAULT_POLICY_DIR}"
+  chown vault:vault "$${VAULT_LOG_DIR}"
+  chmod 755 "$${VAULT_LOG_DIR}"
 )
 
 write_vault_shell_env() (
@@ -1169,14 +1126,6 @@ EOF
 #  Install and Configure Vault Agent  #
 #######################################
 
-configure_vault_agent_directories() (
-  log_info "Configuring Vault Agent directory tree"
-
-  mkdir -p "$${VAULT_AGENT_TEMPLATE_DIR}"
-  chown vault:vault "$${VAULT_AGENT_TEMPLATE_DIR}"
-  chmod 755 "$${VAULT_AGENT_TEMPLATE_DIR}"
-)
-
 write_vault_agent_service_unit() (
   log_info "Writing Vault Agent systemd unit"
 
@@ -1244,7 +1193,6 @@ main() {
 
   # Prepare System
   wait_for_network
-  prepare_system
   configure_system_time
 
   # Prepare Storage
@@ -1256,9 +1204,9 @@ main() {
   audit_device="$(get_ebs_nvme_device "$${EBS_AUDIT_DEVICE_NAME}")"
   prepare_disk "$${audit_device}" "$${VAULT_LOG_DIR}" "vault-audit"
 
+  configure_vault_mount_directories
+
   # Prepare Vault Server
-  create_vault_user
-  configure_vault_directories
   install_vault
   write_vault_service_unit
   write_vault_service_override
@@ -1319,7 +1267,6 @@ main() {
   write_vault_pki_ca_bundle
 
   # Enable Vault Agent TLS Rotation
-  configure_vault_agent_directories
   write_vault_shell_env
   write_vault_agent_config
   write_vault_agent_tls_template

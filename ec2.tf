@@ -43,79 +43,81 @@ resource "aws_launch_template" "vault_enterprise" {
     http_put_response_hop_limit = 1
   }
 
-  user_data = base64gzip(templatefile("${path.module}/templates/cloud-init.sh.tftpl", {
-    # Environment Configuration
-    vault_fqdn         = local.vault_fqdn
-    vault_version      = var.vault.version
-    license_secret_arn = aws_secretsmanager_secret.license.arn
+  user_data = base64gzip(templatefile("${path.module}/templates/cloud-init.yml.tftpl", {
+    vault_bootstrap_script = templatefile("${path.module}/templates/vault-bootstrap.sh.tftpl", {
+      # Environment Configuration
+      vault_fqdn         = local.vault_fqdn
+      vault_version      = var.vault.version
+      license_secret_arn = aws_secretsmanager_secret.license.arn
 
-    # EBS Configuration
-    ebs_raft_device_name  = local.ebs_raft_device_name
-    ebs_audit_device_name = local.ebs_audit_device_name
+      # EBS Configuration
+      ebs_raft_device_name  = local.ebs_raft_device_name
+      ebs_audit_device_name = local.ebs_audit_device_name
 
-    # Vault Server Configuration
-    config_vault_service          = local.config_vault_service
-    config_vault_service_override = local.config_vault_service_override
-    config_vault_admin_policy     = local.config_vault_admin_policy
-    config_vault_server_policy    = local.config_vault_server_policy
-    config_vault_hcl              = local.config_vault_hcl
-    config_vault_snapshot_json    = local.config_vault_snapshot_json
+      # Vault Server Configuration
+      config_vault_service          = local.config_vault_service
+      config_vault_service_override = local.config_vault_service_override
+      config_vault_admin_policy     = local.config_vault_admin_policy
+      config_vault_server_policy    = local.config_vault_server_policy
+      config_vault_hcl              = local.config_vault_hcl
+      config_vault_snapshot_json    = local.config_vault_snapshot_json
 
-    # Bootstrap Artifacts
-    bootstrap_tls_ca_secret_arn          = aws_secretsmanager_secret.bootstrap_tls_ca.arn
-    bootstrap_tls_cert_secret_arn        = aws_secretsmanager_secret.bootstrap_tls_cert.arn
-    bootstrap_tls_private_key_secret_arn = aws_secretsmanager_secret.bootstrap_tls_private_key.arn
+      # Bootstrap Artifacts
+      bootstrap_tls_ca_secret_arn          = aws_secretsmanager_secret.bootstrap_tls_ca.arn
+      bootstrap_tls_cert_secret_arn        = aws_secretsmanager_secret.bootstrap_tls_cert.arn
+      bootstrap_tls_private_key_secret_arn = aws_secretsmanager_secret.bootstrap_tls_private_key.arn
 
-    # Bootstrap Coordination Configuration
-    auto_join_tag_key            = var.compute.auto_join.tag_key
-    auto_join_tag_value          = var.compute.auto_join.tag_value
-    bootstrap_cluster_state_name = aws_ssm_parameter.bootstrap_cluster_state.name
-    bootstrap_pki_state_name     = aws_ssm_parameter.bootstrap_pki_state.name
-    root_token_secret_arn        = aws_secretsmanager_secret.root_token.arn
-    recovery_keys_secret_arn     = aws_secretsmanager_secret.recovery_keys.arn
+      # Bootstrap Coordination Configuration
+      auto_join_tag_key            = var.compute.auto_join.tag_key
+      auto_join_tag_value          = var.compute.auto_join.tag_value
+      bootstrap_cluster_state_name = aws_ssm_parameter.bootstrap_cluster_state.name
+      bootstrap_pki_state_name     = aws_ssm_parameter.bootstrap_pki_state.name
+      root_token_secret_arn        = aws_secretsmanager_secret.root_token.arn
+      recovery_keys_secret_arn     = aws_secretsmanager_secret.recovery_keys.arn
 
-    # Autopilot Configuration
-    vault_autopilot_cleanup_dead_servers               = var.vault_autopilot.cleanup_dead_servers
-    vault_autopilot_dead_server_last_contact_threshold = var.vault_autopilot.dead_server_last_contact_threshold
-    vault_autopilot_min_quorum                         = max(3, floor(var.compute.node_count / 2) + 1)
+      # Autopilot Configuration
+      vault_autopilot_cleanup_dead_servers               = var.vault_autopilot.cleanup_dead_servers
+      vault_autopilot_dead_server_last_contact_threshold = var.vault_autopilot.dead_server_last_contact_threshold
+      vault_autopilot_min_quorum                         = max(3, floor(var.compute.node_count / 2) + 1)
 
-    # PKI and TLS Configuration
-    vault_pki_intermediate_ca_common_name               = var.vault_pki.intermediate_ca.common_name
-    vault_pki_intermediate_ca_country                   = var.vault_pki.intermediate_ca.country
-    vault_pki_intermediate_ca_organization              = var.vault_pki.intermediate_ca.organization
-    vault_pki_intermediate_ca_key_type                  = var.vault_pki.intermediate_ca.key_type
-    vault_pki_intermediate_ca_key_bits                  = var.vault_pki.intermediate_ca.key_bits
-    vault_pki_signed_intermediate_poll_interval_seconds = var.vault_pki.signed_intermediate_poll_interval_seconds
-    vault_pki_signed_intermediate_wait_timeout_seconds  = var.vault_pki.signed_intermediate_wait_timeout_seconds
-    vault_pki_intermediate_ca_ssm_parameter_name        = aws_ssm_parameter.vault_pki_intermediate_ca.name
-    vault_pki_intermediate_ca_csr_ssm_parameter_name    = aws_ssm_parameter.vault_pki_intermediate_ca_csr.name
-    vault_pki_signed_intermediate_ca_secret_arn         = aws_secretsmanager_secret.vault_pki_signed_intermediate_ca.arn
-    vault_pki_vault_mount_max_ttl                       = var.vault_pki.mount_max_ttl
-    vault_pki_vault_server_role_max_ttl                 = var.vault_pki.server_role_max_ttl
-    vault_pki_server_cert_ttl                           = var.vault_pki.server_cert_ttl
-    vault_pki_mount_path                                = var.vault_pki.mount_path
+      # PKI and TLS Configuration
+      vault_pki_intermediate_ca_common_name               = var.vault_pki.intermediate_ca.common_name
+      vault_pki_intermediate_ca_country                   = var.vault_pki.intermediate_ca.country
+      vault_pki_intermediate_ca_organization              = var.vault_pki.intermediate_ca.organization
+      vault_pki_intermediate_ca_key_type                  = var.vault_pki.intermediate_ca.key_type
+      vault_pki_intermediate_ca_key_bits                  = var.vault_pki.intermediate_ca.key_bits
+      vault_pki_signed_intermediate_poll_interval_seconds = var.vault_pki.signed_intermediate_poll_interval_seconds
+      vault_pki_signed_intermediate_wait_timeout_seconds  = var.vault_pki.signed_intermediate_wait_timeout_seconds
+      vault_pki_intermediate_ca_ssm_parameter_name        = aws_ssm_parameter.vault_pki_intermediate_ca.name
+      vault_pki_intermediate_ca_csr_ssm_parameter_name    = aws_ssm_parameter.vault_pki_intermediate_ca_csr.name
+      vault_pki_signed_intermediate_ca_secret_arn         = aws_secretsmanager_secret.vault_pki_signed_intermediate_ca.arn
+      vault_pki_vault_mount_max_ttl                       = var.vault_pki.mount_max_ttl
+      vault_pki_vault_server_role_max_ttl                 = var.vault_pki.server_role_max_ttl
+      vault_pki_server_cert_ttl                           = var.vault_pki.server_cert_ttl
+      vault_pki_mount_path                                = var.vault_pki.mount_path
 
-    # AWS Auth Configuration
-    vault_iam_role_arn          = aws_iam_role.vault_enterprise.arn
-    vault_aws_auth_role_max_ttl = var.vault_auth.aws.role_max_ttl
-    vault_aws_auth_role_ttl     = var.vault_auth.aws.role_ttl
+      # AWS Auth Configuration
+      vault_iam_role_arn          = aws_iam_role.vault_enterprise.arn
+      vault_aws_auth_role_max_ttl = var.vault_auth.aws.role_max_ttl
+      vault_aws_auth_role_ttl     = var.vault_auth.aws.role_ttl
 
-    # HCP Terraform JWT Auth Configuration
-    vault_auth_jwt_role_max_ttl                        = var.vault_auth.jwt.role_max_ttl
-    vault_auth_jwt_role_ttl                            = var.vault_auth.jwt.role_ttl
-    vault_auth_jwt_hcp_terraform_hostname              = var.vault_auth_jwt_hcp_terraform.hostname
-    vault_auth_jwt_hcp_terraform_organization_name     = var.vault_auth_jwt_hcp_terraform.organization_name
-    vault_auth_jwt_hcp_terraform_workspace_id          = var.vault_auth_jwt_hcp_terraform.workspace_id
-    vault_auth_jwt_hcp_terraform_oidc_discovery_ca_pem = var.vault_auth_jwt_hcp_terraform.oidc_discovery_ca_pem
-    vault_auth_jwt_hcp_terraform_mount_path            = var.vault_auth_jwt_hcp_terraform.mount_path
-    vault_auth_jwt_hcp_terraform_role_name             = var.vault_auth_jwt_hcp_terraform.role_name
+      # HCP Terraform JWT Auth Configuration
+      vault_auth_jwt_role_max_ttl                        = var.vault_auth.jwt.role_max_ttl
+      vault_auth_jwt_role_ttl                            = var.vault_auth.jwt.role_ttl
+      vault_auth_jwt_hcp_terraform_hostname              = var.vault_auth_jwt_hcp_terraform.hostname
+      vault_auth_jwt_hcp_terraform_organization_name     = var.vault_auth_jwt_hcp_terraform.organization_name
+      vault_auth_jwt_hcp_terraform_workspace_id          = var.vault_auth_jwt_hcp_terraform.workspace_id
+      vault_auth_jwt_hcp_terraform_oidc_discovery_ca_pem = var.vault_auth_jwt_hcp_terraform.oidc_discovery_ca_pem
+      vault_auth_jwt_hcp_terraform_mount_path            = var.vault_auth_jwt_hcp_terraform.mount_path
+      vault_auth_jwt_hcp_terraform_role_name             = var.vault_auth_jwt_hcp_terraform.role_name
 
-    # Vault Agent Configuration
-    config_vault_agent_hcl                     = local.config_vault_agent_hcl
-    config_vault_agent_server_tls_ctmpl        = local.config_vault_agent_server_tls_ctmpl
-    config_vault_agent_reload_vault_server_tls = local.config_vault_agent_reload_vault_server_tls
-    config_vault_agent_reload_rules            = local.config_vault_agent_reload_rules
-    config_vault_agent_service                 = local.config_vault_agent_service
+      # Vault Agent Configuration
+      config_vault_agent_hcl                     = local.config_vault_agent_hcl
+      config_vault_agent_server_tls_ctmpl        = local.config_vault_agent_server_tls_ctmpl
+      config_vault_agent_reload_vault_server_tls = local.config_vault_agent_reload_vault_server_tls
+      config_vault_agent_reload_rules            = local.config_vault_agent_reload_rules
+      config_vault_agent_service                 = local.config_vault_agent_service
+    })
   }))
 
   block_device_mappings {

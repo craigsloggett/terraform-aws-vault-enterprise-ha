@@ -1,0 +1,52 @@
+#cloud-config
+package_update: true
+packages:
+  - amazon-ec2-utils
+  - awscli
+  - chrony
+  - gnupg
+  - jq
+  - nvme-cli
+  - unzip
+
+groups:
+  - vault: []
+
+users:
+  - default
+  - name: vault
+    primary_group: vault
+    system: true
+    homedir: /opt/vault
+    shell: /bin/false
+
+write_files:
+  - path: /var/lib/cloud/scripts/vault-bootstrap.sh
+    owner: root:root
+    permissions: '0755'
+    encoding: b64
+    content: ${base64encode(vault_bootstrap_script)}
+
+runcmd:
+  - [mkdir, -p, /opt/vault]
+  - [chown, vault:vault, /opt/vault]
+  - [chmod, '755', /opt/vault]
+  - [mkdir, -p, /var/opt/vault]
+  - [chown, vault:vault, /var/opt/vault]
+  - [chmod, '755', /var/opt/vault]
+  - [mkdir, -p, /etc/vault.d]
+  - [chown, root:vault, /etc/vault.d]
+  - [chmod, '755', /etc/vault.d]
+  - [mkdir, -p, /usr/local/libexec/vault]
+  - [chown, root:root, /usr/local/libexec/vault]
+  - [chmod, '755', /usr/local/libexec/vault]
+  - [mkdir, -p, /opt/vault/tls]
+  - [chown, vault:vault, /opt/vault/tls]
+  - [chmod, '755', /opt/vault/tls]
+  - [mkdir, -p, /etc/vault.d/policies]
+  - [chown, vault:vault, /etc/vault.d/policies]
+  - [chmod, '755', /etc/vault.d/policies]
+  - [mkdir, -p, /etc/vault.d/templates]
+  - [chown, vault:vault, /etc/vault.d/templates]
+  - [chmod, '755', /etc/vault.d/templates]
+  - [/var/lib/cloud/scripts/vault-bootstrap.sh]
