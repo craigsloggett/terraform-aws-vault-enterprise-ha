@@ -6,7 +6,7 @@
 
 set -euf
 
-# shellcheck disable=SC1091
+# shellcheck source=/dev/null
 . /var/lib/cloud/scripts/bootstrap.env
 
 log_info() (
