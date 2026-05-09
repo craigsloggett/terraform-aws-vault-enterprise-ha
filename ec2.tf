@@ -57,9 +57,14 @@ resource "aws_launch_template" "vault_enterprise" {
       vault_autopilot_min_quorum                         = max(3, floor(var.compute.node_count / 2) + 1)
     })
 
+    # Bootstrap Scripts
     determine_vault_node_role_script = file("${path.module}/files/bootstrap/determine-vault-node-role.sh")
     install_vault_script             = file("${path.module}/files/bootstrap/install-vault.sh")
     configure_autopilot_script       = file("${path.module}/files/bootstrap/configure-autopilot.sh")
+    configure_snapshots_script       = file("${path.module}/files/bootstrap/configure-snapshots.sh")
+
+    # Vault Server Configuration
+    config_vault_snapshot_json = local.config_vault_snapshot_json
 
     vault_bootstrap_script = templatefile("${path.module}/templates/vault-bootstrap.sh.tftpl", {
       # Environment Configuration
@@ -76,7 +81,6 @@ resource "aws_launch_template" "vault_enterprise" {
       config_vault_admin_policy     = local.config_vault_admin_policy
       config_vault_server_policy    = local.config_vault_server_policy
       config_vault_hcl              = local.config_vault_hcl
-      config_vault_snapshot_json    = local.config_vault_snapshot_json
 
       # Bootstrap Artifacts
       bootstrap_tls_ca_secret_arn          = aws_secretsmanager_secret.bootstrap_tls_ca.arn

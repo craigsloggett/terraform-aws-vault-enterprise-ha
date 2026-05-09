@@ -35,7 +35,6 @@ readonly VAULT_POLICY_DIR="$${VAULT_CONFIG_DIR}/policies"
 # Vault File Paths
 readonly VAULT_LICENSE_FILE="$${VAULT_HOME_DIR}/vault.hclic"
 readonly VAULT_CONFIG_FILE="$${VAULT_CONFIG_DIR}/vault.hcl"
-readonly VAULT_SNAPSHOT_CONFIG_FILE="$${VAULT_CONFIG_DIR}/snapshot.json"
 readonly VAULT_AUDIT_LOG_FILE="$${VAULT_LOG_DIR}/vault_audit.log"
 readonly VAULT_TLS_CA_FILE="$${VAULT_TLS_DIR}/ca.crt"
 readonly VAULT_TLS_CERT_FILE="$${VAULT_TLS_DIR}/server.crt"
@@ -626,25 +625,6 @@ configure_file_audit_device() (
   fi
 )
 
-configure_snapshots() (
-  log_info "Configuring automated Raft snapshots"
-
-  vault write sys/storage/raft/snapshot-auto/config/hourly \
-    @"$${VAULT_SNAPSHOT_CONFIG_FILE}" \
-    >/dev/null
-)
-
-write_vault_snapshot_config() (
-  log_info "Writing Vault snapshot configuration"
-
-  cat >"$${VAULT_SNAPSHOT_CONFIG_FILE}" <<'EOF'
-${config_vault_snapshot_json}
-EOF
-
-  chown vault:vault "$${VAULT_SNAPSHOT_CONFIG_FILE}"
-  chmod 0640 "$${VAULT_SNAPSHOT_CONFIG_FILE}"
-)
-
 #######################################
 #        Configure PKI Engine         #
 #######################################
@@ -1108,7 +1088,6 @@ main() {
   # Render Bootstrap Artifacts
   write_vault_license
   write_vault_config
-  write_vault_snapshot_config
   write_vault_bootstrap_tls_materials
 
   # Identify Bootstrap Node
@@ -1123,8 +1102,6 @@ main() {
     initialize_vault_cluster
     VAULT_TOKEN="$(fetch_secret "$${ROOT_TOKEN_SECRET_ARN}")"
     export VAULT_TOKEN
-
-    configure_snapshots
   else
     join_cluster
     wait_for_vault_unsealed

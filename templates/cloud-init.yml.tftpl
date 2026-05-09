@@ -46,6 +46,17 @@ write_files:
     permissions: '0755'
     content: |
       ${indent(6, configure_autopilot_script)}
+  - path: /var/lib/cloud/scripts/configure-snapshots.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_snapshots_script)}
+  - path: /etc/vault.d/snapshot.json
+    owner: vault:vault
+    permissions: '0640'
+    defer: true
+    content: |
+      ${indent(6, config_vault_snapshot_json)}
 
 runcmd:
   - [install, -d, -o, vault, -g, vault, -m, '755', /opt/vault]
@@ -59,3 +70,4 @@ runcmd:
   - [/var/lib/cloud/scripts/install-vault.sh]
   - [/var/lib/cloud/scripts/vault-bootstrap.sh]
   - [/var/lib/cloud/scripts/configure-autopilot.sh]
+  - [/var/lib/cloud/scripts/configure-snapshots.sh]
