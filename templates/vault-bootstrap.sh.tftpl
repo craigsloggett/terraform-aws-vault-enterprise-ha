@@ -507,27 +507,6 @@ export VAULT_CACERT="$${VAULT_TLS_CA_FILE}"
 EOF
 )
 
-write_vault_service_unit() (
-  log_info "Writing Vault systemd unit"
-
-  cat >/etc/systemd/system/vault.service <<'EOF'
-${config_vault_service}
-EOF
-)
-
-write_vault_service_override() (
-  log_info "Writing Vault systemd override"
-
-  mkdir -p /etc/systemd/system/vault.service.d
-  cat >/etc/systemd/system/vault.service.d/override.conf <<'EOF'
-${config_vault_service_override}
-EOF
-
-  # Overrides can contain sensitive values so marking it as read-only
-  # by the file owner.
-  chmod 0600 /etc/systemd/system/vault.service.d/override.conf
-)
-
 start_vault() (
   log_info "Starting Vault"
 
@@ -1080,10 +1059,6 @@ main() {
   prepare_disk "$${audit_device}" "$${VAULT_LOG_DIR}" "vault-audit"
 
   configure_vault_mount_directories
-
-  # Prepare Vault Server
-  write_vault_service_unit
-  write_vault_service_override
 
   # Render Bootstrap Artifacts
   write_vault_license

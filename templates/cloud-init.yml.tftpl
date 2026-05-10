@@ -57,6 +57,16 @@ write_files:
     defer: true
     content: |
       ${indent(6, config_vault_snapshot_json)}
+  - path: /etc/systemd/system/vault.service
+    owner: root:root
+    permissions: '0644'
+    content: |
+      ${indent(6, config_vault_service)}
+  - path: /etc/systemd/system/vault.service.d/override.conf
+    owner: root:root
+    permissions: '0600'
+    content: |
+      ${indent(6, config_vault_service_override)}
 
 runcmd:
   - [install, -d, -o, vault, -g, vault, -m, '755', /opt/vault]
