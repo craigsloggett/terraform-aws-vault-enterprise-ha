@@ -469,17 +469,6 @@ wait_for_network() (
   return 1
 )
 
-configure_system_time() (
-  log_info "Configuring system time"
-
-  timedatectl set-timezone UTC
-  log_info "Timezone set to UTC"
-
-  systemctl enable --now chrony
-  chronyc makestep
-  log_info "Time synchronization complete"
-)
-
 #######################################
 # Install and Configure Vault Server  #
 #######################################
@@ -1047,7 +1036,6 @@ main() {
 
   # Prepare System
   wait_for_network
-  configure_system_time
 
   # Prepare Storage
   wait_for_ebs_nvme_device "$${EBS_RAFT_DEVICE_NAME}"

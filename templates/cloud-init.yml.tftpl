@@ -1,9 +1,12 @@
 #cloud-config
+timezone: UTC
+ntp:
+  enabled: true
+  ntp_client: chrony
 package_update: true
 packages:
   - amazon-ec2-utils
   - awscli
-  - chrony
   - gnupg
   - jq
   - nvme-cli
