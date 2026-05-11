@@ -44,7 +44,7 @@ write_files:
     owner: root:root
     permissions: '0755'
     content: |
-      {% raw %}${indent(6, vault_bootstrap_script)}{% endraw %}
+      {% raw %}${indent(6, vault_bootstrap_script)}{% endraw +%}
   - path: /var/lib/cloud/scripts/configure-autopilot.sh
     owner: root:root
     permissions: '0755'
