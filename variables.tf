@@ -588,12 +588,6 @@ variable "route53_record" {
 
 variable "bootstrap" {
   type = object({
-    secretsmanager_secret = optional(object({
-      tls_ca_name_prefix          = optional(string, "vault-enterprise-bootstrap-tls-ca-")
-      tls_cert_name_prefix        = optional(string, "vault-enterprise-bootstrap-tls-cert-")
-      tls_private_key_name_prefix = optional(string, "vault-enterprise-bootstrap-tls-private-key-")
-    }), {})
-
     ssm_parameter = optional(object({
       cluster_state_name = optional(string, "/vault-enterprise/bootstrap/cluster/state")
       pki_state_name     = optional(string, "/vault-enterprise/bootstrap/pki/state")
@@ -603,9 +597,8 @@ variable "bootstrap" {
 
   default     = {}
   description = <<-EOT
-    AWS resources used only during the Vault bootstrap ceremony. Secrets Manager
-    secrets hold ephemeral bootstrap TLS material that Vault-issued certificates
-    replace post-bootstrap; SSM parameters hold non-sensitive coordination state
-    and the intermediate CA CSR exchanged out-of-band.
+    AWS resources used only during the Vault bootstrap ceremony. SSM parameters
+    hold non-sensitive coordination state and the intermediate CA CSR exchanged
+    out-of-band.
   EOT
 }

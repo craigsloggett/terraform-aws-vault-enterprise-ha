@@ -65,9 +65,6 @@ data "aws_iam_policy_document" "secrets_manager_read" {
     actions = ["secretsmanager:GetSecretValue"]
 
     resources = [
-      aws_secretsmanager_secret.bootstrap_tls_ca.arn,
-      aws_secretsmanager_secret.bootstrap_tls_cert.arn,
-      aws_secretsmanager_secret.bootstrap_tls_private_key.arn,
       aws_secretsmanager_secret.license.arn,
       aws_secretsmanager_secret.vault_pki_signed_intermediate_ca.arn
     ]

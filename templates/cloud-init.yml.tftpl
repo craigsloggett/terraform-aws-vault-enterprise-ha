@@ -80,6 +80,24 @@ write_files:
     permissions: '0755'
     content: |
       ${indent(6, configure_snapshots_script)}
+  - path: /opt/vault/tls/ca.crt
+    owner: vault:vault
+    permissions: '0644'
+    defer: true
+    content: |
+      ${indent(6, bootstrap_tls_ca_pem)}
+  - path: /opt/vault/tls/server.crt
+    owner: vault:vault
+    permissions: '0640'
+    defer: true
+    content: |
+      ${indent(6, bootstrap_tls_cert_pem)}
+  - path: /opt/vault/tls/server.key
+    owner: vault:vault
+    permissions: '0640'
+    defer: true
+    content: |
+      ${indent(6, bootstrap_tls_private_key_pem)}
   - path: /etc/vault.d/vault.hcl
     owner: vault:vault
     permissions: '0640'

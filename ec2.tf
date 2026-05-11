@@ -50,9 +50,6 @@ resource "aws_launch_template" "vault_enterprise" {
       bootstrap_cluster_state_name                       = aws_ssm_parameter.bootstrap_cluster_state.name
       bootstrap_node_id_name                             = aws_ssm_parameter.bootstrap_node_id.name
       bootstrap_pki_state_name                           = aws_ssm_parameter.bootstrap_pki_state.name
-      bootstrap_tls_ca_secret_arn                        = aws_secretsmanager_secret.bootstrap_tls_ca.arn
-      bootstrap_tls_cert_secret_arn                      = aws_secretsmanager_secret.bootstrap_tls_cert.arn
-      bootstrap_tls_private_key_secret_arn               = aws_secretsmanager_secret.bootstrap_tls_private_key.arn
       license_secret_arn                                 = aws_secretsmanager_secret.license.arn
       recovery_keys_secret_arn                           = aws_secretsmanager_secret.recovery_keys.arn
       root_token_secret_arn                              = aws_secretsmanager_secret.root_token.arn
@@ -74,6 +71,11 @@ resource "aws_launch_template" "vault_enterprise" {
     ensure_vault_cluster_script                = file("${path.module}/files/bootstrap/ensure-vault-cluster.sh")
     configure_autopilot_script                 = file("${path.module}/files/bootstrap/configure-autopilot.sh")
     configure_snapshots_script                 = file("${path.module}/files/bootstrap/configure-snapshots.sh")
+
+    # Bootstrap TLS Materials
+    bootstrap_tls_ca_pem          = tls_self_signed_cert.bootstrap_tls_ca.cert_pem
+    bootstrap_tls_cert_pem        = tls_locally_signed_cert.bootstrap_tls_cert.cert_pem
+    bootstrap_tls_private_key_pem = tls_private_key.bootstrap_tls_private_key.private_key_pem
 
     # Vault Server Configuration
     config_vault_service          = file("${path.module}/files/vault/vault.service")
