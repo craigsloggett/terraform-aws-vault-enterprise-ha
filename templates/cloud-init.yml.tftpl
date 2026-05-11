@@ -65,6 +65,21 @@ write_files:
     permissions: '0755'
     content: |
       ${indent(6, ensure_vault_cluster_script)}
+  - path: /var/lib/cloud/scripts/configure-vault-audit.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_vault_audit_script)}
+  - path: /var/lib/cloud/scripts/configure-vault-aws-auth.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_vault_aws_auth_script)}
+  - path: /var/lib/cloud/scripts/configure-vault-pki.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_vault_pki_script)}
   - path: /var/lib/cloud/scripts/vault-bootstrap.sh
     owner: root:root
     permissions: '0755'
@@ -127,6 +142,18 @@ write_files:
     defer: true
     content: |
       {% raw %}${indent(6, config_vault_agent_server_tls_ctmpl)}{% endraw +%}
+  - path: /etc/vault.d/policies/admin.hcl
+    owner: vault:vault
+    permissions: '0640'
+    defer: true
+    content: |
+      ${indent(6, config_vault_admin_policy)}
+  - path: /etc/vault.d/policies/vault-server.hcl
+    owner: vault:vault
+    permissions: '0640'
+    defer: true
+    content: |
+      ${indent(6, config_vault_server_policy)}
   - path: /etc/systemd/system/vault.service
     owner: root:root
     permissions: '0644'
