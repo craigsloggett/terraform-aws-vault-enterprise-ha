@@ -12,10 +12,6 @@ set -euf
 # shellcheck source=/dev/null
 . /var/lib/cloud/scripts/common-functions.sh
 
-log_error() (
-  printf '[ERROR] %s\n' "${1}" >&2
-)
-
 list_cluster_instance_ids() (
   for attempt in 1 2 3 4 5; do
     if result="$(

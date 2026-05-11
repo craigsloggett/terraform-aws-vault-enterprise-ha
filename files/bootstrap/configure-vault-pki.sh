@@ -2,11 +2,10 @@
 # configure-vault-pki.sh
 #
 # Bootstrap node: configures the Vault PKI secrets engine with an externally
-# signed intermediate CA, writes the server policy, configures AWS IAM auth
-# (and optionally HCP Terraform JWT auth), enables the file audit device,
-# and publishes pki_state=Ready to SSM. Follower nodes wait for the
-# bootstrap node to publish pki_state=Ready before returning. Runs on every
-# node after the cluster is initialized.
+# signed intermediate CA, creates the vault-server PKI role, writes the
+# vault-server policy, publishes the PKI managed TLS CA bundle to SSM, and
+# marks pki_state=Ready. Follower nodes wait for pki_state=Ready before
+# returning. Runs on every node after the cluster is initialized.
 
 set -euf
 

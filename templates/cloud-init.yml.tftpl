@@ -39,97 +39,97 @@ write_files:
     owner: root:root
     permissions: '0644'
     content: |
-      ${indent(6, common_functions_script)}
+      ${indent(6, script_common_functions)}
 
   - path: /var/lib/cloud/scripts/determine-vault-node-role.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, determine_vault_node_role_script)}
+      ${indent(6, script_determine_vault_node_role)}
 
   - path: /var/lib/cloud/scripts/install-vault.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, install_vault_script)}
+      ${indent(6, script_install_vault)}
 
   - path: /var/lib/cloud/scripts/write-vault-license.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, write_vault_license_script)}
+      ${indent(6, script_write_vault_license)}
 
   - path: /var/lib/cloud/scripts/write-vault-bootstrap-tls-materials.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, write_vault_bootstrap_tls_materials_script)}
+      ${indent(6, script_write_vault_bootstrap_tls_materials)}
 
   - path: /var/lib/cloud/scripts/prepare-vault-storage.sh
     owner: root:root
     permissions: '0755'
     content: |
-      {% raw %}${indent(6, prepare_vault_storage_script)}{% endraw +%}
+      {% raw %}${indent(6, script_prepare_vault_storage)}{% endraw +%}
 
   - path: /var/lib/cloud/scripts/start-vault.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, start_vault_script)}
+      ${indent(6, script_start_vault)}
 
   - path: /var/lib/cloud/scripts/initialize-vault-cluster.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, initialize_vault_cluster_script)}
+      ${indent(6, script_initialize_vault_cluster)}
 
   - path: /var/lib/cloud/scripts/wait-for-vault-cluster.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, wait_for_vault_cluster_script)}
+      ${indent(6, script_wait_for_vault_cluster)}
 
   - path: /var/lib/cloud/scripts/configure-vault-audit.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, configure_vault_audit_script)}
+      ${indent(6, script_configure_vault_audit)}
 
   - path: /var/lib/cloud/scripts/configure-snapshots.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, configure_snapshots_script)}
+      ${indent(6, script_configure_snapshots)}
 
   - path: /var/lib/cloud/scripts/configure-autopilot.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, configure_autopilot_script)}
+      ${indent(6, script_configure_autopilot)}
 
   - path: /var/lib/cloud/scripts/configure-vault-aws-auth.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, configure_vault_aws_auth_script)}
+      ${indent(6, script_configure_vault_aws_auth)}
 
   - path: /var/lib/cloud/scripts/configure-vault-jwt-auth.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, configure_vault_jwt_auth_script)}
+      ${indent(6, script_configure_vault_jwt_auth)}
 
   - path: /var/lib/cloud/scripts/configure-vault-pki.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, configure_vault_pki_script)}
+      ${indent(6, script_configure_vault_pki)}
 
   - path: /var/lib/cloud/scripts/issue-vault-tls-cert.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, issue_vault_tls_cert_script)}
+      ${indent(6, script_issue_vault_tls_cert)}
 
   - path: /etc/profile.d/99-vault-cli-config.sh
     owner: root:root

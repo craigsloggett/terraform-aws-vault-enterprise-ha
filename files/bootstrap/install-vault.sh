@@ -11,10 +11,6 @@ set -euf
 # shellcheck source=/dev/null
 . /var/lib/cloud/scripts/common-functions.sh
 
-log_error() (
-  printf '[ERROR] %s\n' "${1}" >&2
-)
-
 detect_system_architecture() (
   machine="$(uname -m)"
   case "${machine}" in

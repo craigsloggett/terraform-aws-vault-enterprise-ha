@@ -6,7 +6,8 @@
 # cert, and replaces the on-disk bootstrap CA with the PKI managed CA
 # bundle. Runs on every node after configure-vault-pki.sh has finished and
 # pki_state=Ready. Authenticates against the local Vault via AWS IAM since
-# no root token is carried across the script-from-script boundary.
+# each runcmd entry runs in its own process and no VAULT_TOKEN is available
+# from prior entries.
 
 set -euf
 
