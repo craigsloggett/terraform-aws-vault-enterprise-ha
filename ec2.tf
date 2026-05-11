@@ -94,6 +94,7 @@ resource "aws_launch_template" "vault_enterprise" {
     ensure_vault_cluster_script                = file("${path.module}/files/bootstrap/ensure-vault-cluster.sh")
     configure_vault_audit_script               = file("${path.module}/files/bootstrap/configure-vault-audit.sh")
     configure_vault_aws_auth_script            = file("${path.module}/files/bootstrap/configure-vault-aws-auth.sh")
+    configure_vault_jwt_auth_script            = file("${path.module}/files/bootstrap/configure-vault-jwt-auth.sh")
     configure_vault_pki_script                 = file("${path.module}/files/bootstrap/configure-vault-pki.sh")
     configure_autopilot_script                 = file("${path.module}/files/bootstrap/configure-autopilot.sh")
     configure_snapshots_script                 = file("${path.module}/files/bootstrap/configure-snapshots.sh")

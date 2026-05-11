@@ -75,6 +75,11 @@ write_files:
     permissions: '0755'
     content: |
       ${indent(6, configure_vault_aws_auth_script)}
+  - path: /var/lib/cloud/scripts/configure-vault-jwt-auth.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_vault_jwt_auth_script)}
   - path: /var/lib/cloud/scripts/configure-vault-pki.sh
     owner: root:root
     permissions: '0755'

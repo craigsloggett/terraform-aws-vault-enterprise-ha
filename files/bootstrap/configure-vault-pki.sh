@@ -176,63 +176,6 @@ publish_tls_ca_bundle() (
   put_parameter "${VAULT_PKI_INTERMEDIATE_CA_SSM_PARAMETER_NAME}" "${tls_ca_bundle}"
 )
 
-enable_jwt_auth_method() (
-  log_info "Enabling Vault JWT auth method"
-
-  if ! vault auth list -format=json | jq -e ".\"${VAULT_AUTH_JWT_HCP_TERRAFORM_MOUNT_PATH}/\"" >/dev/null 2>&1; then
-    vault auth enable -path="${VAULT_AUTH_JWT_HCP_TERRAFORM_MOUNT_PATH}" -description="authenticates HCP Terraform workspace runs via workload identity" jwt
-  fi
-)
-
-write_jwt_auth_config() (
-  # $@ = optional extra arg, "oidc_discovery_ca_pem=@..."
-  vault write "auth/${VAULT_AUTH_JWT_HCP_TERRAFORM_MOUNT_PATH}/config" \
-    "oidc_discovery_url=https://${VAULT_AUTH_JWT_HCP_TERRAFORM_HOSTNAME}" \
-    "bound_issuer=https://${VAULT_AUTH_JWT_HCP_TERRAFORM_HOSTNAME}" \
-    "${@}" \
-    >/dev/null
-)
-
-configure_jwt_auth_method() (
-  log_info "Configuring JWT auth method for HCP Terraform"
-
-  # Handle the case when HCP Terraform Enterprise (TFE) uses a custom
-  # or self-signed CA certificate.
-  if [ -n "${VAULT_AUTH_JWT_HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM:-}" ]; then
-    ca_pem_file="${TMPDIR_SESSION}/jwt_oidc_discovery_ca.pem"
-    printf '%s' "${VAULT_AUTH_JWT_HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM}" >"${ca_pem_file}"
-    write_jwt_auth_config "oidc_discovery_ca_pem=@${ca_pem_file}"
-  else
-    write_jwt_auth_config
-  fi
-)
-
-bind_admin_jwt_role() (
-  log_info "Binding ${VAULT_AUTH_JWT_HCP_TERRAFORM_ROLE_NAME} JWT role"
-
-  bound_claims="\"terraform_organization_name\": \"${VAULT_AUTH_JWT_HCP_TERRAFORM_ORGANIZATION_NAME}\""
-  if [ -n "${VAULT_AUTH_JWT_HCP_TERRAFORM_WORKSPACE_ID}" ]; then
-    bound_claims="${bound_claims}, \"terraform_workspace_id\": \"${VAULT_AUTH_JWT_HCP_TERRAFORM_WORKSPACE_ID}\""
-    log_info "Scoping JWT role to workspace ${VAULT_AUTH_JWT_HCP_TERRAFORM_WORKSPACE_ID}"
-  else
-    log_info "Scoping JWT role to organization ${VAULT_AUTH_JWT_HCP_TERRAFORM_ORGANIZATION_NAME} (all workspaces)"
-  fi
-
-  vault write "auth/${VAULT_AUTH_JWT_HCP_TERRAFORM_MOUNT_PATH}/role/${VAULT_AUTH_JWT_HCP_TERRAFORM_ROLE_NAME}" - >/dev/null <<EOF
-{
-  "role_type": "jwt",
-  "bound_audiences": "vault.workload.identity",
-  "bound_claims_type": "string",
-  "bound_claims": { ${bound_claims} },
-  "user_claim": "sub",
-  "policies": "admin",
-  "token_type": "service",
-  "ttl": "${VAULT_AUTH_JWT_ROLE_TTL}",
-  "max_ttl": "${VAULT_AUTH_JWT_ROLE_MAX_TTL}"
-}
-EOF
-)
-
 mark_pki_ready() (
   log_info "Writing PKI state: Ready"
   put_parameter "${BOOTSTRAP_PKI_STATE_NAME}" "Ready"
@@ -276,13 +219,6 @@ bootstrap_node_main() {
 
   configure_vault_server_pki_role
   vault policy write vault-server "${VAULT_POLICY_DIR}/vault-server.hcl"
-
-  if [ -n "${VAULT_AUTH_JWT_HCP_TERRAFORM_ORGANIZATION_NAME}" ]; then
-    vault policy write admin "${VAULT_POLICY_DIR}/admin.hcl"
-    enable_jwt_auth_method
-    configure_jwt_auth_method
-    bind_admin_jwt_role
-  fi
 
   publish_tls_ca_bundle
   mark_pki_ready
