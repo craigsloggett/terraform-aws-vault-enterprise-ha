@@ -28,16 +28,6 @@ fetch_tls_ca_bundle() (
 issue_vault_pki_tls_certificate_and_key() (
   log_info "Issuing PKI TLS certificate and private key for this node"
 
-  # Fetch the new CA bundle from SSM and authenticate against the local
-  # Vault via the AWS IAM auth method. The bootstrap CA at VAULT_CACERT
-  # stays in place until the listener reloads.
-  new_ca_cert="$(fetch_tls_ca_bundle)"
-
-  new_ca_cert_file="${VAULT_TLS_DIR}/pki-ca.crt"
-  printf '%s\n' "${new_ca_cert}" >"${new_ca_cert_file}"
-  chown vault:vault "${new_ca_cert_file}"
-  chmod 0644 "${new_ca_cert_file}"
-
   log_info "Authenticating via AWS IAM auth method"
   vault_token="$(
     vault login \
@@ -49,7 +39,7 @@ issue_vault_pki_tls_certificate_and_key() (
   export VAULT_TOKEN="${vault_token}"
 
   log_info "Requesting certificate from PKI engine"
-  cert_json="$(
+  pki_issue_response="$(
     vault write -format=json "${VAULT_PKI_MOUNT_PATH}/issue/vault-server" - <<EOF
 {
   "common_name": "${VAULT_FQDN}",
@@ -58,20 +48,20 @@ issue_vault_pki_tls_certificate_and_key() (
 EOF
   )"
 
-  tmp_cert="${VAULT_TLS_DIR}/server.crt.tmp"
-  tmp_key="${VAULT_TLS_DIR}/server.key.tmp"
+  vault_tls_cert_tmp_file="${VAULT_TLS_DIR}/server.crt.tmp"
+  vault_tls_key_tmp_file="${VAULT_TLS_DIR}/server.key.tmp"
 
   {
-    printf '%s' "${cert_json}" | jq -r '.data.certificate'
-    printf '%s' "${cert_json}" | jq -r '.data.ca_chain[]'
-  } >"${tmp_cert}"
-  printf '%s' "${cert_json}" | jq -r '.data.private_key' >"${tmp_key}"
+    printf '%s' "${pki_issue_response}" | jq -r '.data.certificate'
+    printf '%s' "${pki_issue_response}" | jq -r '.data.ca_chain[]'
+  } >"${vault_tls_cert_tmp_file}"
+  printf '%s' "${pki_issue_response}" | jq -r '.data.private_key' >"${vault_tls_key_tmp_file}"
 
-  chown vault:vault "${tmp_cert}" "${tmp_key}"
-  chmod 0640 "${tmp_cert}" "${tmp_key}"
+  chown vault:vault "${vault_tls_cert_tmp_file}" "${vault_tls_key_tmp_file}"
+  chmod 0640 "${vault_tls_cert_tmp_file}" "${vault_tls_key_tmp_file}"
 
-  mv "${tmp_cert}" "${VAULT_TLS_CERT_FILE}"
-  mv "${tmp_key}" "${VAULT_TLS_KEY_FILE}"
+  mv "${vault_tls_cert_tmp_file}" "${VAULT_TLS_CERT_FILE}"
+  mv "${vault_tls_key_tmp_file}" "${VAULT_TLS_KEY_FILE}"
 
   log_info "PKI TLS certificate written to ${VAULT_TLS_CERT_FILE}"
   log_info "PKI TLS private key written to ${VAULT_TLS_KEY_FILE}"
@@ -86,19 +76,13 @@ reload_vault_listener() (
 )
 
 write_vault_pki_ca_bundle() (
-  cluster_tls_ca_bundle="$(fetch_tls_ca_bundle)"
-
   log_info "Replacing bootstrap CA cert with PKI managed TLS CA bundle"
 
-  printf '%s\n' "${cluster_tls_ca_bundle}" >"${VAULT_TLS_CA_FILE}"
+  pki_ca_bundle="$(fetch_tls_ca_bundle)"
+
+  printf '%s\n' "${pki_ca_bundle}" >"${VAULT_TLS_CA_FILE}"
   chown vault:vault "${VAULT_TLS_CA_FILE}"
   chmod 0644 "${VAULT_TLS_CA_FILE}"
-
-  temporary_cluster_ca_file="${VAULT_TLS_DIR}/pki-ca.crt"
-  if [ -f "${temporary_cluster_ca_file}" ]; then
-    rm -f "${temporary_cluster_ca_file}"
-    log_info "Removed temporary PKI CA cert file ${temporary_cluster_ca_file}"
-  fi
 )
 
 main() {
