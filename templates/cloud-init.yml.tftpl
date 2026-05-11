@@ -1,10 +1,14 @@
 ## template: jinja
 #cloud-config
+
 timezone: UTC
+
 ntp:
   enabled: true
   ntp_client: chrony
+
 package_update: true
+
 packages:
   - amazon-ec2-utils
   - awscli
@@ -30,165 +34,196 @@ write_files:
     permissions: '0644'
     content: |
       ${indent(6, bootstrap_env_file)}
+
   - path: /var/lib/cloud/scripts/common-functions.sh
     owner: root:root
     permissions: '0644'
     content: |
       ${indent(6, common_functions_script)}
+
   - path: /var/lib/cloud/scripts/determine-vault-node-role.sh
     owner: root:root
     permissions: '0755'
     content: |
       ${indent(6, determine_vault_node_role_script)}
+
   - path: /var/lib/cloud/scripts/install-vault.sh
     owner: root:root
     permissions: '0755'
     content: |
       ${indent(6, install_vault_script)}
+
   - path: /var/lib/cloud/scripts/write-vault-license.sh
     owner: root:root
     permissions: '0755'
     content: |
       ${indent(6, write_vault_license_script)}
+
   - path: /var/lib/cloud/scripts/write-vault-bootstrap-tls-materials.sh
     owner: root:root
     permissions: '0755'
     content: |
       ${indent(6, write_vault_bootstrap_tls_materials_script)}
-  - path: /var/lib/cloud/scripts/start-vault.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      ${indent(6, start_vault_script)}
-  - path: /var/lib/cloud/scripts/ensure-vault-cluster.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      ${indent(6, ensure_vault_cluster_script)}
-  - path: /var/lib/cloud/scripts/configure-vault-audit.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      ${indent(6, configure_vault_audit_script)}
-  - path: /var/lib/cloud/scripts/configure-vault-aws-auth.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      ${indent(6, configure_vault_aws_auth_script)}
-  - path: /var/lib/cloud/scripts/configure-vault-jwt-auth.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      ${indent(6, configure_vault_jwt_auth_script)}
-  - path: /var/lib/cloud/scripts/configure-vault-pki.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      ${indent(6, configure_vault_pki_script)}
-  - path: /var/lib/cloud/scripts/issue-vault-tls-cert.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      ${indent(6, issue_vault_tls_cert_script)}
+
   - path: /var/lib/cloud/scripts/prepare-vault-storage.sh
     owner: root:root
     permissions: '0755'
     content: |
       {% raw %}${indent(6, prepare_vault_storage_script)}{% endraw +%}
+
+  - path: /var/lib/cloud/scripts/start-vault.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, start_vault_script)}
+
+  - path: /var/lib/cloud/scripts/ensure-vault-cluster.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, ensure_vault_cluster_script)}
+
+  - path: /var/lib/cloud/scripts/configure-vault-audit.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_vault_audit_script)}
+
+  - path: /var/lib/cloud/scripts/configure-vault-aws-auth.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_vault_aws_auth_script)}
+
+  - path: /var/lib/cloud/scripts/configure-vault-jwt-auth.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_vault_jwt_auth_script)}
+
+  - path: /var/lib/cloud/scripts/configure-vault-pki.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_vault_pki_script)}
+
+  - path: /var/lib/cloud/scripts/issue-vault-tls-cert.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, issue_vault_tls_cert_script)}
+
   - path: /var/lib/cloud/scripts/configure-autopilot.sh
     owner: root:root
     permissions: '0755'
     content: |
       ${indent(6, configure_autopilot_script)}
+
   - path: /var/lib/cloud/scripts/configure-snapshots.sh
     owner: root:root
     permissions: '0755'
     content: |
       ${indent(6, configure_snapshots_script)}
+
   - path: /etc/profile.d/99-vault-cli-config.sh
     owner: root:root
     permissions: '0644'
     content: |
       ${indent(6, config_vault_cli)}
+
   - path: /opt/vault/tls/ca.crt
     owner: vault:vault
     permissions: '0644'
     defer: true
     content: |
       ${indent(6, bootstrap_tls_ca_pem)}
+
   - path: /opt/vault/tls/server.crt
     owner: vault:vault
     permissions: '0640'
     defer: true
     content: |
       ${indent(6, bootstrap_tls_cert_pem)}
+
   - path: /opt/vault/tls/server.key
     owner: vault:vault
     permissions: '0640'
     defer: true
     content: |
       ${indent(6, bootstrap_tls_private_key_pem)}
+
   - path: /etc/vault.d/vault.hcl
     owner: vault:vault
     permissions: '0640'
     defer: true
     content: |
       ${indent(6, config_vault_hcl)}
+
   - path: /etc/vault.d/snapshot.json
     owner: vault:vault
     permissions: '0640'
     defer: true
     content: |
       ${indent(6, config_vault_snapshot_json)}
+
   - path: /etc/vault.d/agent.hcl
     owner: vault:vault
     permissions: '0644'
     defer: true
     content: |
       ${indent(6, config_vault_agent_hcl)}
+
   - path: /etc/vault.d/templates/vault-server-tls.ctmpl
     owner: vault:vault
     permissions: '0644'
     defer: true
     content: |
       {% raw %}${indent(6, config_vault_agent_server_tls_ctmpl)}{% endraw +%}
+
   - path: /etc/vault.d/policies/admin.hcl
     owner: vault:vault
     permissions: '0640'
     defer: true
     content: |
       ${indent(6, config_vault_admin_policy)}
+
   - path: /etc/vault.d/policies/vault-server.hcl
     owner: vault:vault
     permissions: '0640'
     defer: true
     content: |
       ${indent(6, config_vault_server_policy)}
+
   - path: /etc/systemd/system/vault.service
     owner: root:root
     permissions: '0644'
     content: |
       ${indent(6, config_vault_service)}
+
   - path: /etc/systemd/system/vault.service.d/override.conf
     owner: root:root
     permissions: '0600'
     content: |
       ${indent(6, config_vault_service_override)}
+
   - path: /etc/systemd/system/vault-agent.service
     owner: root:root
     permissions: '0644'
     content: |
       ${indent(6, config_vault_agent_service)}
+
   - path: /etc/polkit-1/rules.d/10-vault-agent-reload.rules
     owner: root:root
     permissions: '0644'
     content: |
       ${indent(6, config_vault_agent_reload_rules)}
+
   - path: /usr/local/libexec/vault/vault-server-tls-reload.sh
     owner: root:root
     permissions: '0755'
     content: |
       ${indent(6, config_vault_agent_reload_vault_server_tls)}
+
 
 runcmd:
   - [install, -d, -o, vault, -g, vault, -m, '755', /opt/vault]
