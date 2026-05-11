@@ -59,7 +59,7 @@ resource "aws_launch_template" "vault_enterprise" {
     })
 
     # Bootstrap Scripts
-    common_functions_script          = file("${path.module}/files/bootstrap/common_functions.sh")
+    common_functions_script          = file("${path.module}/files/bootstrap/common-functions.sh")
     determine_vault_node_role_script = file("${path.module}/files/bootstrap/determine-vault-node-role.sh")
     install_vault_script             = file("${path.module}/files/bootstrap/install-vault.sh")
     start_vault_script               = file("${path.module}/files/bootstrap/start-vault.sh")

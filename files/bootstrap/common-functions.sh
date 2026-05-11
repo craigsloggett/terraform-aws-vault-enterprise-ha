@@ -1,5 +1,5 @@
 # shellcheck shell=sh
-# common_functions.sh
+# common-functions.sh
 #
 # Shared shell helpers for the bootstrap scripts. Sourced (not executed) by
 # scripts in /var/lib/cloud/scripts/. No shebang since this file is never

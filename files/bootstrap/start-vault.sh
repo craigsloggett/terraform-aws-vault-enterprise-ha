@@ -8,7 +8,7 @@
 set -euf
 
 # shellcheck source=/dev/null
-. /var/lib/cloud/scripts/common_functions.sh
+. /var/lib/cloud/scripts/common-functions.sh
 
 start_vault() (
   log_info "Starting Vault"

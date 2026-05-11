@@ -9,7 +9,7 @@ set -euf
 # shellcheck source=/dev/null
 . /var/lib/cloud/scripts/bootstrap.env
 # shellcheck source=/dev/null
-. /var/lib/cloud/scripts/common_functions.sh
+. /var/lib/cloud/scripts/common-functions.sh
 
 get_imds_token() (
   curl -s -X PUT \
