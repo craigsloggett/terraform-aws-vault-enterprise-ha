@@ -1005,9 +1005,6 @@ main() {
   # Verify AMI-provided utilities are available.
   verify_prerequisites
 
-  log_info "vault.hcl present: $(test -f /etc/vault.d/vault.hcl && echo yes || echo no)"
-  log_info "vault.service present: $(test -f /etc/systemd/system/vault.service && echo yes || echo no)"
-
   # Export Vault CLI environment variables early.
   export VAULT_ADDR="https://127.0.0.1:8200"
   export VAULT_TLS_SERVER_NAME="$${VAULT_FQDN}"
