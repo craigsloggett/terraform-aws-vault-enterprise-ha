@@ -7,9 +7,8 @@
 
 set -euf
 
-log_info() (
-  printf '[INFO]  %s\n' "${1}" >&2
-)
+# shellcheck source=/dev/null
+. /var/lib/cloud/scripts/common_functions.sh
 
 log_error() (
   printf '[ERROR] %s\n' "${1}" >&2

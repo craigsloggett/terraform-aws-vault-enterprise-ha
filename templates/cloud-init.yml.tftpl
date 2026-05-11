@@ -30,6 +30,11 @@ write_files:
     permissions: '0644'
     content: |
       ${indent(6, bootstrap_env_file)}
+  - path: /var/lib/cloud/scripts/common_functions.sh
+    owner: root:root
+    permissions: '0644'
+    content: |
+      ${indent(6, common_functions_script)}
   - path: /var/lib/cloud/scripts/determine-vault-node-role.sh
     owner: root:root
     permissions: '0755'

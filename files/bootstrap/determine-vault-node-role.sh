@@ -9,10 +9,8 @@ set -euf
 
 # shellcheck source=/dev/null
 . /var/lib/cloud/scripts/bootstrap.env
-
-log_info() (
-  printf '[INFO]  %s\n' "${1}" >&2
-)
+# shellcheck source=/dev/null
+. /var/lib/cloud/scripts/common_functions.sh
 
 log_error() (
   printf '[ERROR] %s\n' "${1}" >&2
@@ -28,22 +26,6 @@ get_instance_id() (
   token="$(get_imds_token)"
   curl -s -H "X-aws-ec2-metadata-token: ${token}" \
     "http://169.254.169.254/latest/meta-data/instance-id"
-)
-
-fetch_parameter() (
-  aws ssm get-parameter \
-    --name "${1}" \
-    --query "Parameter.Value" \
-    --output text
-)
-
-put_parameter() (
-  aws ssm put-parameter \
-    --name "${1}" \
-    --value "${2}" \
-    --type String \
-    --overwrite \
-    >/dev/null
 )
 
 list_cluster_instance_ids() (
