@@ -66,8 +66,8 @@ resource "aws_launch_template" "vault_enterprise" {
     configure_snapshots_script       = file("${path.module}/files/bootstrap/configure-snapshots.sh")
 
     # Vault Server Configuration
-    config_vault_service          = local.config_vault_service
-    config_vault_service_override = local.config_vault_service_override
+    config_vault_service          = file("${path.module}/files/vault/vault.service")
+    config_vault_service_override = file("${path.module}/files/vault/vault.service.override.conf")
     config_vault_hcl              = local.config_vault_hcl
     config_vault_snapshot_json    = local.config_vault_snapshot_json
 
@@ -81,7 +81,7 @@ resource "aws_launch_template" "vault_enterprise" {
       ebs_audit_device_name = local.ebs_audit_device_name
 
       # Vault Server Configuration
-      config_vault_admin_policy  = local.config_vault_admin_policy
+      config_vault_admin_policy  = file("${path.module}/files/policies/admin.hcl")
       config_vault_server_policy = local.config_vault_server_policy
 
       # Bootstrap Artifacts
@@ -129,9 +129,9 @@ resource "aws_launch_template" "vault_enterprise" {
       # Vault Agent Configuration
       config_vault_agent_hcl                     = local.config_vault_agent_hcl
       config_vault_agent_server_tls_ctmpl        = local.config_vault_agent_server_tls_ctmpl
-      config_vault_agent_reload_vault_server_tls = local.config_vault_agent_reload_vault_server_tls
-      config_vault_agent_reload_rules            = local.config_vault_agent_reload_rules
-      config_vault_agent_service                 = local.config_vault_agent_service
+      config_vault_agent_reload_vault_server_tls = file("${path.module}/files/agent/vault-server-tls-reload.sh")
+      config_vault_agent_reload_rules            = file("${path.module}/files/agent/vault-agent-reload.rules")
+      config_vault_agent_service                 = file("${path.module}/files/agent/vault-agent.service")
     })
   }))
 
