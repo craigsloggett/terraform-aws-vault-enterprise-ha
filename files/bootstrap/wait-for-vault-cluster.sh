@@ -1,11 +1,11 @@
 #!/bin/sh
-# ensure-vault-cluster.sh
+# wait-for-vault-cluster.sh
 #
-# Ensures the Vault cluster is initialized and the local node is unsealed
-# before the caller proceeds. Bootstrap node runs vault operator init and
-# publishes the root token, recovery keys, and Ready state to SSM/Secrets
-# Manager. Followers wait for cluster_state=Ready and then for the local
-# vault.service to be unsealed by KMS auto-unseal.
+# Waits for the Vault cluster to be initialized (cluster_state=Ready in SSM)
+# and for the local vault.service to be unsealed by KMS auto-unseal. Runs
+# on every node after initialize-vault-cluster.sh. The bootstrap node passes
+# through quickly since it just published Ready and KMS auto-unseal completes
+# during operator init.
 
 set -euf
 
@@ -13,43 +13,6 @@ set -euf
 . /var/lib/cloud/scripts/bootstrap.env
 # shellcheck source=/dev/null
 . /var/lib/cloud/scripts/common-functions.sh
-
-log_error() (
-  printf '[ERROR] %s\n' "${1}" >&2
-)
-
-initialize_cluster() (
-  log_info "Initializing Vault cluster"
-
-  if vault status -format=json 2>/dev/null | jq -e '.initialized == true' >/dev/null; then
-    log_warn "Cluster already initialized, skipping"
-    return 0
-  fi
-
-  log_info "Running vault operator init"
-  # KMS auto-unseal is configured, so recovery shares/threshold are used
-  # in place of unseal shares/threshold.
-  init_output="$(
-    vault operator init \
-      -format=json \
-      -recovery-shares=5 \
-      -recovery-threshold=3
-  )"
-
-  root_token="$(printf '%s' "${init_output}" | jq -r '.root_token')"
-  recovery_keys="$(printf '%s' "${init_output}" | jq -c '.recovery_keys_b64')"
-
-  log_info "Storing bootstrap root token in Secrets Manager"
-  put_secret "${ROOT_TOKEN_SECRET_ARN}" "${root_token}"
-
-  log_info "Storing recovery keys in Secrets Manager"
-  put_secret "${RECOVERY_KEYS_SECRET_ARN}" "${recovery_keys}"
-
-  log_info "Writing cluster state: Ready"
-  put_parameter "${BOOTSTRAP_CLUSTER_STATE_NAME}" "Ready"
-
-  log_info "Cluster initialization complete"
-)
 
 wait_for_cluster_ready() (
   log_info "Waiting for the Vault cluster to be initialized"
@@ -114,14 +77,8 @@ main() {
   export VAULT_TLS_SERVER_NAME="${VAULT_FQDN}"
   export VAULT_CACERT="/opt/vault/tls/ca.crt"
 
-  bootstrap_id="$(fetch_parameter "${BOOTSTRAP_NODE_ID_NAME}")"
-
-  if [ "${INSTANCE_ID}" = "${bootstrap_id}" ]; then
-    initialize_cluster
-  else
-    wait_for_cluster_ready
-    wait_for_vault_unsealed
-  fi
+  wait_for_cluster_ready
+  wait_for_vault_unsealed
 }
 
 main "${@}"

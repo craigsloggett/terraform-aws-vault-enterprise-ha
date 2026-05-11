@@ -77,17 +77,35 @@ write_files:
     content: |
       ${indent(6, start_vault_script)}
 
-  - path: /var/lib/cloud/scripts/ensure-vault-cluster.sh
+  - path: /var/lib/cloud/scripts/initialize-vault-cluster.sh
     owner: root:root
     permissions: '0755'
     content: |
-      ${indent(6, ensure_vault_cluster_script)}
+      ${indent(6, initialize_vault_cluster_script)}
+
+  - path: /var/lib/cloud/scripts/wait-for-vault-cluster.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, wait_for_vault_cluster_script)}
 
   - path: /var/lib/cloud/scripts/configure-vault-audit.sh
     owner: root:root
     permissions: '0755'
     content: |
       ${indent(6, configure_vault_audit_script)}
+
+  - path: /var/lib/cloud/scripts/configure-snapshots.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_snapshots_script)}
+
+  - path: /var/lib/cloud/scripts/configure-autopilot.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, configure_autopilot_script)}
 
   - path: /var/lib/cloud/scripts/configure-vault-aws-auth.sh
     owner: root:root
@@ -112,18 +130,6 @@ write_files:
     permissions: '0755'
     content: |
       ${indent(6, issue_vault_tls_cert_script)}
-
-  - path: /var/lib/cloud/scripts/configure-autopilot.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      ${indent(6, configure_autopilot_script)}
-
-  - path: /var/lib/cloud/scripts/configure-snapshots.sh
-    owner: root:root
-    permissions: '0755'
-    content: |
-      ${indent(6, configure_snapshots_script)}
 
   - path: /etc/profile.d/99-vault-cli-config.sh
     owner: root:root
@@ -239,7 +245,8 @@ runcmd:
   - [/var/lib/cloud/scripts/write-vault-bootstrap-tls-materials.sh]
   - [/var/lib/cloud/scripts/prepare-vault-storage.sh]
   - [/var/lib/cloud/scripts/start-vault.sh]
-  - [/var/lib/cloud/scripts/ensure-vault-cluster.sh]
+  - [/var/lib/cloud/scripts/initialize-vault-cluster.sh]
+  - [/var/lib/cloud/scripts/wait-for-vault-cluster.sh]
   - [/var/lib/cloud/scripts/configure-vault-audit.sh]
   - [/var/lib/cloud/scripts/configure-snapshots.sh]
   - [/var/lib/cloud/scripts/configure-autopilot.sh]
