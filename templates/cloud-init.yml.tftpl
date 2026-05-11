@@ -90,11 +90,11 @@ write_files:
     permissions: '0755'
     content: |
       ${indent(6, issue_vault_tls_cert_script)}
-  - path: /var/lib/cloud/scripts/vault-bootstrap.sh
+  - path: /var/lib/cloud/scripts/prepare-vault-storage.sh
     owner: root:root
     permissions: '0755'
     content: |
-      {% raw %}${indent(6, vault_bootstrap_script)}{% endraw +%}
+      {% raw %}${indent(6, prepare_vault_storage_script)}{% endraw +%}
   - path: /var/lib/cloud/scripts/configure-autopilot.sh
     owner: root:root
     permissions: '0755'
@@ -202,7 +202,14 @@ runcmd:
   - [/var/lib/cloud/scripts/install-vault.sh]
   - [/var/lib/cloud/scripts/write-vault-license.sh]
   - [/var/lib/cloud/scripts/write-vault-bootstrap-tls-materials.sh]
-  - [/var/lib/cloud/scripts/vault-bootstrap.sh]
+  - [/var/lib/cloud/scripts/prepare-vault-storage.sh]
+  - [/var/lib/cloud/scripts/start-vault.sh]
+  - [/var/lib/cloud/scripts/ensure-vault-cluster.sh]
+  - [/var/lib/cloud/scripts/configure-vault-audit.sh]
+  - [/var/lib/cloud/scripts/configure-vault-aws-auth.sh]
+  - [/var/lib/cloud/scripts/configure-vault-jwt-auth.sh]
+  - [/var/lib/cloud/scripts/configure-vault-pki.sh]
+  - [/var/lib/cloud/scripts/issue-vault-tls-cert.sh]
   - [/var/lib/cloud/scripts/configure-autopilot.sh]
   - [/var/lib/cloud/scripts/configure-snapshots.sh]
   - [systemctl, daemon-reload]

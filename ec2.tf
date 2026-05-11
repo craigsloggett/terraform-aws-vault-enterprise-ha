@@ -50,6 +50,8 @@ resource "aws_launch_template" "vault_enterprise" {
       bootstrap_cluster_state_name                        = aws_ssm_parameter.bootstrap_cluster_state.name
       bootstrap_node_id_name                              = aws_ssm_parameter.bootstrap_node_id.name
       bootstrap_pki_state_name                            = aws_ssm_parameter.bootstrap_pki_state.name
+      ebs_audit_device_name                               = local.ebs_audit_device_name
+      ebs_raft_device_name                                = local.ebs_raft_device_name
       license_secret_arn                                  = aws_secretsmanager_secret.license.arn
       recovery_keys_secret_arn                            = aws_secretsmanager_secret.recovery_keys.arn
       root_token_secret_arn                               = aws_secretsmanager_secret.root_token.arn
@@ -98,6 +100,7 @@ resource "aws_launch_template" "vault_enterprise" {
     configure_vault_jwt_auth_script            = file("${path.module}/files/bootstrap/configure-vault-jwt-auth.sh")
     configure_vault_pki_script                 = file("${path.module}/files/bootstrap/configure-vault-pki.sh")
     issue_vault_tls_cert_script                = file("${path.module}/files/bootstrap/issue-vault-tls-cert.sh")
+    prepare_vault_storage_script               = file("${path.module}/files/bootstrap/prepare-vault-storage.sh")
     configure_autopilot_script                 = file("${path.module}/files/bootstrap/configure-autopilot.sh")
     configure_snapshots_script                 = file("${path.module}/files/bootstrap/configure-snapshots.sh")
 
@@ -121,11 +124,6 @@ resource "aws_launch_template" "vault_enterprise" {
     config_vault_agent_service                 = file("${path.module}/files/agent/vault-agent.service")
     config_vault_agent_reload_rules            = file("${path.module}/files/agent/vault-agent-reload.rules")
     config_vault_agent_reload_vault_server_tls = file("${path.module}/files/agent/vault-server-tls-reload.sh")
-
-    vault_bootstrap_script = templatefile("${path.module}/templates/vault-bootstrap.sh.tftpl", {
-      ebs_raft_device_name  = local.ebs_raft_device_name
-      ebs_audit_device_name = local.ebs_audit_device_name
-    })
   }))
 
   block_device_mappings {
