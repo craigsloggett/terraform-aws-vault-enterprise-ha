@@ -267,6 +267,7 @@ variable "vpc" {
 variable "bastion" {
   type = object({
     name          = optional(string, "vault-enterprise-bastion-host")
+    volume_name   = optional(string, "vault-enterprise-bastion-host-volume")
     instance_type = optional(string, "t3.micro")
     allowed_cidrs = optional(list(string), ["0.0.0.0/0"])
 

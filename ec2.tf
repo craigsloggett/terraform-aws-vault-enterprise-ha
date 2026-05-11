@@ -17,6 +17,10 @@ resource "aws_instance" "bastion" {
   tags = {
     Name = var.bastion.name
   }
+
+  volume_tags = {
+    Name = var.bastion.volume_name
+  }
 }
 
 # Vault Nodes
