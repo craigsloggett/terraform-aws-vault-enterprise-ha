@@ -49,6 +49,7 @@ resource "aws_launch_template" "vault_enterprise" {
       auto_join_tag_value                                = var.compute.auto_join.tag_value
       bootstrap_cluster_state_name                       = aws_ssm_parameter.bootstrap_cluster_state.name
       bootstrap_node_id_name                             = aws_ssm_parameter.bootstrap_node_id.name
+      license_secret_arn                                 = aws_secretsmanager_secret.license.arn
       recovery_keys_secret_arn                           = aws_secretsmanager_secret.recovery_keys.arn
       root_token_secret_arn                              = aws_secretsmanager_secret.root_token.arn
       vault_fqdn                                         = local.vault_fqdn
@@ -62,6 +63,7 @@ resource "aws_launch_template" "vault_enterprise" {
     common_functions_script          = file("${path.module}/files/bootstrap/common-functions.sh")
     determine_vault_node_role_script = file("${path.module}/files/bootstrap/determine-vault-node-role.sh")
     install_vault_script             = file("${path.module}/files/bootstrap/install-vault.sh")
+    write_vault_license_script       = file("${path.module}/files/bootstrap/write-vault-license.sh")
     start_vault_script               = file("${path.module}/files/bootstrap/start-vault.sh")
     ensure_vault_cluster_script      = file("${path.module}/files/bootstrap/ensure-vault-cluster.sh")
     configure_autopilot_script       = file("${path.module}/files/bootstrap/configure-autopilot.sh")
@@ -82,8 +84,7 @@ resource "aws_launch_template" "vault_enterprise" {
 
     vault_bootstrap_script = templatefile("${path.module}/templates/vault-bootstrap.sh.tftpl", {
       # Environment Configuration
-      vault_fqdn         = local.vault_fqdn
-      license_secret_arn = aws_secretsmanager_secret.license.arn
+      vault_fqdn = local.vault_fqdn
 
       # EBS Configuration
       ebs_raft_device_name  = local.ebs_raft_device_name

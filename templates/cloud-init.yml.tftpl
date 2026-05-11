@@ -45,6 +45,11 @@ write_files:
     permissions: '0755'
     content: |
       ${indent(6, install_vault_script)}
+  - path: /var/lib/cloud/scripts/write-vault-license.sh
+    owner: root:root
+    permissions: '0755'
+    content: |
+      ${indent(6, write_vault_license_script)}
   - path: /var/lib/cloud/scripts/start-vault.sh
     owner: root:root
     permissions: '0755'
@@ -130,6 +135,7 @@ runcmd:
   - [install, -d, -o, vault, -g, vault, -m, '755', /etc/vault.d/templates]
   - [/var/lib/cloud/scripts/determine-vault-node-role.sh]
   - [/var/lib/cloud/scripts/install-vault.sh]
+  - [/var/lib/cloud/scripts/write-vault-license.sh]
   - [/var/lib/cloud/scripts/vault-bootstrap.sh]
   - [/var/lib/cloud/scripts/configure-autopilot.sh]
   - [/var/lib/cloud/scripts/configure-snapshots.sh]
