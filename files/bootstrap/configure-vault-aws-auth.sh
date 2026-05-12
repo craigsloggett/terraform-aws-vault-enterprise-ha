@@ -4,7 +4,7 @@
 # Enables the Vault AWS IAM auth method and binds the vault-server role to
 # the cluster IAM role on the bootstrap node. Followers later use this role
 # to authenticate during PKI cert issuance. The vault-server policy is
-# written later by configure-vault-pki.sh — Vault resolves policy names
+# written later by configure-vault-pki.sh.Vault resolves policy names
 # lazily at token issuance, so binding before policy creation is safe.
 
 set -euf

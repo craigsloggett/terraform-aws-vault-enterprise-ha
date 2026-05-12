@@ -104,7 +104,7 @@ import_signed_pki_intermediate() (
   log_info "Importing externally signed intermediate certificate"
 
   if printf '%s' "${signed_json}" | jq -e '.private_key // empty' >/dev/null 2>&1; then
-    log_error "Signed intermediate payload contains a private_key field — this is a contract violation, aborting"
+    log_error "Signed intermediate payload contains a private_key field, aborting"
     return 1
   fi
 
