@@ -65,7 +65,7 @@ resource "tls_locally_signed_cert" "vault_pki_signed_intermediate_ca" {
 resource "aws_secretsmanager_secret_version" "vault_pki_signed_intermediate_ca" {
   secret_id = module.vault.vault_pki_signed_intermediate_ca_secret_arn
   secret_string = jsonencode({
-    certificate = tls_locally_signed_cert.vault_pki_signed_intermediate_ca.cert_pem
-    ca_chain    = tls_self_signed_cert.root_ca.cert_pem
+    signed_intermediate_pem = tls_locally_signed_cert.vault_pki_signed_intermediate_ca.cert_pem
+    ca_chain_pem            = tls_self_signed_cert.root_ca.cert_pem
   })
 }

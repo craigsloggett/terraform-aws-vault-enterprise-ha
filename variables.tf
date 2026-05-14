@@ -204,7 +204,7 @@ variable "vault_pki" {
     }), {})
 
     ssm_parameter = optional(object({
-      intermediate_ca_name     = optional(string, "/vault-enterprise/pki/intermediate-ca")
+      ca_chain_name            = optional(string, "/vault-enterprise/pki/ca-chain")
       intermediate_ca_csr_name = optional(string, "/vault-enterprise/pki/intermediate-ca-csr")
     }), {})
 

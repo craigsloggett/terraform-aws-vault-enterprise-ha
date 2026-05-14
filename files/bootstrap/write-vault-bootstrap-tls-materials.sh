@@ -36,7 +36,7 @@ main() {
   fi
 
   log_info "Appending PKI CA bundle to bootstrap CA file"
-  fetch_parameter "${VAULT_PKI_INTERMEDIATE_CA_SSM_PARAMETER_NAME}" >>"${VAULT_TLS_CA_FILE}"
+  fetch_parameter "${VAULT_PKI_CA_CHAIN_SSM_PARAMETER_NAME}" >>"${VAULT_TLS_CA_FILE}"
 }
 
 main "${@}"

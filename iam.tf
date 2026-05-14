@@ -180,7 +180,7 @@ data "aws_iam_policy_document" "ssm_read_write" {
       aws_ssm_parameter.bootstrap_cluster_state.arn,
       aws_ssm_parameter.bootstrap_pki_state.arn,
       aws_ssm_parameter.bootstrap_node_id.arn,
-      aws_ssm_parameter.vault_pki_intermediate_ca.arn,
+      aws_ssm_parameter.vault_pki_ca_chain.arn,
       aws_ssm_parameter.vault_pki_intermediate_ca_csr.arn,
     ]
   }

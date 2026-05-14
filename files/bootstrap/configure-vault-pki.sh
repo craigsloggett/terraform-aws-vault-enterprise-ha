@@ -114,10 +114,10 @@ validate_signed_vault_pki_intermediate_ca() (
     return 1
   fi
 
-  for field in certificate ca_chain; do
+  for field in signed_intermediate_ca_pem ca_chain_pem; do
     value="$(printf '%s' "${signed_vault_pki_intermediate_ca}" | jq -r --arg field "${field}" '.[$field] // empty')"
     if [ -z "${value}" ]; then
-      log_error "Signed Vault PKI intermediate CA is missing or empty: ${field}"
+      log_error "${field} field is missing or empty in: ${VAULT_PKI_SIGNED_INTERMEDIATE_CA_SECRET_ARN}"
       return 1
     fi
   done
@@ -128,7 +128,7 @@ import_signed_vault_pki_intermediate_ca() (
   signed_vault_pki_intermediate_ca="${1}"
 
   intermediate_ca_set_signed_payload="$(
-    printf '%s' "${signed_vault_pki_intermediate_ca}" | jq -c '{certificate: (.certificate + "\n" + .ca_chain)}'
+    printf '%s' "${signed_vault_pki_intermediate_ca}" | jq -c '{certificate: (.signed_intermediate_ca_pem + "\n" + .ca_chain_pem)}'
   )"
 
   intermediate_ca_set_signed_response_file="${TMPDIR_SESSION}/intermediate_ca_set_signed_response.json"
@@ -171,16 +171,16 @@ EOF
   log_info "Vault PKI role created"
 )
 
-publish_vault_pki_intermediate_ca() (
-  log_info "Publishing Vault PKI intermediate CA to ${VAULT_PKI_INTERMEDIATE_CA_SSM_PARAMETER_NAME}"
+publish_vault_pki_ca_chain() (
+  log_info "Publishing Vault PKI CA chain to ${VAULT_PKI_CA_CHAIN_SSM_PARAMETER_NAME}"
 
-  intermediate_ca_issuer_response_file="${TMPDIR_SESSION}/issuer_default_response.json"
+  vault_pki_default_issuer_response_file="${TMPDIR_SESSION}/vault_pki_default_issuer_response.json"
 
-  vault read -format=json "${VAULT_PKI_MOUNT_PATH}/issuer/default/json" >"${intermediate_ca_issuer_response_file}"
+  vault read -format=json "${VAULT_PKI_MOUNT_PATH}/issuer/default/json" >"${vault_pki_default_issuer_response_file}"
 
-  intermediate_ca_chain="$(jq -r '.data.ca_chain[]' <"${intermediate_ca_issuer_response_file}")"
+  vault_pki_ca_chain="$(jq -r '[.data.ca_chain[] | rtrimstr("\n")] | join("\n")' <"${vault_pki_default_issuer_response_file}")"
 
-  put_parameter "${VAULT_PKI_INTERMEDIATE_CA_SSM_PARAMETER_NAME}" "${intermediate_ca_chain}"
+  put_parameter "${VAULT_PKI_CA_CHAIN_SSM_PARAMETER_NAME}" "${vault_pki_ca_chain}"
 )
 
 publish_vault_pki_state() (
@@ -242,7 +242,7 @@ main() {
 
   configure_vault_pki_role
 
-  publish_vault_pki_intermediate_ca
+  publish_vault_pki_ca_chain
   publish_vault_pki_state
 }
 

@@ -53,9 +53,9 @@ output "bootstrap_node_id_ssm_parameter_name" {
   value       = aws_ssm_parameter.bootstrap_node_id.name
 }
 
-output "vault_pki_intermediate_ca_ssm_parameter_name" {
-  description = "SSM Parameter for the Vault PKI intermediate CA PEM."
-  value       = aws_ssm_parameter.vault_pki_intermediate_ca.name
+output "vault_pki_ca_chain_ssm_parameter_name" {
+  description = "SSM Parameter for the Vault PKI CA chain PEM."
+  value       = aws_ssm_parameter.vault_pki_ca_chain.name
 }
 
 output "vault_pki_intermediate_ca_csr_ssm_parameter_name" {

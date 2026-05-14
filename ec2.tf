@@ -98,7 +98,7 @@ resource "aws_launch_template" "vault_enterprise" {
       vault_pki_intermediate_ca_key_bits                  = var.vault_pki.intermediate_ca.key_bits
       vault_pki_intermediate_ca_key_type                  = var.vault_pki.intermediate_ca.key_type
       vault_pki_intermediate_ca_organization              = var.vault_pki.intermediate_ca.organization
-      vault_pki_intermediate_ca_ssm_parameter_name        = aws_ssm_parameter.vault_pki_intermediate_ca.name
+      vault_pki_ca_chain_ssm_parameter_name               = aws_ssm_parameter.vault_pki_ca_chain.name
       vault_pki_mount_path                                = var.vault_pki.mount_path
       vault_pki_server_cert_ttl                           = var.vault_pki.server_cert_ttl
       vault_pki_signed_intermediate_ca_secret_arn         = aws_secretsmanager_secret.vault_pki_signed_intermediate_ca.arn

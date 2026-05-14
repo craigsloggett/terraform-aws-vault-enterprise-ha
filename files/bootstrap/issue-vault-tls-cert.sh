@@ -1,13 +1,10 @@
 #!/bin/sh
 # issue-vault-tls-cert.sh
 #
-# Issues a PKI-signed TLS certificate and private key for this node from
-# the Vault PKI engine, reloads the local Vault TLS listener with the new
-# cert, and replaces the on-disk bootstrap CA with the PKI managed CA
-# bundle. Runs on every node after configure-vault-pki.sh has finished and
-# pki_state=Ready. Authenticates against the local Vault via AWS IAM since
-# each runcmd entry runs in its own process and no VAULT_TOKEN is available
-# from prior entries.
+# Issues a Vault PKI managed TLS certificate and private key for this node,
+# reloads the local Vault TLS listener, replaces the on-disk Bootstrap CA with
+# the signed Vault PKI intermediate CA, and then updates the system trust
+# store.
 
 set -euf
 
@@ -21,12 +18,16 @@ readonly VAULT_TLS_CA_FILE="${VAULT_TLS_DIR}/ca.crt"
 readonly VAULT_TLS_CERT_FILE="${VAULT_TLS_DIR}/server.crt"
 readonly VAULT_TLS_KEY_FILE="${VAULT_TLS_DIR}/server.key"
 
-fetch_tls_ca_bundle() (
-  fetch_parameter "${VAULT_PKI_INTERMEDIATE_CA_SSM_PARAMETER_NAME}"
-)
+TMPDIR_SESSION="$(mktemp -d)"
+readonly TMPDIR_SESSION
+trap 'rm -rf "${TMPDIR_SESSION}"' EXIT INT TERM HUP
 
 issue_vault_pki_tls_certificate_and_key() (
-  log_info "Issuing PKI TLS certificate and private key for this node"
+  log_info "Issuing Vault PKI TLS certificate and private key"
+
+  export VAULT_ADDR="https://127.0.0.1:8200"
+  export VAULT_TLS_SERVER_NAME="${VAULT_FQDN}"
+  export VAULT_CACERT="${VAULT_TLS_CA_FILE}"
 
   log_info "Authenticating via AWS IAM auth method"
   vault_token="$(
@@ -75,24 +76,25 @@ reload_vault_listener() (
   log_info "Vault TLS listener reloaded"
 )
 
-write_vault_pki_ca_bundle() (
-  log_info "Replacing bootstrap CA cert with PKI managed TLS CA bundle"
+install_vault_pki_ca_chain() (
+  log_info "Installing Vault PKI CA chain to /opt/vault/tls/ca.crt, replacing the Bootstrap CA"
 
-  pki_ca_bundle="$(fetch_tls_ca_bundle)"
+  fetch_parameter "${VAULT_PKI_CA_CHAIN_SSM_PARAMETER_NAME}" >"${TMPDIR_SESSION}/vault-pki-ca-chain.pem"
+  install -o vault -g vault -m 0644 "${TMPDIR_SESSION}/vault-pki-ca-chain.pem" "${VAULT_TLS_CA_FILE}"
+)
 
-  printf '%s\n' "${pki_ca_bundle}" >"${VAULT_TLS_CA_FILE}"
-  chown vault:vault "${VAULT_TLS_CA_FILE}"
-  chmod 0644 "${VAULT_TLS_CA_FILE}"
+trust_vault_pki_ca_chain() (
+  log_info "Trusting Vault PKI CA chain"
+
+  install -o root -g root -m 0644 "${VAULT_TLS_CA_FILE}" /usr/local/share/ca-certificates/vault-pki-ca-chain.crt
+  update-ca-certificates >/dev/null
 )
 
 main() {
-  export VAULT_ADDR="https://127.0.0.1:8200"
-  export VAULT_TLS_SERVER_NAME="${VAULT_FQDN}"
-  export VAULT_CACERT="${VAULT_TLS_CA_FILE}"
-
   issue_vault_pki_tls_certificate_and_key
   reload_vault_listener
-  write_vault_pki_ca_bundle
+  install_vault_pki_ca_chain
+  trust_vault_pki_ca_chain
 }
 
 main "${@}"
