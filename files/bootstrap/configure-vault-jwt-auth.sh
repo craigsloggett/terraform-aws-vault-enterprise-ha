@@ -31,7 +31,7 @@ enable_jwt_auth_method() (
 )
 
 write_jwt_auth_config() (
-  # $@ = optional extra arg, "oidc_discovery_ca_pem=@..."
+  # $@ is an optional extra argument: "oidc_discovery_ca_pem=@..."
   vault write "auth/${VAULT_AUTH_JWT_HCP_TERRAFORM_MOUNT_PATH}/config" \
     "oidc_discovery_url=https://${VAULT_AUTH_JWT_HCP_TERRAFORM_HOSTNAME}" \
     "bound_issuer=https://${VAULT_AUTH_JWT_HCP_TERRAFORM_HOSTNAME}" \
@@ -45,9 +45,9 @@ configure_jwt_auth_method() (
   # Handle the case when HCP Terraform Enterprise (TFE) uses a custom
   # or self-signed CA certificate.
   if [ -n "${VAULT_AUTH_JWT_HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM:-}" ]; then
-    ca_pem_file="${TMPDIR_SESSION}/jwt_oidc_discovery_ca.pem"
-    printf '%s' "${VAULT_AUTH_JWT_HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM}" >"${ca_pem_file}"
-    write_jwt_auth_config "oidc_discovery_ca_pem=@${ca_pem_file}"
+    oidc_discovery_ca_pem="${TMPDIR_SESSION}/jwt_oidc_discovery_ca.pem"
+    printf '%s' "${VAULT_AUTH_JWT_HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM}" >"${oidc_discovery_ca_pem}"
+    write_jwt_auth_config "oidc_discovery_ca_pem=@${oidc_discovery_ca_pem}"
   else
     write_jwt_auth_config
   fi

@@ -1,4 +1,4 @@
-check "ebs_under_instance_baseline" {
+check "ebs_saturates_instance_baseline" {
   assert {
     condition = (
       local.root_disk_at_floor ||
