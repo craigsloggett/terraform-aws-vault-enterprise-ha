@@ -623,9 +623,9 @@ variable "iam_role" {
 variable "bootstrap" {
   type = object({
     ssm_parameter = optional(object({
-      cluster_state_name = optional(string, "/vault-enterprise/bootstrap/cluster/state")
-      pki_state_name     = optional(string, "/vault-enterprise/bootstrap/pki/state")
-      node_id_name       = optional(string, "/vault-enterprise/bootstrap/node/id")
+      vault_cluster_state_name = optional(string, "/vault-enterprise/bootstrap/cluster/state")
+      vault_pki_state_name     = optional(string, "/vault-enterprise/bootstrap/pki/state")
+      instance_id_name         = optional(string, "/vault-enterprise/bootstrap/instance/id")
     }), {})
   })
 

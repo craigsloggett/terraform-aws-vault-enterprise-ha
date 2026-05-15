@@ -58,9 +58,9 @@ resource "aws_launch_template" "vault_enterprise" {
       auto_join_tag_value = var.compute.auto_join.tag_value
 
       # Bootstrap Coordination
-      bootstrap_cluster_state_ssm_parameter_name = aws_ssm_parameter.bootstrap_cluster_state.name
-      bootstrap_node_id_ssm_parameter_name       = aws_ssm_parameter.bootstrap_node_id.name
-      bootstrap_pki_state_ssm_parameter_name     = aws_ssm_parameter.bootstrap_pki_state.name
+      bootstrap_vault_cluster_state_ssm_parameter_name = aws_ssm_parameter.bootstrap_vault_cluster_state.name
+      bootstrap_vault_pki_state_ssm_parameter_name     = aws_ssm_parameter.bootstrap_vault_pki_state.name
+      bootstrap_instance_id_ssm_parameter_name         = aws_ssm_parameter.bootstrap_instance_id.name
 
       # Bootstrap Secrets
       license_secret_arn       = aws_secretsmanager_secret.license.arn

@@ -93,9 +93,9 @@ module "vault" {
 | [aws_security_group.bastion](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [aws_security_group.vault_enterprise_servers](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [aws_security_group.vpc_endpoints](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
-| [aws_ssm_parameter.bootstrap_cluster_state](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
-| [aws_ssm_parameter.bootstrap_node_id](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
-| [aws_ssm_parameter.bootstrap_pki_state](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
+| [aws_ssm_parameter.bootstrap_vault_cluster_state](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
+| [aws_ssm_parameter.bootstrap_instance_id](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
+| [aws_ssm_parameter.bootstrap_vault_pki_state](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.vault_pki_ca_chain](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_ssm_parameter.vault_pki_intermediate_ca_csr](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter) | resource |
 | [aws_vpc_endpoint.ec2](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/vpc_endpoint) | resource |
@@ -141,9 +141,9 @@ module "vault" {
 | <a name="output_ami_name"></a> [ami\_name](#output\_ami\_name) | Name of the AMI used for EC2 instances. |
 | <a name="output_autoscaling_group_name"></a> [autoscaling\_group\_name](#output\_autoscaling\_group\_name) | Name of the Vault Enterprise Auto Scaling Group. |
 | <a name="output_bastion_public_ip"></a> [bastion\_public\_ip](#output\_bastion\_public\_ip) | Public IP of the bastion host. |
-| <a name="output_bootstrap_cluster_state_ssm_parameter_name"></a> [bootstrap\_cluster\_state\_ssm\_parameter\_name](#output\_bootstrap\_cluster\_state\_ssm\_parameter\_name) | SSM Parameter for the bootstrap initialization state flag. |
-| <a name="output_bootstrap_node_id_ssm_parameter_name"></a> [bootstrap\_node\_id\_ssm\_parameter\_name](#output\_bootstrap\_node\_id\_ssm\_parameter\_name) | SSM Parameter for the elected bootstrap node EC2 instance ID. |
-| <a name="output_bootstrap_pki_state_ssm_parameter_name"></a> [bootstrap\_pki\_state\_ssm\_parameter\_name](#output\_bootstrap\_pki\_state\_ssm\_parameter\_name) | SSM Parameter for the bootstrap PKI state flag. |
+| <a name="output_bootstrap_vault_cluster_state_ssm_parameter_name"></a> [bootstrap\_cluster\_state\_ssm\_parameter\_name](#output\_bootstrap\_cluster\_state\_ssm\_parameter\_name) | SSM Parameter for the bootstrap initialization state flag. |
+| <a name="output_bootstrap_instance_id_ssm_parameter_name"></a> [bootstrap\_node\_id\_ssm\_parameter\_name](#output\_bootstrap\_node\_id\_ssm\_parameter\_name) | SSM Parameter for the elected bootstrap node EC2 instance ID. |
+| <a name="output_bootstrap_vault_pki_state_ssm_parameter_name"></a> [bootstrap\_pki\_state\_ssm\_parameter\_name](#output\_bootstrap\_pki\_state\_ssm\_parameter\_name) | SSM Parameter for the bootstrap PKI state flag. |
 | <a name="output_nlb_dns_name"></a> [nlb\_dns\_name](#output\_nlb\_dns\_name) | AWS-assigned DNS name of the Vault NLB. Use this as the CNAME target when DNS is managed outside Route 53. |
 | <a name="output_nlb_zone_id"></a> [nlb\_zone\_id](#output\_nlb\_zone\_id) | Hosted zone ID of the Vault NLB. Use this when creating a Route 53 alias record outside this module. |
 | <a name="output_vault_auth_jwt_hcp_terraform_mount_path"></a> [vault\_auth\_jwt\_hcp\_terraform\_mount\_path](#output\_vault\_auth\_jwt\_hcp\_terraform\_mount\_path) | Vault JWT auth method path for HCP Terraform (TFC\_VAULT\_AUTH\_PATH). |
