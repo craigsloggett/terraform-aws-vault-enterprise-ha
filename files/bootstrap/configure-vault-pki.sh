@@ -174,11 +174,10 @@ EOF
 publish_vault_pki_ca_chain() (
   log_info "Publishing Vault PKI CA chain to ${VAULT_PKI_CA_CHAIN_SSM_PARAMETER_NAME}"
 
-  vault_pki_default_issuer_response_file="${TMPDIR_SESSION}/vault_pki_default_issuer_response.json"
-
-  vault read -format=json "${VAULT_PKI_MOUNT_PATH}/issuer/default/json" >"${vault_pki_default_issuer_response_file}"
-
-  vault_pki_ca_chain="$(jq -r '[.data.ca_chain[] | rtrimstr("\n")] | join("\n")' <"${vault_pki_default_issuer_response_file}")"
+  vault_pki_ca_chain="$(
+    vault read -format=json "${VAULT_PKI_MOUNT_PATH}/issuer/default/json" |
+      jq -r '[.data.ca_chain[] | rtrimstr("\n")] | join("\n")'
+  )"
 
   put_parameter "${VAULT_PKI_CA_CHAIN_SSM_PARAMETER_NAME}" "${vault_pki_ca_chain}"
 )

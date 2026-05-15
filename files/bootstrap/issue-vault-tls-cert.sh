@@ -29,19 +29,21 @@ issue_vault_pki_tls_certificate_and_key() (
   export VAULT_TLS_SERVER_NAME="${VAULT_FQDN}"
   export VAULT_CACERT="${VAULT_TLS_CA_FILE}"
 
+  vault_pki_role="vault-server"
+
   log_info "Authenticating via AWS IAM auth method"
   vault_token="$(
     vault login \
       -token-only \
       -no-store \
       -method=aws \
-      role=vault-server
+      role="${vault_pki_role}"
   )"
   export VAULT_TOKEN="${vault_token}"
 
   log_info "Requesting certificate from PKI engine"
-  pki_issue_response="$(
-    vault write -format=json "${VAULT_PKI_MOUNT_PATH}/issue/vault-server" - <<EOF
+  vault_pki_issue_response="$(
+    vault write -format=json "${VAULT_PKI_MOUNT_PATH}/issue/${vault_pki_role}" - <<EOF
 {
   "common_name": "${VAULT_FQDN}",
   "ttl": "${VAULT_PKI_SERVER_CERT_TTL}"
@@ -49,31 +51,30 @@ issue_vault_pki_tls_certificate_and_key() (
 EOF
   )"
 
-  vault_tls_cert_tmp_file="${VAULT_TLS_DIR}/server.crt.tmp"
-  vault_tls_key_tmp_file="${VAULT_TLS_DIR}/server.key.tmp"
+  tmp_vault_tls_cert_file="${TMPDIR_SESSION}/server.crt"
+  tmp_vault_tls_key_file="${TMPDIR_SESSION}/server.key"
 
   {
-    printf '%s' "${pki_issue_response}" | jq -r '.data.certificate'
-    printf '%s' "${pki_issue_response}" | jq -r '.data.ca_chain[]'
-  } >"${vault_tls_cert_tmp_file}"
-  printf '%s' "${pki_issue_response}" | jq -r '.data.private_key' >"${vault_tls_key_tmp_file}"
+    printf '%s' "${vault_pki_issue_response}" | jq -r '.data.certificate'
+    printf '%s' "${vault_pki_issue_response}" | jq -r '.data.ca_chain[]'
+  } >"${tmp_vault_tls_cert_file}"
 
-  chown vault:vault "${vault_tls_cert_tmp_file}" "${vault_tls_key_tmp_file}"
-  chmod 0640 "${vault_tls_cert_tmp_file}" "${vault_tls_key_tmp_file}"
+  printf '%s' "${vault_pki_issue_response}" | jq -r '.data.private_key' >"${tmp_vault_tls_key_file}"
 
-  mv "${vault_tls_cert_tmp_file}" "${VAULT_TLS_CERT_FILE}"
-  mv "${vault_tls_key_tmp_file}" "${VAULT_TLS_KEY_FILE}"
+  # Staging to VAULT_TLS_DIR and using `mv` to perform an atomic swap (instead of a one-shot `install`).
+  install -o vault -g vault -m 0640 -T "${tmp_vault_tls_cert_file}" "${VAULT_TLS_DIR}/server.crt.tmp"
+  install -o vault -g vault -m 0640 -T "${tmp_vault_tls_key_file}" "${VAULT_TLS_DIR}/server.key.tmp"
 
-  log_info "PKI TLS certificate written to ${VAULT_TLS_CERT_FILE}"
-  log_info "PKI TLS private key written to ${VAULT_TLS_KEY_FILE}"
+  mv "${VAULT_TLS_DIR}/server.crt.tmp" "${VAULT_TLS_CERT_FILE}"
+  mv "${VAULT_TLS_DIR}/server.key.tmp" "${VAULT_TLS_KEY_FILE}"
+
+  log_info "Vault PKI TLS certificate and private key written to ${VAULT_TLS_CERT_FILE}"
 )
 
 reload_vault_listener() (
-  log_info "Reloading Vault TLS listener with PKI-signed certificate"
+  log_info "Reloading Vault listener with Vault PKI issued certificate"
 
   systemctl kill --signal=SIGHUP --kill-whom=main vault.service
-
-  log_info "Vault TLS listener reloaded"
 )
 
 install_vault_pki_ca_chain() (
