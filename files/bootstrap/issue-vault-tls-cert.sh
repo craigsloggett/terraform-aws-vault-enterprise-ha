@@ -32,10 +32,10 @@ issue_vault_pki_tls_certificate_and_key() (
   log_info "Authenticating via AWS IAM auth method"
   vault_token="$(
     vault login \
-      -format=json \
+      -token-only \
+      -no-store \
       -method=aws \
-      role=vault-server |
-      jq -r '.auth.client_token'
+      role=vault-server
   )"
   export VAULT_TOKEN="${vault_token}"
 
