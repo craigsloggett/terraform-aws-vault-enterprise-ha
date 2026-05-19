@@ -1,8 +1,8 @@
-resource "aws_ssm_parameter" "vault_pki_intermediate_ca" {
-  name        = var.vault_pki.ssm_parameter.intermediate_ca_name
+resource "aws_ssm_parameter" "vault_pki_ca_chain" {
+  name        = var.vault_pki.ssm_parameter.ca_chain_name
   type        = "String"
   value       = "EMPTY"
-  description = "Vault PKI intermediate CA PEM"
+  description = "Vault PKI CA Chain PEM"
 
   lifecycle {
     ignore_changes = [value]

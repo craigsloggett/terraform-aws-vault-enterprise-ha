@@ -11,9 +11,9 @@
 
 set -euf
 
-# shellcheck source=/dev/null
+# shellcheck source=bootstrap.env.tftpl
 . /var/lib/cloud/scripts/bootstrap.env
-# shellcheck source=/dev/null
+# shellcheck source=SCRIPTDIR/common-functions.sh
 . /var/lib/cloud/scripts/common-functions.sh
 
 readonly VAULT_POLICY_DIR="/etc/vault.d/policies"
@@ -31,7 +31,7 @@ enable_jwt_auth_method() (
 )
 
 write_jwt_auth_config() (
-  # $@ = optional extra arg, "oidc_discovery_ca_pem=@..."
+  # $@ is an optional extra argument: "oidc_discovery_ca_pem=@..."
   vault write "auth/${VAULT_AUTH_JWT_HCP_TERRAFORM_MOUNT_PATH}/config" \
     "oidc_discovery_url=https://${VAULT_AUTH_JWT_HCP_TERRAFORM_HOSTNAME}" \
     "bound_issuer=https://${VAULT_AUTH_JWT_HCP_TERRAFORM_HOSTNAME}" \
@@ -45,9 +45,9 @@ configure_jwt_auth_method() (
   # Handle the case when HCP Terraform Enterprise (TFE) uses a custom
   # or self-signed CA certificate.
   if [ -n "${VAULT_AUTH_JWT_HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM:-}" ]; then
-    ca_pem_file="${TMPDIR_SESSION}/jwt_oidc_discovery_ca.pem"
-    printf '%s' "${VAULT_AUTH_JWT_HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM}" >"${ca_pem_file}"
-    write_jwt_auth_config "oidc_discovery_ca_pem=@${ca_pem_file}"
+    oidc_discovery_ca_pem="${TMPDIR_SESSION}/jwt_oidc_discovery_ca.pem"
+    printf '%s' "${VAULT_AUTH_JWT_HCP_TERRAFORM_OIDC_DISCOVERY_CA_PEM}" >"${oidc_discovery_ca_pem}"
+    write_jwt_auth_config "oidc_discovery_ca_pem=@${oidc_discovery_ca_pem}"
   else
     write_jwt_auth_config
   fi
@@ -80,9 +80,9 @@ EOF
 )
 
 main() {
-  bootstrap_id="$(fetch_parameter "${BOOTSTRAP_NODE_ID_NAME}")"
+  bootstrap_instance_id="$(fetch_parameter "${BOOTSTRAP_INSTANCE_ID_SSM_PARAMETER}")"
 
-  if [ "${INSTANCE_ID}" != "${bootstrap_id}" ]; then
+  if [ "${INSTANCE_ID}" != "${bootstrap_instance_id}" ]; then
     log_info "Not the bootstrap node, skipping JWT auth configuration"
     return 0
   fi

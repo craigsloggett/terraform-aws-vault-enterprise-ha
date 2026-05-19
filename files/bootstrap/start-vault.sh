@@ -7,7 +7,7 @@
 
 set -euf
 
-# shellcheck source=/dev/null
+# shellcheck source=SCRIPTDIR/common-functions.sh
 . /var/lib/cloud/scripts/common-functions.sh
 
 start_vault() (

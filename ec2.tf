@@ -58,9 +58,9 @@ resource "aws_launch_template" "vault_enterprise" {
       auto_join_tag_value = var.compute.auto_join.tag_value
 
       # Bootstrap Coordination
-      bootstrap_cluster_state_name = aws_ssm_parameter.bootstrap_cluster_state.name
-      bootstrap_node_id_name       = aws_ssm_parameter.bootstrap_node_id.name
-      bootstrap_pki_state_name     = aws_ssm_parameter.bootstrap_pki_state.name
+      bootstrap_vault_cluster_state_ssm_parameter_name = aws_ssm_parameter.bootstrap_vault_cluster_state.name
+      bootstrap_vault_pki_state_ssm_parameter_name     = aws_ssm_parameter.bootstrap_vault_pki_state.name
+      bootstrap_instance_id_ssm_parameter_name         = aws_ssm_parameter.bootstrap_instance_id.name
 
       # Bootstrap Secrets
       license_secret_arn       = aws_secretsmanager_secret.license.arn
@@ -98,7 +98,7 @@ resource "aws_launch_template" "vault_enterprise" {
       vault_pki_intermediate_ca_key_bits                  = var.vault_pki.intermediate_ca.key_bits
       vault_pki_intermediate_ca_key_type                  = var.vault_pki.intermediate_ca.key_type
       vault_pki_intermediate_ca_organization              = var.vault_pki.intermediate_ca.organization
-      vault_pki_intermediate_ca_ssm_parameter_name        = aws_ssm_parameter.vault_pki_intermediate_ca.name
+      vault_pki_ca_chain_ssm_parameter_name               = aws_ssm_parameter.vault_pki_ca_chain.name
       vault_pki_mount_path                                = var.vault_pki.mount_path
       vault_pki_server_cert_ttl                           = var.vault_pki.server_cert_ttl
       vault_pki_signed_intermediate_ca_secret_arn         = aws_secretsmanager_secret.vault_pki_signed_intermediate_ca.arn
@@ -241,6 +241,90 @@ resource "aws_launch_template" "vault_enterprise" {
     precondition {
       condition     = can(regex("(ubuntu|debian)", lower(var.ami.name)))
       error_message = "The provided AMI must be Ubuntu or Debian-based."
+    }
+
+    precondition {
+      condition = (
+        local.root_disk_at_floor ||
+        var.compute.root_disk.iops <= data.aws_ec2_instance_type.compute.ebs_performance_baseline_iops
+      )
+      error_message = format(
+        "compute.root_disk.iops (%d) exceeds the %s baseline EBS IOPS (%d). The instance cannot sustain this provisioned IOPS, so you would be billed for unusable capacity. Set iops to %d to match the instance, or choose a larger instance type.",
+        var.compute.root_disk.iops,
+        var.compute.instance_type,
+        data.aws_ec2_instance_type.compute.ebs_performance_baseline_iops,
+        data.aws_ec2_instance_type.compute.ebs_performance_baseline_iops,
+      )
+    }
+
+    precondition {
+      condition = (
+        local.root_disk_at_floor ||
+        var.compute.root_disk.throughput <= data.aws_ec2_instance_type.compute.ebs_performance_baseline_throughput
+      )
+      error_message = format(
+        "compute.root_disk.throughput (%d MiB/s) exceeds the %s baseline EBS throughput (%.1f MiB/s). The instance cannot sustain this provisioned throughput, so you would be billed for unusable capacity. Set throughput to %d to match the instance, or choose a larger instance type.",
+        var.compute.root_disk.throughput,
+        var.compute.instance_type,
+        data.aws_ec2_instance_type.compute.ebs_performance_baseline_throughput,
+        floor(data.aws_ec2_instance_type.compute.ebs_performance_baseline_throughput),
+      )
+    }
+
+    precondition {
+      condition = (
+        local.raft_data_disk_at_floor ||
+        var.compute.raft_data_disk.iops <= data.aws_ec2_instance_type.compute.ebs_performance_baseline_iops
+      )
+      error_message = format(
+        "compute.raft_data_disk.iops (%d) exceeds the %s baseline EBS IOPS (%d). The instance cannot sustain this provisioned IOPS, so you would be billed for unusable capacity. Set iops to %d to match the instance, or choose a larger instance type.",
+        var.compute.raft_data_disk.iops,
+        var.compute.instance_type,
+        data.aws_ec2_instance_type.compute.ebs_performance_baseline_iops,
+        data.aws_ec2_instance_type.compute.ebs_performance_baseline_iops,
+      )
+    }
+
+    precondition {
+      condition = (
+        local.raft_data_disk_at_floor ||
+        var.compute.raft_data_disk.throughput <= data.aws_ec2_instance_type.compute.ebs_performance_baseline_throughput
+      )
+      error_message = format(
+        "compute.raft_data_disk.throughput (%d MiB/s) exceeds the %s baseline EBS throughput (%.1f MiB/s). The instance cannot sustain this provisioned throughput, so you would be billed for unusable capacity. Set throughput to %d to match the instance, or choose a larger instance type.",
+        var.compute.raft_data_disk.throughput,
+        var.compute.instance_type,
+        data.aws_ec2_instance_type.compute.ebs_performance_baseline_throughput,
+        floor(data.aws_ec2_instance_type.compute.ebs_performance_baseline_throughput),
+      )
+    }
+
+    precondition {
+      condition = (
+        local.audit_disk_at_floor ||
+        var.compute.audit_disk.iops <= data.aws_ec2_instance_type.compute.ebs_performance_baseline_iops
+      )
+      error_message = format(
+        "compute.audit_disk.iops (%d) exceeds the %s baseline EBS IOPS (%d). The instance cannot sustain this provisioned IOPS, so you would be billed for unusable capacity. Set iops to %d to match the instance, or choose a larger instance type.",
+        var.compute.audit_disk.iops,
+        var.compute.instance_type,
+        data.aws_ec2_instance_type.compute.ebs_performance_baseline_iops,
+        data.aws_ec2_instance_type.compute.ebs_performance_baseline_iops,
+      )
+    }
+
+    precondition {
+      condition = (
+        local.audit_disk_at_floor ||
+        var.compute.audit_disk.throughput <= data.aws_ec2_instance_type.compute.ebs_performance_baseline_throughput
+      )
+      error_message = format(
+        "compute.audit_disk.throughput (%d MiB/s) exceeds the %s baseline EBS throughput (%.1f MiB/s). The instance cannot sustain this provisioned throughput, so you would be billed for unusable capacity. Set throughput to %d to match the instance, or choose a larger instance type.",
+        var.compute.audit_disk.throughput,
+        var.compute.instance_type,
+        data.aws_ec2_instance_type.compute.ebs_performance_baseline_throughput,
+        floor(data.aws_ec2_instance_type.compute.ebs_performance_baseline_throughput),
+      )
     }
   }
 }

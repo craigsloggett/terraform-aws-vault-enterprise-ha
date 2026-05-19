@@ -9,9 +9,9 @@
 
 set -euf
 
-# shellcheck source=/dev/null
+# shellcheck source=bootstrap.env.tftpl
 . /var/lib/cloud/scripts/bootstrap.env
-# shellcheck source=/dev/null
+# shellcheck source=SCRIPTDIR/common-functions.sh
 . /var/lib/cloud/scripts/common-functions.sh
 
 readonly VAULT_DATA_DIR="/var/opt/vault"
@@ -19,52 +19,51 @@ readonly VAULT_LOG_DIR="/var/log/vault"
 readonly VAULT_RAFT_DIR="${VAULT_DATA_DIR}/data"
 
 get_ebs_nvme_device() (
-  target_name="${1}"
+  ebs_device_name="${1}"
+  ebs_device_name_short="${ebs_device_name#/dev/}"
 
-  target_short="${target_name#/dev/}"
-
-  # Temporarily disable noglob for the /dev/nvme* glob scan.
+  # Globbing is disabled by set -f; re-enable for the device scan.
   set +f
-  for nvme in /dev/nvme*n1; do
-    [ -e "${nvme}" ] || continue
+  for nvme_device in /dev/nvme*n1; do
+    [ -e "${nvme_device}" ] || continue
 
-    attached="$(ebsnvme-id -b "${nvme}" 2>/dev/null)" || continue
-    attached_short="${attached#/dev/}"
+    ebs_volume_block_device="$(ebsnvme-id -b "${nvme_device}" 2>/dev/null)" || continue
+    ebs_volume_block_device_short="${ebs_volume_block_device#/dev/}"
 
-    if [ "${attached_short}" = "${target_short}" ]; then
-      set -f
-      printf '%s' "${nvme}"
+    if [ "${ebs_volume_block_device_short}" = "${ebs_device_name_short}" ]; then
+      printf '%s' "${nvme_device}"
       return 0
     fi
   done
-  set -f
 
   return 1
 )
 
 wait_for_ebs_nvme_device() (
-  device_attachment_name="${1}"
+  ebs_device_name="${1}"
 
-  log_info "Waiting for NVMe device for attachment ${device_attachment_name}"
+  log_info "Waiting for NVMe device for attachment ${ebs_device_name}"
 
   interval=5
-  max_attempts=5
+  max_attempts=12
   attempt=0
 
   while [ "${attempt}" -lt "${max_attempts}" ]; do
     attempt=$((attempt + 1))
-    if get_ebs_nvme_device "${device_attachment_name}" >/dev/null 2>&1; then
+
+    if get_ebs_nvme_device "${ebs_device_name}" >/dev/null 2>&1; then
       return 0
     fi
+
     sleep "${interval}"
   done
 
-  log_error "NVMe device for attachment ${device_attachment_name} did not appear after ${max_attempts} attempts"
+  log_error "NVMe device for attachment ${ebs_device_name} did not appear after ${max_attempts} attempts"
   return 1
 )
 
 prepare_disk() (
-  device="${1}"
+  ebs_device="${1}"
   mount_point="${2}"
   fs_label="${3}"
 
@@ -73,22 +72,22 @@ prepare_disk() (
     return 1
   fi
 
-  if ! blkid -p "${device}" >/dev/null 2>&1; then
-    log_info "No filesystem on ${device}, formatting as xfs (label=${fs_label})"
-    mkfs.xfs -L "${fs_label}" "${device}" >/dev/null
+  if ! blkid -p "${ebs_device}" >/dev/null 2>&1; then
+    log_info "No filesystem on ${ebs_device}, formatting as xfs (label=${fs_label})"
+    mkfs.xfs -L "${fs_label}" "${ebs_device}" >/dev/null
   else
-    log_info "Filesystem already present on ${device}, skipping format"
+    log_info "Filesystem already present on ${ebs_device}, skipping format"
   fi
 
   if ! mountpoint -q "${mount_point}"; then
-    log_info "Mounting ${device} at ${mount_point}"
+    log_info "Mounting ${ebs_device} at ${mount_point}"
     mkdir -p "${mount_point}"
-    mount -t xfs "${device}" "${mount_point}"
+    mount -t xfs "${ebs_device}" "${mount_point}"
   else
     log_info "${mount_point} already mounted, skipping"
   fi
 
-  uuid="$(blkid -s UUID -o value "${device}")"
+  uuid="$(blkid -s UUID -o value "${ebs_device}")"
   if ! grep -qE "^UUID=${uuid}[[:blank:]]" /etc/fstab; then
     printf 'UUID=%s  %s  xfs  defaults,nofail  0  2\n' \
       "${uuid}" "${mount_point}" \
@@ -112,12 +111,12 @@ configure_vault_mount_directories() (
 
 main() {
   wait_for_ebs_nvme_device "${EBS_RAFT_DEVICE_NAME}"
-  raft_device="$(get_ebs_nvme_device "${EBS_RAFT_DEVICE_NAME}")"
-  prepare_disk "${raft_device}" "${VAULT_RAFT_DIR}" "vault-raft"
+  raft_ebs_device="$(get_ebs_nvme_device "${EBS_RAFT_DEVICE_NAME}")"
+  prepare_disk "${raft_ebs_device}" "${VAULT_RAFT_DIR}" "vault-raft"
 
   wait_for_ebs_nvme_device "${EBS_AUDIT_DEVICE_NAME}"
-  audit_device="$(get_ebs_nvme_device "${EBS_AUDIT_DEVICE_NAME}")"
-  prepare_disk "${audit_device}" "${VAULT_LOG_DIR}" "vault-audit"
+  audit_ebs_device="$(get_ebs_nvme_device "${EBS_AUDIT_DEVICE_NAME}")"
+  prepare_disk "${audit_ebs_device}" "${VAULT_LOG_DIR}" "vault-audit"
 
   configure_vault_mount_directories
 }

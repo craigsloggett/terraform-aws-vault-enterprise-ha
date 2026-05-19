@@ -63,8 +63,8 @@ resource "tls_locally_signed_cert" "bootstrap_tls_cert" {
 
 # Initialization Coordination SSM Parameters
 
-resource "aws_ssm_parameter" "bootstrap_cluster_state" {
-  name        = var.bootstrap.ssm_parameter.cluster_state_name
+resource "aws_ssm_parameter" "bootstrap_vault_cluster_state" {
+  name        = var.bootstrap.ssm_parameter.vault_cluster_state_name
   type        = "String"
   value       = "Uninitialized"
   description = "Bootstrap Initialization State Flag"
@@ -74,8 +74,8 @@ resource "aws_ssm_parameter" "bootstrap_cluster_state" {
   }
 }
 
-resource "aws_ssm_parameter" "bootstrap_pki_state" {
-  name        = var.bootstrap.ssm_parameter.pki_state_name
+resource "aws_ssm_parameter" "bootstrap_vault_pki_state" {
+  name        = var.bootstrap.ssm_parameter.vault_pki_state_name
   type        = "String"
   value       = "Uninitialized"
   description = "Bootstrap PKI State Flag"
@@ -85,8 +85,8 @@ resource "aws_ssm_parameter" "bootstrap_pki_state" {
   }
 }
 
-resource "aws_ssm_parameter" "bootstrap_node_id" {
-  name        = var.bootstrap.ssm_parameter.node_id_name
+resource "aws_ssm_parameter" "bootstrap_instance_id" {
+  name        = var.bootstrap.ssm_parameter.instance_id_name
   type        = "String"
   value       = "Uninitialized"
   description = "EC2 instance ID of the elected bootstrap node"

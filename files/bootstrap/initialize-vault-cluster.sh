@@ -8,9 +8,9 @@
 
 set -euf
 
-# shellcheck source=/dev/null
+# shellcheck source=bootstrap.env.tftpl
 . /var/lib/cloud/scripts/bootstrap.env
-# shellcheck source=/dev/null
+# shellcheck source=SCRIPTDIR/common-functions.sh
 . /var/lib/cloud/scripts/common-functions.sh
 
 initialize_cluster() (
@@ -21,9 +21,8 @@ initialize_cluster() (
     return 0
   fi
 
-  log_info "Running vault operator init"
-  # KMS auto-unseal is configured, so recovery shares/threshold are used
-  # in place of unseal shares/threshold.
+  # KMS auto-unseal is configured, so recovery-shares and recovery-threshold are used
+  # in place of unseal-shares and unseal-threshold.
   init_output="$(
     vault operator init \
       -format=json \
@@ -41,15 +40,15 @@ initialize_cluster() (
   put_secret "${RECOVERY_KEYS_SECRET_ARN}" "${recovery_keys}"
 
   log_info "Writing cluster state: Ready"
-  put_parameter "${BOOTSTRAP_CLUSTER_STATE_NAME}" "Ready"
+  put_parameter "${BOOTSTRAP_VAULT_CLUSTER_STATE_SSM_PARAMETER_NAME}" "Ready"
 
   log_info "Cluster initialization complete"
 )
 
 main() {
-  bootstrap_id="$(fetch_parameter "${BOOTSTRAP_NODE_ID_NAME}")"
+  bootstrap_instance_id="$(fetch_parameter "${BOOTSTRAP_INSTANCE_ID_SSM_PARAMETER}")"
 
-  if [ "${INSTANCE_ID}" != "${bootstrap_id}" ]; then
+  if [ "${INSTANCE_ID}" != "${bootstrap_instance_id}" ]; then
     log_info "Not the bootstrap node, skipping cluster initialization"
     return 0
   fi

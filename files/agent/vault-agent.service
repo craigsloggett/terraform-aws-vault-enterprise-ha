@@ -19,7 +19,7 @@ PrivateDevices=yes
 SecureBits=keep-caps
 CapabilityBoundingSet=CAP_SYSLOG
 NoNewPrivileges=yes
-ExecStart=/usr/bin/vault agent -config=/etc/vault.d/agent.hcl
+ExecStart=/usr/local/bin/vault agent -config=/etc/vault.d/agent.hcl
 ExecReload=/bin/kill --signal HUP $MAINPID
 KillMode=process
 KillSignal=SIGINT

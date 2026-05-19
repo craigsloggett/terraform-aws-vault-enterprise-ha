@@ -204,7 +204,7 @@ variable "vault_pki" {
     }), {})
 
     ssm_parameter = optional(object({
-      intermediate_ca_name     = optional(string, "/vault-enterprise/pki/intermediate-ca")
+      ca_chain_name            = optional(string, "/vault-enterprise/pki/ca-chain")
       intermediate_ca_csr_name = optional(string, "/vault-enterprise/pki/intermediate-ca-csr")
     }), {})
 
@@ -623,9 +623,9 @@ variable "iam_role" {
 variable "bootstrap" {
   type = object({
     ssm_parameter = optional(object({
-      cluster_state_name = optional(string, "/vault-enterprise/bootstrap/cluster/state")
-      pki_state_name     = optional(string, "/vault-enterprise/bootstrap/pki/state")
-      node_id_name       = optional(string, "/vault-enterprise/bootstrap/node/id")
+      vault_cluster_state_name = optional(string, "/vault-enterprise/bootstrap/cluster/state")
+      vault_pki_state_name     = optional(string, "/vault-enterprise/bootstrap/pki/state")
+      instance_id_name         = optional(string, "/vault-enterprise/bootstrap/instance/id")
     }), {})
   })
 
